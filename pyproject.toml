@@ -1,0 +1,9 @@
+[project]
+name = "pydantic-jsonschema"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "openapi-pydantic>=0.5.0",
+    "pydantic>=2.0.0",
+]
