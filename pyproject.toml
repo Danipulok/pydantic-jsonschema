@@ -12,3 +12,6 @@ dependencies = [
 extra-types = [
     "pydantic-extra-types>=2.0.0",
 ]
+test = [
+    "pytest>=7.0.0",
+]
