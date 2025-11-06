@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from typing import (
+    Annotated,
     Any,
     Final,
     ForwardRef,
@@ -8,11 +9,13 @@ from typing import (
     Protocol,
     Union,
     cast,
+    get_args,
 )
 
 from openapi_pydantic import DataType, Reference, Schema
 from pydantic import BaseModel, ConfigDict, RootModel, create_model
 from pydantic.fields import FieldInfo
+from pydantic.functional_validators import BeforeValidator
 
 from .exceptions import ParsingError, ReferenceError
 from .utils import sanitize_identifier
@@ -30,6 +33,7 @@ __all__ = [
 
 _DEFAULT_MODEL_NAME: Final[str] = "Model"
 _PYDANTIC_DEFAULT_MISSING: Final[Ellipsis] = ...  # Missing value for `default` field
+_DEFS_KEY: Final[str] = "$defs"  # JSON Schema 2020-12 definitions key
 
 _TYPE_MAPPING: Final[dict[DataType, type]] = {
     DataType.NULL: None,
@@ -91,10 +95,16 @@ class SchemaConverter:  # stateful
         default_model_name: str = _DEFAULT_MODEL_NAME,
         refs: dict[Ref, type[BaseModel]] | None = None,
         format_validators: dict[FormatName, FormatValidator] | None = None,
+        before_validators: dict[FormatName, BeforeValidatorFunc] | None = None,
     ) -> None:
         self._default_model_name: str = default_model_name
         self._refs: dict[Ref, type[BaseModel]] = refs or {}
-        self._format_validators: dict[FormatName, FormatValidator] = format_validators
+        self._format_validators: dict[FormatName, FormatValidator] = (
+            format_validators or {}
+        )
+        self._before_validators: dict[FormatName, BeforeValidatorFunc] = (
+            before_validators or {}
+        )
 
         self._defs_cache: dict[Ref, Schema] = {}
         self._models_cache: dict[SchemaHash, type[BaseModel]] = {}
@@ -168,9 +178,8 @@ class SchemaConverter:  # stateful
         :raises ParsingError: If schema contains $defs (only allowed in root).
         """
         # Validate that `$defs` is not present in nested schemas
-        # TODO: move `$defs` to const
-        if schema.model_extra and "$defs" in schema.model_extra:
-            msg = "$defs is only allowed in root schema, not in nested schemas"
+        if schema.model_extra and _DEFS_KEY in schema.model_extra:
+            msg = f"{_DEFS_KEY} is only allowed in root schema, not in nested schemas"
             raise ParsingError(msg)
 
         # Build model using common logic
@@ -264,14 +273,13 @@ class SchemaConverter:  # stateful
 
         # Extract $defs (JSON Schema 2020-12)
         # See: https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.4
-        defs_field = "$defs"
-        defs = schema.model_extra.get(defs_field, {})
+        defs = schema.model_extra.get(_DEFS_KEY, {})
 
         for name, schema_def in defs.items():
             schema_instance = Schema.model_validate(schema_def)
 
             # Store with full reference path
-            ref_path = f"#/{defs_field}/{name}"
+            ref_path = f"#/{_DEFS_KEY}/{name}"
             defs[ref_path] = schema_instance
 
         return defs
@@ -444,13 +452,22 @@ class SchemaConverter:  # stateful
         /,
     ) -> Any:
         """
-        Apply validator to annotation.
+        Apply before validator to annotation.
 
         :param annotation: Original annotation.
-        :param schema: Schema to check type from.
-        :returns: Annotation wrapped with Validator if applicable.
+        :param schema: Schema to check for format.
+        :returns: Annotation wrapped with BeforeValidator if applicable.
         """
-        return annotation
+        # Check if schema has format and we have a before_validator for it
+        if not schema.schema_format:
+            return annotation
+
+        validator = self._before_validators.get(schema.schema_format)
+        if not validator:
+            return annotation
+
+        # Wrap annotation with BeforeValidator
+        return Annotated[annotation, BeforeValidator(validator)]
 
     @staticmethod
     def _build_model_config(
