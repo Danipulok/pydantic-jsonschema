@@ -31,6 +31,8 @@ __all__ = [
     "validate_uuid",
     "validate_uri",
     "validate_uri_reference",
+    "validate_iri",
+    "validate_iri_reference",
 ]
 
 
@@ -265,3 +267,53 @@ def validate_uri_reference(value: Any) -> str:
         return value
     except Exception as e:
         raise ValueError(f"Invalid URI reference format: {value}") from e
+
+
+# IRI validators (Internationalized Resource Identifier)
+def validate_iri(value: Any) -> str:
+    """
+    Validate IRI format (RFC 3987).
+    Similar to URI but allows international characters.
+
+    Note: This is a basic validation. For full RFC 3987 compliance,
+    consider using a dedicated library like rfc3987.
+
+    :param value: Value to validate.
+    :returns: Original value if valid.
+    :raises ValueError: If value is not a valid IRI.
+    """
+    if not isinstance(value, str):
+        raise ValueError(f"Expected string, got {type(value).__name__}")
+
+    try:
+        # Basic validation: must be parseable and have scheme
+        result = urlparse(value)
+        if not result.scheme:
+            raise ValueError(f"IRI must have scheme: {value}")
+        # Allow unicode characters (main difference from URI)
+        return value
+    except Exception as e:
+        raise ValueError(f"Invalid IRI format: {value}") from e
+
+
+def validate_iri_reference(value: Any) -> str:
+    """
+    Validate IRI reference format (RFC 3987).
+    Similar to URI reference but allows international characters.
+
+    Note: This is a basic validation. For full RFC 3987 compliance,
+    consider using a dedicated library like rfc3987.
+
+    :param value: Value to validate.
+    :returns: Original value if valid.
+    :raises ValueError: If value is not a valid IRI reference.
+    """
+    if not isinstance(value, str):
+        raise ValueError(f"Expected string, got {type(value).__name__}")
+
+    try:
+        # IRI reference can be relative, allow unicode
+        urlparse(value)
+        return value
+    except Exception as e:
+        raise ValueError(f"Invalid IRI reference format: {value}") from e

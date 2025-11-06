@@ -14,6 +14,8 @@ from pydantic_jsonschema.validators import (
     validate_hostname,
     validate_ipv4,
     validate_ipv6,
+    validate_iri,
+    validate_iri_reference,
     validate_time,
     validate_uri,
     validate_uri_reference,
@@ -184,14 +186,14 @@ IRI = SchemaFormat(
     display_name="IRI",
     examples=["https://www.example.com/こんにちは"],
     acceptable_types=[DataType.STRING],
-    validator=None,  # TODO: Add IRI validator (requires rfc3987 or similar)
+    validator=validate_iri,
 )
 IRI_REFERENCE = SchemaFormat(
     key="iri-reference",
     display_name="IRI Reference",
     examples=["/relative/path/to/こんにちは"],
     acceptable_types=[DataType.STRING],
-    validator=None,  # TODO: Add IRI reference validator (requires rfc3987 or similar)
+    validator=validate_iri_reference,
 )
 ISO_4217 = SchemaFormat(
     key="iso-4217",
