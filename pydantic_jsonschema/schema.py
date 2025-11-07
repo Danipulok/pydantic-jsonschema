@@ -7,6 +7,7 @@ Allows dumping Pydantic models back to JSON Schema format with:
 - Proper JSON Schema 2020-12 format
 """
 
+from collections.abc import Mapping
 from typing import Any, Literal
 
 from pydantic import BaseModel
@@ -20,7 +21,7 @@ def model_dump_json_schema(
     model: type[BaseModel],
     /,
     *,
-    refs: dict[str, type[BaseModel]] | None = None,
+    refs: Mapping[str, type[BaseModel]] | None = None,
     mode: Literal["validation", "serialization"] = "validation",
     by_alias: bool = True,
 ) -> dict[str, Any]:
@@ -49,7 +50,7 @@ def model_dump_json_schema(
 
 def _replace_refs(
     schema: dict[str, Any],
-    refs: dict[str, type[BaseModel]],
+    refs: Mapping[str, type[BaseModel]],
     /,
 ) -> dict[str, Any]:
     """

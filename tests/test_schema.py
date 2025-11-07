@@ -8,7 +8,7 @@ from pydantic_jsonschema import model_dump_json_schema
 class TestSchemaDumping:
     """Tests for model_dump_json_schema."""
 
-    def test_simple_model_dump(self):
+    def test_simple_model_dump(self) -> None:
         """Test dumping a simple model to JSON Schema."""
 
         class User(BaseModel):
@@ -25,7 +25,7 @@ class TestSchemaDumping:
         assert "name" in schema["required"]
         assert "age" in schema["required"]
 
-    def test_nested_model_dump(self):
+    def test_nested_model_dump(self) -> None:
         """Test dumping nested models."""
 
         class Address(BaseModel):
@@ -42,7 +42,7 @@ class TestSchemaDumping:
         assert "Address" in schema["$defs"]
         assert "address" in schema["properties"]
 
-    def test_dump_with_custom_refs(self):
+    def test_dump_with_custom_refs(self) -> None:
         """Test dumping with custom reference URIs."""
 
         class Address(BaseModel):
@@ -60,7 +60,7 @@ class TestSchemaDumping:
         assert "properties" in schema
         assert "address" in schema["properties"]
 
-    def test_dump_by_alias(self):
+    def test_dump_by_alias(self) -> None:
         """Test schema generation respects by_alias parameter."""
         from pydantic import Field
 

@@ -1,31 +1,40 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
-      - id: no-commit-to-branch # prevent direct commits to the `main` branch
-        args: ["--branch", "main"]
-      - id: check-yaml
-      - id: check-toml
-      - id: check-json
-      - id: end-of-file-fixer
-      - id: trailing-whitespace
-      - id: check-merge-conflict
       - id: check-added-large-files
+        args: [ --maxkb=500 ]
+      - id: check-ast
+      - id: check-case-conflict
+      - id: check-docstring-first
+      - id: check-executables-have-shebangs
+      - id: check-json
+      - id: check-shebang-scripts-are-executable
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: check-toml
+      - id: check-vcs-permalinks
+      - id: check-xml
+      - id: check-yaml
       - id: debug-statements
-
-  - repo: https://github.com/sirosen/texthooks
-    rev: 0.6.8
-    hooks:
-      - id: fix-smartquotes
-      - id: fix-spaces
-      - id: fix-ligatures
+      - id: destroyed-symlinks
+      - id: detect-aws-credentials
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: fix-byte-order-marker
+      - id: mixed-line-ending
+        args: [ --fix=lf ]
+      - id: name-tests-test
+        args: [ --pytest-test-first ]
+      - id: pretty-format-json
+        args: [ --autofix, --indent=4, --no-ensure-ascii, --no-sort-keys ]
+      - id: trailing-whitespace
+        args: [ --markdown-linebreak-ext=md ]
 
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.3.0
+    rev: v2.4.1
     hooks:
       - id: codespell
-        additional_dependencies:
-          - tomli
 
   - repo: local
     hooks:

@@ -8,7 +8,7 @@ from pydantic_jsonschema import convert_schema_lax
 class TestLaxConversion:
     """Tests for lax conversion mode."""
 
-    def test_all_fields_optional(self):
+    def test_all_fields_optional(self) -> None:
         """Test that all fields become optional in lax mode."""
         schema = Schema(
             type="object",
@@ -31,7 +31,7 @@ class TestLaxConversion:
         assert instance2.name == "Alice"
         assert instance2.age is None
 
-    def test_list_default(self):
+    def test_list_default(self) -> None:
         """Test that lists get [] as default when no minItems."""
         schema = Schema(
             type="object",
@@ -45,7 +45,7 @@ class TestLaxConversion:
         instance = Model()
         assert instance.tags == []
 
-    def test_dict_default(self):
+    def test_dict_default(self) -> None:
         """Test that objects get {} as default when no minProperties."""
         schema = Schema(
             type="object",
@@ -59,7 +59,7 @@ class TestLaxConversion:
         instance = Model()
         assert instance.metadata == {}
 
-    def test_explicit_defaults_preserved(self):
+    def test_explicit_defaults_preserved(self) -> None:
         """Test that explicit defaults are preserved."""
         schema = Schema(
             type="object",
@@ -72,7 +72,7 @@ class TestLaxConversion:
         instance = Model()
         assert instance.status == "pending"
 
-    def test_lax_accepts_full_data(self):
+    def test_lax_accepts_full_data(self) -> None:
         """Test that lax mode still accepts complete data."""
         schema = Schema(
             type="object",
