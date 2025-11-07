@@ -13,9 +13,9 @@ class TestSchemaFormat:
         """Test SchemaFormat without validator."""
         fmt = SchemaFormat(
             key="custom",
-            display_name="Custom",
+            title="Custom",
             examples=["example"],
-            acceptable_types=[DataType.STRING],
+            types=[DataType.STRING],
             validator=None,
         )
 
@@ -34,9 +34,9 @@ class TestSchemaFormat:
 
         fmt = SchemaFormat(
             key="uppercase",
-            display_name="Uppercase",
+            title="Uppercase",
             examples=["hello"],
-            acceptable_types=[DataType.STRING],
+            types=[DataType.STRING],
             validator=uppercase_validator,
         )
 
@@ -56,8 +56,8 @@ class TestSchemaFormat:
         with pytest.raises(ValueError, match="Invalid example"):
             SchemaFormat(
                 key="int-only",
-                display_name="Integer Only",
+                title="Integer Only",
                 examples=["not-a-number"],  # Invalid example
-                acceptable_types=[DataType.INTEGER],
+                types=[DataType.INTEGER],
                 validator=int_validator,
             )

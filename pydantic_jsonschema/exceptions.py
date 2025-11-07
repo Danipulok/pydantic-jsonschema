@@ -1,8 +1,9 @@
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
-class SchemaError(Exception):
+class BasePydanticJsonSchemaError(Exception):
     """Base schema exception."""
 
     message: str
@@ -15,16 +16,19 @@ class SchemaError(Exception):
 
 
 @dataclass
-class ParsingError(SchemaError):
-    """Schema parsing failed."""
+class SchemaConvertionError(BasePydanticJsonSchemaError):
+    """Schema convertion failed."""
 
 
 @dataclass
-class SchemaReferenceError(SchemaError):
+class SchemaReferenceError(BasePydanticJsonSchemaError):
     """Reference resolution failed."""
 
     path: list[str]
 
 
-# Keep old name for backwards compatibility
-ReferenceError = SchemaReferenceError
+@dataclass
+class FormatValidationError(BasePydanticJsonSchemaError, ValueError):
+    """Format validation failed."""
+
+    value: Any = None

@@ -41,9 +41,9 @@ class TestConverterErrorHandling:
 
         from pydantic import ValidationError
 
-        from pydantic_jsonschema import convert_schema
+        from pydantic_jsonschema import to_model
 
-        Model = convert_schema(schema)
+        Model = to_model(schema)
         instance = Model(status="active")
         assert instance.status == "active"  # type: ignore[attr-defined]
 
@@ -55,9 +55,9 @@ class TestConverterErrorHandling:
         """Test const conversion to Literal."""
         schema = Schema(type="object", properties={"constant": Schema(const="fixed_value")})
 
-        from pydantic_jsonschema import convert_schema
+        from pydantic_jsonschema import to_model
 
-        Model = convert_schema(schema)
+        Model = to_model(schema)
         instance = Model(constant="fixed_value")
         assert instance.constant == "fixed_value"  # type: ignore[attr-defined]
 
@@ -75,9 +75,9 @@ class TestConverterErrorHandling:
             },
         )
 
-        from pydantic_jsonschema import convert_schema
+        from pydantic_jsonschema import to_model
 
-        Model = convert_schema(schema)
+        Model = to_model(schema)
         instance1 = Model(value="text")
         assert instance1.value == "text"  # type: ignore[attr-defined]
 
@@ -93,9 +93,9 @@ class TestConverterErrorHandling:
             },
         )
 
-        from pydantic_jsonschema import convert_schema
+        from pydantic_jsonschema import to_model
 
-        Model = convert_schema(schema)
+        Model = to_model(schema)
         instance = Model(metadata={"count": 42, "total": 100})
         assert instance.metadata["count"] == 42  # type: ignore[attr-defined]
         assert instance.metadata["total"] == 100  # type: ignore[attr-defined]
@@ -109,9 +109,9 @@ class TestConverterErrorHandling:
             },
         )
 
-        from pydantic_jsonschema import convert_schema
+        from pydantic_jsonschema import to_model
 
-        Model = convert_schema(schema)
+        Model = to_model(schema)
 
         # Test with string
         instance1 = Model(value="text")
@@ -139,9 +139,9 @@ class TestAdditionalPropertiesFalse:
 
         from pydantic import ValidationError
 
-        from pydantic_jsonschema import convert_schema
+        from pydantic_jsonschema import to_model
 
-        Model = convert_schema(schema)
+        Model = to_model(schema)
         instance = Model(name="Alice")
         assert instance.name == "Alice"  # type: ignore[attr-defined]
 
@@ -157,9 +157,9 @@ class TestAdditionalPropertiesFalse:
             additionalProperties=True,
         )
 
-        from pydantic_jsonschema import convert_schema
+        from pydantic_jsonschema import to_model
 
-        Model = convert_schema(schema)
+        Model = to_model(schema)
         instance = Model(name="Alice", extra="allowed")
         assert instance.name == "Alice"  # type: ignore[attr-defined]
         assert instance.extra == "allowed"  # type: ignore[attr-defined]
@@ -173,9 +173,9 @@ class TestAdditionalPropertiesFalse:
             },
         )
 
-        from pydantic_jsonschema import convert_schema
+        from pydantic_jsonschema import to_model
 
-        Model = convert_schema(schema)
+        Model = to_model(schema)
         instance = Model(data={})
         assert instance.data == {}  # type: ignore[attr-defined]
 
@@ -192,9 +192,9 @@ class TestMinMaxConstraints:
 
         from pydantic import ValidationError
 
-        from pydantic_jsonschema import convert_schema
+        from pydantic_jsonschema import to_model
 
-        Model = convert_schema(schema)
+        Model = to_model(schema)
         instance = Model(tags=["tag1"])
         assert instance.tags == ["tag1"]  # type: ignore[attr-defined]
 
@@ -211,9 +211,9 @@ class TestMinMaxConstraints:
 
         from pydantic import ValidationError
 
-        from pydantic_jsonschema import convert_schema
+        from pydantic_jsonschema import to_model
 
-        Model = convert_schema(schema)
+        Model = to_model(schema)
         instance = Model(tags=["tag1", "tag2"])
         assert len(instance.tags) == 2  # type: ignore[attr-defined]
 
@@ -227,9 +227,9 @@ class TestMinMaxConstraints:
 
         from pydantic import ValidationError
 
-        from pydantic_jsonschema import convert_schema
+        from pydantic_jsonschema import to_model
 
-        Model = convert_schema(schema)
+        Model = to_model(schema)
         instance = Model(name="abc")
         assert instance.name == "abc"  # type: ignore[attr-defined]
 
@@ -243,9 +243,9 @@ class TestMinMaxConstraints:
 
         from pydantic import ValidationError
 
-        from pydantic_jsonschema import convert_schema
+        from pydantic_jsonschema import to_model
 
-        Model = convert_schema(schema)
+        Model = to_model(schema)
         instance = Model(name="short")
         assert instance.name == "short"  # type: ignore[attr-defined]
 

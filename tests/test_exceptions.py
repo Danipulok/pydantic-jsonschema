@@ -2,20 +2,20 @@
 
 import pytest
 
-from pydantic_jsonschema.exceptions import ParsingError, SchemaReferenceError
+from pydantic_jsonschema.exceptions import SchemaConvertionError, SchemaReferenceError
 
 
 class TestExceptions:
     """Tests for schema exceptions."""
 
     def test_parsing_error(self) -> None:
-        """Test ParsingError exception."""
-        error = ParsingError(message="Invalid schema format")
+        """Test SchemaConvertionError exception."""
+        error = SchemaConvertionError(message="Invalid schema format")
         assert str(error)  # Triggers __str__
         assert "Invalid schema format" in repr(error)
 
         # Test that it can be raised and caught
-        with pytest.raises(ParsingError) as exc_info:
+        with pytest.raises(SchemaConvertionError) as exc_info:
             raise error
         assert exc_info.value.message == "Invalid schema format"
 

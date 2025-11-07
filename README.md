@@ -5,4 +5,4 @@
 - Partial validation of pydantic models (all fields are optional with default null). (check how pydantic handles it)
 
 - Custom schema formats
-- Dump model json schema with knows models (ref URI) (to_pydantic_model, model_dump_json_schema with refs (where is it needed?), not for converter)
+- Dump model json schema with knows models (ref URI) (to_model, model_dump_json_schema with refs (where is it needed?), not for converter)

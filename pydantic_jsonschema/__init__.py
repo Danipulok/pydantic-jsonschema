@@ -1,9 +1,13 @@
 from pydantic_jsonschema.converters import (
+    LaxSchemaConverter,
     SchemaConverter,
-    convert_schema,
+    to_lax_model,
+    to_model,
 )
 
 __all__ = [
     "SchemaConverter",
-    "convert_schema",
+    "LaxSchemaConverter",
+    "to_model",
+    "to_lax_model",
 ]

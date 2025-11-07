@@ -1,6 +1,6 @@
 """Tests for utility functions."""
 
-from pydantic_jsonschema.utils import sanitize_identifier
+from pydantic_jsonschema._utils import sanitize_identifier
 
 
 class TestSanitizeIdentifier:

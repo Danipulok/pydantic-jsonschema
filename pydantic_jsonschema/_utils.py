@@ -1,6 +1,11 @@
 from collections.abc import Iterator
 
+__all__ = [
+    "sanitize_identifier",
+]
 
+
+# TODO: refactor
 def sanitize_identifier(name: str) -> str:
     """
     Sanitize string to be a valid Python identifier.

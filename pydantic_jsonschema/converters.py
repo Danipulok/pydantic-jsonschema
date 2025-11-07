@@ -2,6 +2,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from types import NoneType
 from typing import (
+    Annotated,
     Any,
     Final,
     ForwardRef,
@@ -12,12 +13,12 @@ from typing import (
 )
 
 from openapi_pydantic import DataType, Reference, Schema
-from pydantic import BaseModel, ConfigDict, RootModel, create_model
+from pydantic import BaseModel, BeforeValidator, ConfigDict, RootModel, create_model
 from pydantic.fields import FieldInfo
 
-from .exceptions import ParsingError, ReferenceError
+from ._utils import sanitize_identifier
+from .exceptions import SchemaConvertionError, SchemaReferenceError
 from .types import PythonItem
-from .utils import sanitize_identifier
 
 __all__ = [
     "BeforeValidatorFunc",
@@ -26,26 +27,30 @@ __all__ = [
     "Ref",
     "SchemaConverter",
     "SchemaHash",
-    "convert_schema",
+    "to_model",
+    "LaxSchemaConverter",
+    "to_lax_model",
 ]
 
 
-# Default model name:
+# Default model name
 _DEFAULT_MODEL_NAME: Final[str] = "Model"
-# Missing value for `default` field:
+# Missing value for `default` field
+# See: https://github.com/pydantic/pydantic/blob/6800281ba87625346daf5826563740ded8a9851b/pydantic/fields.py#L241-L247
+# For mypy issue, see: https://github.com/python/mypy/issues/7818
 _PYDANTIC_DEFAULT_MISSING: Final[Ellipsis] = ...  # type: ignore[valid-type]
 # JSON Schema 2020-12 definitions key
 # See: https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.4
 _DEFS_KEY: Final[str] = "$defs"
 
-# There is not `OBJECT`, since we need to create a BaseModel manually subclass
-_SIMPLE_TYPES_MAPPING: Final[dict[DataType, type]] = {
+_DATA_TYPE_ANNOTATION_MAPPING: Final[dict[DataType, type]] = {
     DataType.NULL: NoneType,
     DataType.STRING: str,
     DataType.NUMBER: float,
     DataType.INTEGER: int,
     DataType.BOOLEAN: bool,
     DataType.ARRAY: list[Any],
+    DataType.OBJECT: Any,
 }
 
 
@@ -153,7 +158,7 @@ class SchemaConverter:
         :param schema: Schema to convert.
         :param model_name: Name for the generated model.
         :returns: Pydantic model class.
-        :raises ParsingError: If schema cannot be converted.
+        :raises SchemaConvertionError: If schema cannot be converted.
         """
         # Build defs cache from `$defs`
         self._build_defs_cache(schema)
@@ -174,12 +179,12 @@ class SchemaConverter:
         :param schema: Schema to convert.
         :param model_name: Name for the generated model.
         :returns: Pydantic model class.
-        :raises ParsingError: If schema contains $defs (only allowed in root).
+        :raises SchemaConvertionError: If schema contains $defs (only allowed in root).
         """
         # Validate that `$defs` is not present in nested schemas
         if schema.model_extra and _DEFS_KEY in schema.model_extra:
             msg = f"{_DEFS_KEY} is only allowed in root schema, not in nested schemas"
-            raise ParsingError(msg)
+            raise SchemaConvertionError(msg)
 
         # Build model using common logic
         return self._build_model(schema, model_name=model_name)
@@ -241,6 +246,8 @@ class SchemaConverter:
         model_config = self._build_model_config(schema)
 
         # Create model
+        # For some reason, `create_model` "accepts" `fields` values as `tuple[str, Any]`,
+        # when in reality it accepts `tuple[type, FieldInfo]`
         created_model = create_model(  # type: ignore[call-overload]
             name,
             __config__=model_config,
@@ -343,7 +350,7 @@ class SchemaConverter:
         if ref not in self._defs_cache:
             path_str = " -> ".join(self._resolution_path) if self._resolution_path else "root"
             msg = f"Cannot resolve reference `{ref}` at path: `{path_str}`"
-            raise ReferenceError(
+            raise SchemaReferenceError(
                 message=msg,
                 path=self._resolution_path.copy(),
             )
@@ -438,10 +445,10 @@ class SchemaConverter:
 
         return fields
 
-    def _apply_validator(
+    def _apply_validators(
         self,
         annotation: Any,
-        schema: Schema,  # noqa: ARG002
+        schema: Schema,
         /,
     ) -> Any:
         """
@@ -451,6 +458,10 @@ class SchemaConverter:
         :param schema: Schema to check for format.
         :returns: Annotation wrapped with BeforeValidator if applicable.
         """
+        if schema.schema_format in self._format_validators:
+            validator_func = self._format_validators[schema.schema_format]
+            return Annotated[annotation, BeforeValidator(validator_func)]
+
         return annotation
 
     @staticmethod
@@ -463,9 +474,9 @@ class SchemaConverter:
 
         # Handle `additionalProperties`
         if schema.additionalProperties is False:
-            config["extra"] = cast("Literal['forbid']", "forbid")  # type: ignore[redundant-cast]
+            config["extra"] = "forbid"
         else:
-            config["extra"] = cast("Literal['allow']", "allow")  # type: ignore[redundant-cast]
+            config["extra"] = "allow"
 
         return config
 
@@ -489,8 +500,8 @@ class SchemaConverter:
         if annotation is None:
             annotation = self._schema_to_annotation(schema)
 
-        # Apply before validator if configured
-        annotation = self._apply_validator(annotation, schema)
+        # Apply validators
+        annotation = self._apply_validators(annotation, schema)
 
         # Determine default value
         default = self._get_field_default(schema, is_required=is_required)
@@ -537,17 +548,20 @@ class SchemaConverter:
         # `enum` / `const` -> `Literal`:
         if schema.enum or schema.const:
             values = schema.enum or (schema.const,)
-            return Literal[tuple(values)]  # type: ignore[return-value]
+            literal_type = Literal[tuple(values)]  # type: ignore[valid-type]
+            return cast("type", literal_type)
 
         # `anyOf` / `oneOf` -> `Union`:
         if schema.anyOf or schema.oneOf:
             union_type = "anyOf" if schema.anyOf else "oneOf"
             union_schemas = schema.anyOf or schema.oneOf or []
-            union_args = []
+            union_args: list[type | ForwardRef] = []
             for idx, sub_schema in enumerate(union_schemas):
                 with self._track_path(f"{union_type}[{idx}]"):
-                    union_args.append(self._schema_to_annotation(sub_schema))
-            return Union[tuple(union_args)]  # type: ignore[return-value]
+                    sub_schema_annotation = self._schema_to_annotation(sub_schema)
+                    union_args.append(sub_schema_annotation)
+            union_annotation = Union[tuple(union_args)]  # type: ignore[valid-type]
+            return cast("type", union_annotation)
 
         # `allOf` -> nested model:
         if schema.allOf:
@@ -555,11 +569,12 @@ class SchemaConverter:
 
         # `array` -> list:
         if schema.type == DataType.ARRAY:
-            item_type = Any
+            item_type: type | ForwardRef = Any
             if schema.items:
                 with self._track_path("items"):
-                    item_type = self._schema_to_annotation(schema.items)  # type: ignore[assignment]
-            return list[item_type]  # type: ignore[valid-type]
+                    item_type = self._schema_to_annotation(schema.items)
+            list_annotation = list[item_type]  # type: ignore[valid-type]
+            return cast("type", list_annotation)
 
         # `object` -> `dict` / `BaseModel`:
         if schema.type == DataType.OBJECT:
@@ -572,22 +587,19 @@ class SchemaConverter:
 
             if isinstance(schema.additionalProperties, (Schema, Reference)):
                 with self._track_path("additionalProperties"):
-                    value_type = self._schema_to_annotation(schema.additionalProperties)
-                    return dict[str, value_type]  # type: ignore[valid-type]
+                    value_annotation = self._schema_to_annotation(schema.additionalProperties)
+                    dict_annotation = dict[str, value_annotation]  # type: ignore[valid-type]
+                    return cast("type", dict_annotation)
 
             return dict[str, Any]
 
-        # Handle format validation
-        if schema.schema_format:
-            validator = self._get_format_validator(schema.schema_format)
-            if validator:
-                return validator  # type: ignore[return-value]
-
         # Handle basic types
         if schema.type:
-            if isinstance(schema.type, list):
-                return Union[tuple(_SIMPLE_TYPES_MAPPING[t] for t in schema.type)]  # type: ignore[return-value]
-            return _SIMPLE_TYPES_MAPPING.get(schema.type, Any)
+            if isinstance(schema.type, DataType):
+                return _DATA_TYPE_ANNOTATION_MAPPING[schema.type]
+            union_args = [_DATA_TYPE_ANNOTATION_MAPPING[data_type] for data_type in schema.type]
+            union_annotation = Union[tuple(union_args)]
+            return cast("type", union_annotation)
 
         return Any
 
@@ -602,16 +614,18 @@ class SchemaConverter:
         Determine default value for the field based on its schema.
 
         :param schema: Schema to get default from.
-        :param is_required: Whether field is is_required.
+        :param is_required: Whether field is required.
         :returns: Default value or Ellipsis for required fields.
         """
         if is_required:
             return _PYDANTIC_DEFAULT_MISSING
 
-        # TODO: check if `schema.default` was set explicitly
-        if schema.default is not None:
+        # Return `default` field only if it was explicitly set
+        # We can't just check for `None`, since `default`'s default is `None`
+        if "default" in schema.model_fields_set:
             return schema.default
 
+        # Field is not required and has no default
         return None
 
     @staticmethod
@@ -644,27 +658,136 @@ class SchemaConverter:
             return schema.maxItems
         return schema.maxLength
 
-    def _get_format_validator(
-        self,
-        format_name: FormatName,
-        /,
-    ) -> FormatValidator | None:
-        """
-        Get validator for format.
 
-        :param format_name: Format name.
-        :returns: Format validator callable or None.
+class LaxSchemaConverter(SchemaConverter):
+    """
+    Lax schema conversion for partial validation.
+
+    Provides lax validation that:
+    - Makes all fields optional (`T | None` with default `None`)
+    - Tries to coerce values to field annotation types
+    """
+
+    @staticmethod
+    def _get_field_default(
+        schema: Schema,
+        /,
+        *,
+        is_required: bool | None,  # noqa: ARG004
+    ) -> Any:
         """
-        return self._format_validators.get(format_name)
+        Determine default value with lax rules.
+        All fields get None as default (even if required)
+
+        :param schema: Schema to get default from.
+        :param is_required: Whether field is required.
+        :returns: Default value or Ellipsis for required fields.
+        """
+        # Return `default` field only if it was explicitly set
+        # We can't just check for `None`, since `default`'s default is `None`
+        if "default" in schema.model_fields_set:
+            return schema.default
+
+        # Since we make all fields optional, return `None` as default
+        return None
+
+    def _schema_to_field(
+        self,
+        schema: Schema,
+        /,
+        *,
+        is_required: bool | None = None,  # noqa: ARG002
+        annotation: Any | None = None,
+    ) -> FieldInfo:
+        """
+        Convert schema to Pydantic FieldInfo with lax rules.
+
+        In lax mode, all fields are optional (adds `| None`).
+
+        :param schema: Schema to convert.
+        :param is_required: Whether field is required (ignored in lax mode).
+        :param annotation: Pre-computed annotation.
+        :returns: Pydantic FieldInfo.
+        """
+        # Get base field info
+        field = super()._schema_to_field(
+            schema,
+            is_required=False,  # Force non-required
+            annotation=annotation,
+        )
+
+        # Make annotation optional if not already
+        if field.annotation is not None:
+            original_annotation = field.annotation
+            # Check if it's already optional
+            if not self._is_optional_annotation(original_annotation):
+                # Make it optional by constructing Union[original, None]
+                # TODO: build new FieldInfo from scratch to avoid pydantic internals issues
+                new_annotation = Union[original_annotation, type(None)]
+                field.annotation = new_annotation
+
+        return field
+
+    @staticmethod
+    def _is_optional_annotation(annotation: Any) -> bool:
+        """
+        Check if annotation is already optional (has None in union).
+
+        :param annotation: Type annotation to check.
+        :returns: True if annotation includes None.
+        """
+        # Handle Union types
+        if hasattr(annotation, "__args__"):
+            return type(None) in annotation.__args__
+        return False
 
 
 # Convenience functions
-def convert_schema(
+def to_model(
     schema: Schema,
     /,
     *,
     model_name: str | None = None,
+    refs: dict[Ref, type[BaseModel]] | None = None,
+    format_validators: dict[FormatName, FormatValidator] | None = None,
 ) -> type[BaseModel]:
-    """Convert schema to Pydantic model."""
-    converter = SchemaConverter()
+    """
+    Convert schema to Pydantic model.
+
+    :param schema: Schema to convert.
+    :param refs: Pre-built reference models.
+    :param format_validators: Custom format validators.
+    :param model_name: Name for the generated model.
+    :returns: Pydantic model class.
+    """
+    converter = SchemaConverter(
+        refs=refs,
+        format_validators=format_validators,
+    )
+    return converter.convert_schema(schema, model_name=model_name)
+
+
+def to_lax_model(
+    schema: Schema,
+    /,
+    *,
+    model_name: str | None = None,
+    refs: dict[Ref, type[BaseModel]] | None = None,
+    format_validators: dict[FormatName, FormatValidator] | None = None,
+) -> type:
+    """
+    Convert schema to Pydantic model with lax validation.
+
+    All fields are optional and have sensible defaults.
+
+    :param schema: Schema to convert.
+    :param model_name: Name for the generated model.
+    :param refs: Pre-built reference models.
+    :param format_validators: Custom format validators.
+    :returns: Pydantic model class with lax validation.
+    """
+    converter = LaxSchemaConverter(
+        refs=refs,
+        format_validators=format_validators,
+    )
     return converter.convert_schema(schema, model_name=model_name)

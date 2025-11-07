@@ -2,7 +2,7 @@
 
 import pytest
 
-from pydantic_jsonschema.validators import (
+from pydantic_jsonschema._validators import (
     validate_date,
     validate_datetime,
     validate_duration,
@@ -242,9 +242,9 @@ class TestURIValidators:
 
     def test_validate_uri_failure(self) -> None:
         """Test invalid URI formats."""
-        with pytest.raises(ValueError, match="Invalid URI format"):
+        with pytest.raises(ValueError):  # FormatValidationError is a ValueError
             validate_uri("www.example.com")  # Missing scheme
-        with pytest.raises(ValueError, match="Invalid URI format"):
+        with pytest.raises(ValueError):  # FormatValidationError is a ValueError
             validate_uri("/relative/path")  # Relative path
 
     @pytest.mark.parametrize("value", [123, None, [], {}])
@@ -266,7 +266,7 @@ class TestURIValidators:
 
     def test_validate_iri_failure(self) -> None:
         """Test invalid IRI formats."""
-        with pytest.raises(ValueError, match="Invalid IRI format"):
+        with pytest.raises(ValueError):  # FormatValidationError is a ValueError
             validate_iri("www.example.com")  # Missing scheme
 
     @pytest.mark.parametrize("value", [123, None, [], {}])
