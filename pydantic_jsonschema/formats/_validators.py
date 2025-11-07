@@ -1,17 +1,3 @@
-"""
-Format validators for JSON Schema formats.
-
-Uses Python standard library for common formats:
-- date, time, date-time: datetime module
-- ipv4, ipv6: ipaddress module
-- uuid: uuid module
-- email: simple validation
-- hostname: basic validation
-- uri, uri-reference: urllib.parse
-
-For complex formats (IRI, currency, language codes), use `pydantic-extra-types`.
-"""
-
 import ipaddress
 import re
 from datetime import date, datetime, time
@@ -19,7 +5,7 @@ from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
 
-from .exceptions import FormatValidationError
+from pydantic_jsonschema.exceptions import FormatValidationError
 
 __all__ = [
     "validate_date",

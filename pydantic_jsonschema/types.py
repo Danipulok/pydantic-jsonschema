@@ -1,11 +1,10 @@
-from typing import Any
-
-from pydantic import BaseModel
+from openapi_pydantic import DataType, Reference, Schema
 
 __all__ = [
-    "JsonItem",
-    "PythonItem",
+    "DataType",
+    "JsonType",
+    "Reference",
+    "Schema",
 ]
 
-type JsonItem = str | int | float | bool | None | list[Any] | dict[str, Any]
-type PythonItem = str | int | float | bool | None | list[Any] | BaseModel
+type JsonType = str | int | float | bool | None | list["JsonType"] | dict[str, "JsonType"]

@@ -9,14 +9,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-extra-types = [
-    "pydantic-extra-types>=2.0.0",
+formats = [
+    "pydantic-extra-types[all]>=2.0.0",
 ]
 
 [dependency-groups]
 dev = [
     {include-group = "lint"},
     {include-group = "test"},
+    {include-group = "extas"},
 ]
 lint = [
     "mypy>=1.17.1",
@@ -26,6 +27,9 @@ lint = [
 test = [
     "pytest>=8.0.0",
     "pytest-cov>=6.0.0",
+]
+extas = [
+    "pydantic-extra-types[all]>=2.0.0",
 ]
 
 [tool.mypy]

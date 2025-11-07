@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Any
 
 
@@ -9,7 +9,9 @@ class BasePydanticJsonSchemaError(Exception):
     message: str
 
     def __post_init__(self) -> None:
-        super().__init__(self.message)
+        # Dynamically collect all field values and pass to Exception.__init__
+        field_values = tuple(getattr(self, field.name) for field in fields(self))
+        super().__init__(*field_values)
 
     def __str__(self) -> str:
         return repr(self)
@@ -17,7 +19,7 @@ class BasePydanticJsonSchemaError(Exception):
 
 @dataclass
 class SchemaConvertionError(BasePydanticJsonSchemaError):
-    """Schema convertion failed."""
+    """Schema conversion failed."""
 
 
 @dataclass
