@@ -7,7 +7,7 @@ Allows dumping Pydantic models back to JSON Schema format with:
 - Proper JSON Schema 2020-12 format
 """
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -21,7 +21,7 @@ def model_dump_json_schema(
     /,
     *,
     refs: dict[str, type[BaseModel]] | None = None,
-    mode: str = "validation",
+    mode: Literal["validation", "serialization"] = "validation",
     by_alias: bool = True,
 ) -> dict[str, Any]:
     """
@@ -66,25 +66,21 @@ def _replace_refs(
 
     # Recursively replace refs
     def replace_in_dict(obj: dict[str, Any]) -> dict[str, Any]:
-        result = {}
+        result: dict[str, Any] = {}
         for key, value in obj.items():
             if key == "$ref" and isinstance(value, str):
                 # Extract model name from ref
                 # Format: #/$defs/ModelName
                 if value.startswith("#/$defs/"):
                     model_name = value.split("/")[-1]
-                    if model_name in model_to_ref:
-                        result[key] = model_to_ref[model_name]
-                    else:
-                        result[key] = value
+                    result[key] = model_to_ref.get(model_name, value)
                 else:
                     result[key] = value
             elif isinstance(value, dict):
                 result[key] = replace_in_dict(value)
             elif isinstance(value, list):
                 result[key] = [
-                    replace_in_dict(item) if isinstance(item, dict) else item
-                    for item in value
+                    replace_in_dict(item) if isinstance(item, dict) else item for item in value
                 ]
             else:
                 result[key] = value

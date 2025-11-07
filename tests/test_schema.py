@@ -10,6 +10,7 @@ class TestSchemaDumping:
 
     def test_simple_model_dump(self):
         """Test dumping a simple model to JSON Schema."""
+
         class User(BaseModel):
             name: str
             age: int
@@ -26,6 +27,7 @@ class TestSchemaDumping:
 
     def test_nested_model_dump(self):
         """Test dumping nested models."""
+
         class Address(BaseModel):
             street: str
             city: str
@@ -42,6 +44,7 @@ class TestSchemaDumping:
 
     def test_dump_with_custom_refs(self):
         """Test dumping with custom reference URIs."""
+
         class Address(BaseModel):
             street: str
             city: str

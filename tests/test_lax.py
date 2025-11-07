@@ -1,9 +1,8 @@
 """Tests for lax schema conversion."""
 
 from openapi_pydantic import Schema
-from pydantic import ValidationError
 
-from pydantic_jsonschema import LaxSchemaConverter, convert_schema_lax
+from pydantic_jsonschema import convert_schema_lax
 
 
 class TestLaxConversion:

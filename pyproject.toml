@@ -1,7 +1,7 @@
 [project]
 name = "pydantic-jsonschema"
 version = "0.1.0"
-description = "Add your description here"
+description = "JSON Schema to Pydantic model conversion library"
 requires-python = ">=3.13"
 dependencies = [
     "openapi-pydantic>=0.5.0",
@@ -12,6 +12,104 @@ dependencies = [
 extra-types = [
     "pydantic-extra-types>=2.0.0",
 ]
+
+[dependency-groups]
+dev = [
+    {include-group = "lint"},
+    {include-group = "test"},
+]
+lint = [
+    "mypy>=1.17.1",
+    "pre-commit>=4.0.0",
+    "ruff>=0.12.10",
+]
 test = [
-    "pytest>=7.0.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=6.0.0",
+]
+
+[tool.mypy]
+plugins = [
+    "pydantic.mypy",
+]
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D",        # Docstring-related
+    "FIX002",   # Line contains TODO, consider resolving the issue
+    "TD002",    # Missing author in TODO
+    "TD003",    # Missing issue link on the line following this TODO
+    "COM812",   # Missing trailing comma (conflicts with formatter)
+    "ISC001",   # Implicit string concatenation (conflicts with formatter)
+    "ANN401",   # Dynamically typed expressions (Any) - needed for JSON schema flexibility
+    "EM102",    # Exception must not use f-string literal - acceptable for inline errors
+    "TRY003",   # Avoid specifying long messages - acceptable for descriptive errors
+    "TRY004",   # Prefer TypeError - ValueError is fine for validation
+    "TRY300",   # Consider moving to else block - readability preference
+    "TRY301",   # Abstract raise to inner function - not needed
+    "FBT001",   # Boolean positional argument - false positive for type unions
+    "C901",     # Function too complex - acceptable for schema conversion
+    "PLR0911",  # Too many return statements - acceptable for schema conversion
+    "PLR0912",  # Too many branches - acceptable for schema conversion
+    "PLR2004",  # Magic value in comparison - acceptable in context
+    "RET504",   # Unnecessary assignment before return - readability preference
+    "PLW2901",  # Loop variable overwritten - intentional reassignment
+    "ERA001",   # Commented out code - acceptable for TODO markers
+    "RUF022",   # __all__ is not sorted - grouped by category intentionally
+    "A004",     # Import shadowing builtin - will be addressed
+    "A001",     # Variable shadowing builtin - will be addressed
+    "FURB162",  # Timezone replacement needed for ISO 8601 compatibility
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "S101",     # Use of `assert` detected
+    "PLR2004",  # Magic value used in comparison
+    "ANN201",   # Missing return type annotation for public function
+    "ANN001",   # Missing type annotation for function argument
+    "ANN202",   # Missing return type annotation for private function
+    "N806",     # Variable in function should be lowercase (Model is a class)
+    "PLC0415",  # Import should be at top-level (intentional for test isolation)
+    "S104",     # Possible binding to all interfaces (test data only)
+]
+"pydantic_jsonschema/lax.py" = [
+    "ARG002",   # Unused method argument - intentional override signature
+    "ARG004",   # Unused static method argument - required for override signature
+    "UP007",    # Use X | Y - keeping Union for type compatibility
+]
+"pydantic_jsonschema/converters.py" = [
+    "UP007",    # Use X | Y - keeping Union for Optional compatibility
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+]
+
+[tool.coverage.run]
+source = ["pydantic_jsonschema"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
 ]

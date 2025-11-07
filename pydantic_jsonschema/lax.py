@@ -7,14 +7,13 @@ Provides relaxed validation that:
 - Coerces string representations to target types
 """
 
-from typing import Any
+from typing import Any, Union
 
 from openapi_pydantic import DataType, Schema
 from pydantic.fields import FieldInfo
 
 from .converters import (
     SchemaConverter,
-    _PYDANTIC_DEFAULT_MISSING,
 )
 
 __all__ = [
@@ -33,8 +32,8 @@ class LaxSchemaConverter(SchemaConverter):
     - Enabling automatic type coercion
     """
 
+    @staticmethod
     def _get_field_default(
-        self,
         schema: Schema,
         /,
         *,
@@ -95,8 +94,8 @@ class LaxSchemaConverter(SchemaConverter):
             original_annotation = field.annotation
             # Check if already optional
             if not self._is_optional_annotation(original_annotation):
-                # Make it optional
-                field.annotation = original_annotation | None
+                # Make it optional by constructing Union[original, None]
+                field.annotation = Union[original_annotation, None]  # type: ignore[assignment]
 
         return field
 

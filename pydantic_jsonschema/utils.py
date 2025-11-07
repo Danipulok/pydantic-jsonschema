@@ -1,4 +1,4 @@
-from typing import Iterator
+from collections.abc import Iterator
 
 
 def sanitize_identifier(name: str) -> str:

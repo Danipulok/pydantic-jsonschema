@@ -18,11 +18,13 @@ class SchemaError(Exception):
 class ParsingError(SchemaError):
     """Schema parsing failed."""
 
-    pass
-
 
 @dataclass
-class ReferenceError(SchemaError):
+class SchemaReferenceError(SchemaError):
     """Reference resolution failed."""
 
     path: list[str]
+
+
+# Keep old name for backwards compatibility
+ReferenceError = SchemaReferenceError

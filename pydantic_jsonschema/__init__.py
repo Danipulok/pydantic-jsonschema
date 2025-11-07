@@ -13,13 +13,6 @@ from pydantic_jsonschema.converters import (
     SchemaConverter,
     convert_schema,
 )
-from pydantic_jsonschema.lax import (
-    LaxSchemaConverter,
-    convert_schema_lax,
-)
-from pydantic_jsonschema.schema import (
-    model_dump_json_schema,
-)
 from pydantic_jsonschema.exceptions import (
     ParsingError,
     ReferenceError,
@@ -35,13 +28,20 @@ from pydantic_jsonschema.formats import (
     IPV_6,
     IRI,
     IRI_REFERENCE,
-    ISO_4217,
     ISO_639_1_ALPHA_2,
+    ISO_4217,
     TIME,
     URI,
     URI_REFERENCE,
     UUID,
     SchemaFormat,
+)
+from pydantic_jsonschema.lax import (
+    LaxSchemaConverter,
+    convert_schema_lax,
+)
+from pydantic_jsonschema.schema import (
+    model_dump_json_schema,
 )
 from pydantic_jsonschema.utils import sanitize_identifier
 

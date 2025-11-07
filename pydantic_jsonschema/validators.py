@@ -21,18 +21,18 @@ from uuid import UUID
 
 __all__ = [
     "validate_date",
-    "validate_time",
     "validate_datetime",
     "validate_duration",
     "validate_email",
     "validate_hostname",
     "validate_ipv4",
     "validate_ipv6",
-    "validate_uuid",
-    "validate_uri",
-    "validate_uri_reference",
     "validate_iri",
     "validate_iri_reference",
+    "validate_time",
+    "validate_uri",
+    "validate_uri_reference",
+    "validate_uuid",
 ]
 
 
@@ -114,7 +114,7 @@ def validate_duration(value: Any) -> str:
         raise ValueError(f"Invalid duration format: {value}")
 
     # Must have at least one time component
-    if value == "P" or value == "PT":
+    if value in {"P", "PT"}:
         raise ValueError(f"Duration must have at least one component: {value}")
 
     return value

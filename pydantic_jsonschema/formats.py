@@ -27,22 +27,22 @@ from pydantic_jsonschema.validators import (
 
 
 __all__ = [
-    "SchemaFormat",
     "DATE",
-    "TIME",
     "DATE_TIME",
     "DURATION",
     "EMAIL",
     "HOSTNAME",
     "IPV_4",
     "IPV_6",
-    "UUID",
-    "URI",
-    "URI_REFERENCE",
     "IRI",
     "IRI_REFERENCE",
-    "ISO_4217",
     "ISO_639_1_ALPHA_2",
+    "ISO_4217",
+    "TIME",
+    "URI",
+    "URI_REFERENCE",
+    "UUID",
+    "SchemaFormat",
 ]
 
 
@@ -89,7 +89,7 @@ class SchemaFormat(BaseModel):
         validated = handler(data)
 
         if not validated.validator:
-            return validated
+            return validated  # type: ignore[no-any-return]
 
         # Validate each example
         for example in validated.examples:
@@ -97,11 +97,10 @@ class SchemaFormat(BaseModel):
                 validated.validator(example)
             except Exception as exc:
                 raise ValueError(
-                    f"Invalid example '{example}' for format "
-                    f"'{validated.display_name}': {exc}",
+                    f"Invalid example '{example}' for format '{validated.display_name}': {exc}",
                 ) from exc
 
-        return validated
+        return validated  # type: ignore[no-any-return]
 
 
 DATE_TIME = SchemaFormat(

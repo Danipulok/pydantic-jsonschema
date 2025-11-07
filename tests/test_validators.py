@@ -22,20 +22,39 @@ from pydantic_jsonschema.validators import (
 class TestDateTimeValidators:
     """Tests for date/time format validators."""
 
-    def test_validate_date_success(self):
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "2018-11-13",
+            "2000-01-01",
+            "2024-12-31",
+            "1999-12-31",
+            "2025-01-01",
+        ],
+    )
+    def test_validate_date_success(self, value: str) -> None:
         """Test valid date formats."""
-        assert validate_date("2018-11-13") == "2018-11-13"
-        assert validate_date("2000-01-01") == "2000-01-01"
-        assert validate_date("2024-12-31") == "2024-12-31"
+        assert validate_date(value) == value
 
-    def test_validate_date_failure(self):
+    @pytest.mark.parametrize(
+        ("value", "error_match"),
+        [
+            ("2018-13-01", "Invalid date format"),  # Invalid month
+            ("not-a-date", "Invalid date format"),
+            ("2024-02-30", "Invalid date format"),  # Invalid day
+            ("99-12-31", "Invalid date format"),  # Wrong year format
+        ],
+    )
+    def test_validate_date_invalid_format(self, value: str, error_match: str) -> None:
         """Test invalid date formats."""
-        with pytest.raises(ValueError, match="Invalid date format"):
-            validate_date("2018-13-01")  # Invalid month
-        with pytest.raises(ValueError, match="Invalid date format"):
-            validate_date("not-a-date")
+        with pytest.raises(ValueError, match=error_match):
+            validate_date(value)
+
+    @pytest.mark.parametrize("value", [123, None, [], {}])
+    def test_validate_date_wrong_type(self, value: object) -> None:
+        """Test date validation with wrong types."""
         with pytest.raises(ValueError, match="Expected string"):
-            validate_date(123)
+            validate_date(value)
 
     def test_validate_time_success(self):
         """Test valid time formats."""
@@ -123,7 +142,10 @@ class TestNetworkValidators:
 
     def test_validate_ipv6_success(self):
         """Test valid IPv6 formats."""
-        assert validate_ipv6("2001:0db8:85a3:0000:0000:8a2e:0370:7334") == "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+        assert (
+            validate_ipv6("2001:0db8:85a3:0000:0000:8a2e:0370:7334")
+            == "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+        )
         assert validate_ipv6("::1") == "::1"
         assert validate_ipv6("fe80::1") == "fe80::1"
 
@@ -138,8 +160,14 @@ class TestURIValidators:
 
     def test_validate_uuid_success(self):
         """Test valid UUID formats."""
-        assert validate_uuid("3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a") == "3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a"
-        assert validate_uuid("00000000-0000-0000-0000-000000000000") == "00000000-0000-0000-0000-000000000000"
+        assert (
+            validate_uuid("3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a")
+            == "3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a"
+        )
+        assert (
+            validate_uuid("00000000-0000-0000-0000-000000000000")
+            == "00000000-0000-0000-0000-000000000000"
+        )
 
     def test_validate_uuid_failure(self):
         """Test invalid UUID formats."""
@@ -150,7 +178,9 @@ class TestURIValidators:
 
     def test_validate_uri_success(self):
         """Test valid URI formats."""
-        assert validate_uri("https://www.example.com/resource") == "https://www.example.com/resource"
+        assert (
+            validate_uri("https://www.example.com/resource") == "https://www.example.com/resource"
+        )
         assert validate_uri("http://example.com") == "http://example.com"
         assert validate_uri("ftp://files.example.com") == "ftp://files.example.com"
 

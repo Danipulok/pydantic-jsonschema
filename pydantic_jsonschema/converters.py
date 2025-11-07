@@ -1,15 +1,14 @@
+from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import (
     Annotated,
     Any,
     Final,
     ForwardRef,
-    Iterator,
     Literal,
     Protocol,
     Union,
     cast,
-    get_args,
 )
 
 from openapi_pydantic import DataType, Reference, Schema
@@ -32,17 +31,18 @@ __all__ = [
 
 
 _DEFAULT_MODEL_NAME: Final[str] = "Model"
-_PYDANTIC_DEFAULT_MISSING: Final[Ellipsis] = ...  # Missing value for `default` field
+# Missing value for `default` field
+_PYDANTIC_DEFAULT_MISSING: Final[Ellipsis] = ...  # type: ignore[valid-type]
 _DEFS_KEY: Final[str] = "$defs"  # JSON Schema 2020-12 definitions key
 
 _TYPE_MAPPING: Final[dict[DataType, type]] = {
-    DataType.NULL: None,
+    DataType.NULL: None,  # type: ignore[dict-item]
     DataType.STRING: str,
     DataType.NUMBER: float,
     DataType.INTEGER: int,
     DataType.BOOLEAN: bool,
     DataType.ARRAY: list[Any],
-    DataType.OBJECT: type[BaseModel],
+    DataType.OBJECT: type[BaseModel],  # type: ignore[dict-item]
 }
 
 
@@ -61,7 +61,7 @@ class FormatValidator(Protocol):
 
     def __call__(
         self,
-        value: str | int | float | bool | None | list[Any] | Any,
+        value: str | float | bool | None | list[Any] | Any,
     ) -> Any: ...
 
 
@@ -99,12 +99,8 @@ class SchemaConverter:  # stateful
     ) -> None:
         self._default_model_name: str = default_model_name
         self._refs: dict[Ref, type[BaseModel]] = refs or {}
-        self._format_validators: dict[FormatName, FormatValidator] = (
-            format_validators or {}
-        )
-        self._before_validators: dict[FormatName, BeforeValidatorFunc] = (
-            before_validators or {}
-        )
+        self._format_validators: dict[FormatName, FormatValidator] = format_validators or {}
+        self._before_validators: dict[FormatName, BeforeValidatorFunc] = before_validators or {}
 
         self._defs_cache: dict[Ref, Schema] = {}
         self._models_cache: dict[SchemaHash, type[BaseModel]] = {}
@@ -206,9 +202,7 @@ class SchemaConverter:  # stateful
 
         # Determine model name
         name: str = (
-            model_name
-            or sanitize_identifier(schema.title or "")
-            or self._default_model_name
+            model_name or sanitize_identifier(schema.title or "") or self._default_model_name
         )
 
         # Handle `allOf` composition -> base classes
@@ -233,7 +227,7 @@ class SchemaConverter:  # stateful
 
             # Create combined base class
             created_model = type(name, base_classes, {"__module__": __name__})
-            model = cast(type[BaseModel], created_model)
+            model = cast("type[BaseModel]", created_model)
             self._models_cache[cache_key] = model
             return model
 
@@ -244,7 +238,7 @@ class SchemaConverter:  # stateful
         model_config = self._build_model_config(schema)
 
         # Create model
-        model = create_model(
+        model = create_model(  # type: ignore[call-overload]
             name,
             __config__=model_config,
             __doc__=schema.description,
@@ -253,7 +247,7 @@ class SchemaConverter:  # stateful
             **fields,
         )
         self._models_cache[cache_key] = model
-        return model
+        return model  # type: ignore[no-any-return]
 
     @staticmethod
     def _get_inline_defs(
@@ -309,7 +303,7 @@ class SchemaConverter:  # stateful
             cache_key = self._hash_schema(schema_def)
             if cache_key in self._models_cache:
                 model = self._models_cache[cache_key]
-                if model in forward_refs:
+                if model in forward_refs:  # type: ignore[comparison-overlap]
                     model.model_rebuild(_types_namespace=forward_refs)
 
     def _get_forward_refs_namespace(self) -> dict[str, type[BaseModel]]:
@@ -346,9 +340,7 @@ class SchemaConverter:  # stateful
 
         # Try to resolve schema from defs
         if ref not in self._defs_cache:
-            path_str = (
-                " -> ".join(self._resolution_path) if self._resolution_path else "root"
-            )
+            path_str = " -> ".join(self._resolution_path) if self._resolution_path else "root"
             msg = f"Cannot resolve reference `{ref}` at path: `{path_str}`"
             raise ReferenceError(
                 message=msg,
@@ -414,7 +406,7 @@ class SchemaConverter:  # stateful
                 "__module__": __name__,
             },
         )
-        return cast(type[BaseModel], created_model)
+        return cast("type[BaseModel]", created_model)
 
     def _build_fields(
         self,
@@ -479,9 +471,9 @@ class SchemaConverter:  # stateful
 
         # Handle `additionalProperties`
         if schema.additionalProperties is False:
-            config["extra"] = cast(Literal["forbid"], "forbid")
+            config["extra"] = cast("Literal['forbid']", "forbid")  # type: ignore[redundant-cast]
         else:
-            config["extra"] = cast(Literal["allow"], "allow")
+            config["extra"] = cast("Literal['allow']", "allow")  # type: ignore[redundant-cast]
 
         return config
 
@@ -553,7 +545,7 @@ class SchemaConverter:  # stateful
         # `enum` / `const` -> `Literal`:
         if schema.enum or schema.const:
             values = schema.enum or (schema.const,)
-            return Literal[tuple(values)]
+            return Literal[tuple(values)]  # type: ignore[return-value]
 
         # `anyOf` / `oneOf` -> `Union`:
         if schema.anyOf or schema.oneOf:
@@ -563,7 +555,7 @@ class SchemaConverter:  # stateful
             for idx, sub_schema in enumerate(union_schemas):
                 with self._track_path(f"{union_type}[{idx}]"):
                     union_args.append(self._schema_to_annotation(sub_schema))
-            return Union[tuple(union_args)]
+            return Union[tuple(union_args)]  # type: ignore[return-value]
 
         # `allOf` -> nested model:
         if schema.allOf:
@@ -574,8 +566,8 @@ class SchemaConverter:  # stateful
             item_type = Any
             if schema.items:
                 with self._track_path("items"):
-                    item_type = self._schema_to_annotation(schema.items)
-            return list[item_type]
+                    item_type = self._schema_to_annotation(schema.items)  # type: ignore[assignment]
+            return list[item_type]  # type: ignore[valid-type]
 
         # `object` -> `dict` / `BaseModel`:
         if schema.type == DataType.OBJECT:
@@ -589,7 +581,7 @@ class SchemaConverter:  # stateful
             if isinstance(schema.additionalProperties, (Schema, Reference)):
                 with self._track_path("additionalProperties"):
                     value_type = self._schema_to_annotation(schema.additionalProperties)
-                    return dict[str, value_type]
+                    return dict[str, value_type]  # type: ignore[valid-type]
 
             return dict[str, Any]
 
@@ -597,12 +589,12 @@ class SchemaConverter:  # stateful
         if schema.schema_format:
             validator = self._get_format_validator(schema.schema_format)
             if validator:
-                return validator
+                return validator  # type: ignore[return-value]
 
         # Handle basic types
         if schema.type:
             if isinstance(schema.type, list):
-                return Union[tuple(_TYPE_MAPPING[t] for t in schema.type)]
+                return Union[tuple(_TYPE_MAPPING[t] for t in schema.type)]  # type: ignore[return-value]
             return _TYPE_MAPPING.get(schema.type, Any)
 
         return Any

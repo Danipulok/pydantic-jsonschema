@@ -2,10 +2,9 @@
 
 import pytest
 from openapi_pydantic import Schema
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 
 from pydantic_jsonschema import SchemaConverter, convert_schema
-from pydantic_jsonschema.exceptions import ParsingError, ReferenceError
 
 
 class TestBasicConversion:
@@ -149,14 +148,13 @@ class TestBeforeValidators:
 
     def test_before_validator_coercion(self):
         """Test before validator coerces types."""
+
         def str_to_int(value):
             if isinstance(value, str):
                 return int(value)
             return value
 
-        converter = SchemaConverter(
-            before_validators={"custom-int": str_to_int}
-        )
+        converter = SchemaConverter(before_validators={"custom-int": str_to_int})
 
         schema = Schema(
             type="object",
