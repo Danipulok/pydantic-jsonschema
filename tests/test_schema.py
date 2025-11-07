@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel
 
-from pydantic_jsonschema import model_dump_json_schema
+from pydantic_jsonschema.schema import model_dump_json_schema
 
 
 class TestSchemaDumping:

@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
+from types import NoneType
 from typing import (
     Annotated,
     Any,
@@ -17,6 +18,7 @@ from pydantic.fields import FieldInfo
 from pydantic.functional_validators import BeforeValidator
 
 from .exceptions import ParsingError, ReferenceError
+from .types import PythonItem
 from .utils import sanitize_identifier
 
 __all__ = [
@@ -30,19 +32,22 @@ __all__ = [
 ]
 
 
+# Default model name:
 _DEFAULT_MODEL_NAME: Final[str] = "Model"
-# Missing value for `default` field
+# Missing value for `default` field:
 _PYDANTIC_DEFAULT_MISSING: Final[Ellipsis] = ...  # type: ignore[valid-type]
-_DEFS_KEY: Final[str] = "$defs"  # JSON Schema 2020-12 definitions key
+# JSON Schema 2020-12 definitions key
+# See: https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.4
+_DEFS_KEY: Final[str] = "$defs"
 
-_TYPE_MAPPING: Final[dict[DataType, type]] = {
-    DataType.NULL: None,  # type: ignore[dict-item]
+# There is not `OBJECT`, since we need to create a BaseModel manually subclass
+_SIMPLE_TYPES_MAPPING: Final[dict[DataType, type]] = {
+    DataType.NULL: NoneType,
     DataType.STRING: str,
     DataType.NUMBER: float,
     DataType.INTEGER: int,
     DataType.BOOLEAN: bool,
     DataType.ARRAY: list[Any],
-    DataType.OBJECT: type[BaseModel],  # type: ignore[dict-item]
 }
 
 
@@ -51,17 +56,17 @@ class FormatValidator(Protocol):
     Protocol for format validator callables.
 
     Accepts any JSON Schema type: string, number, integer, boolean, null, array, object.
+    Called after Pydantic's standard validation.
 
     See:
     https://json-schema.org/draft/2020-12/json-schema-validation#section-7.1
 
     # todo: add pydantic validation info
-    # todo: accept BaseModel
     """
 
     def __call__(
         self,
-        value: str | float | bool | None | list[Any] | Any,
+        value: PythonItem,
     ) -> Any: ...
 
 
@@ -74,10 +79,12 @@ class BeforeValidatorFunc(Protocol):
     or raise a ValueError.
 
     # todo: add pydantic validation info
-    # todo: accept all JsonSchema types
     """
 
-    def __call__(self, value: Any) -> Any: ...
+    def __call__(
+        self,
+        value: Any,
+    ) -> Any: ...
 
 
 # Type aliases
@@ -86,7 +93,7 @@ type SchemaHash = str  # Schema cache key (JSON hash)
 type FormatName = str  # Format name like "date-time", "uuid"
 
 
-class SchemaConverter:  # stateful
+class SchemaConverter:
     """Stateful converter from JSON Schema to Pydantic models."""
 
     def __init__(
@@ -238,7 +245,7 @@ class SchemaConverter:  # stateful
         model_config = self._build_model_config(schema)
 
         # Create model
-        model = create_model(  # type: ignore[call-overload]
+        created_model = create_model(  # type: ignore[call-overload]
             name,
             __config__=model_config,
             __doc__=schema.description,
@@ -246,8 +253,9 @@ class SchemaConverter:  # stateful
             __module__=__name__,
             **fields,
         )
+        model = cast("type[BaseModel]", created_model)
         self._models_cache[cache_key] = model
-        return model  # type: ignore[no-any-return]
+        return model
 
     @staticmethod
     def _get_inline_defs(
@@ -265,10 +273,7 @@ class SchemaConverter:  # stateful
         if not schema.model_extra:
             return defs
 
-        # Extract $defs (JSON Schema 2020-12)
-        # See: https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.4
         defs = schema.model_extra.get(_DEFS_KEY, {})
-
         for name, schema_def in defs.items():
             schema_instance = Schema.model_validate(schema_def)
 
@@ -303,7 +308,7 @@ class SchemaConverter:  # stateful
             cache_key = self._hash_schema(schema_def)
             if cache_key in self._models_cache:
                 model = self._models_cache[cache_key]
-                if model in forward_refs:  # type: ignore[comparison-overlap]
+                if model in forward_refs.values():
                     model.model_rebuild(_types_namespace=forward_refs)
 
     def _get_forward_refs_namespace(self) -> dict[str, type[BaseModel]]:
@@ -594,8 +599,8 @@ class SchemaConverter:  # stateful
         # Handle basic types
         if schema.type:
             if isinstance(schema.type, list):
-                return Union[tuple(_TYPE_MAPPING[t] for t in schema.type)]  # type: ignore[return-value]
-            return _TYPE_MAPPING.get(schema.type, Any)
+                return Union[tuple(_SIMPLE_TYPES_MAPPING[t] for t in schema.type)]  # type: ignore[return-value]
+            return _SIMPLE_TYPES_MAPPING.get(schema.type, Any)
 
         return Any
 

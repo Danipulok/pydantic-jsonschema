@@ -2,7 +2,7 @@
 
 from openapi_pydantic import Schema
 
-from pydantic_jsonschema import convert_schema_lax
+from pydantic_jsonschema.lax import convert_schema_lax
 
 
 class TestLaxConversion:
