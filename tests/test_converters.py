@@ -4,7 +4,7 @@ import pytest
 from openapi_pydantic import Schema
 from pydantic import ValidationError
 
-from pydantic_jsonschema import SchemaConverter, convert_schema
+from pydantic_jsonschema import convert_schema
 
 
 class TestBasicConversion:
@@ -141,29 +141,3 @@ class TestComposition:
 
         instance2 = Model(value=42)
         assert instance2.value == 42  # type: ignore[attr-defined]
-
-
-class TestBeforeValidators:
-    """Tests for before_validators support."""
-
-    def test_before_validator_coercion(self) -> None:
-        """Test before validator coerces types."""
-
-        def str_to_int(value: object) -> int:
-            if isinstance(value, str):
-                return int(value)
-            return value  # type: ignore[return-value]
-
-        converter = SchemaConverter(before_validators={"custom-int": str_to_int})
-
-        schema = Schema(
-            type="object",
-            properties={
-                "age": Schema(type="integer", format="custom-int"),
-            },
-        )
-
-        Model = converter.convert_schema(schema)
-        instance = Model(age="25")
-        assert instance.age == 25  # type: ignore[attr-defined]
-        assert isinstance(instance.age, int)  # type: ignore[attr-defined]

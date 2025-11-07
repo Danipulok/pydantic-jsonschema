@@ -2,7 +2,6 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from types import NoneType
 from typing import (
-    Annotated,
     Any,
     Final,
     ForwardRef,
@@ -15,7 +14,6 @@ from typing import (
 from openapi_pydantic import DataType, Reference, Schema
 from pydantic import BaseModel, ConfigDict, RootModel, create_model
 from pydantic.fields import FieldInfo
-from pydantic.functional_validators import BeforeValidator
 
 from .exceptions import ParsingError, ReferenceError
 from .types import PythonItem
@@ -102,12 +100,10 @@ class SchemaConverter:
         default_model_name: str = _DEFAULT_MODEL_NAME,
         refs: dict[Ref, type[BaseModel]] | None = None,
         format_validators: dict[FormatName, FormatValidator] | None = None,
-        before_validators: dict[FormatName, BeforeValidatorFunc] | None = None,
     ) -> None:
         self._default_model_name: str = default_model_name
         self._refs: dict[Ref, type[BaseModel]] = refs or {}
         self._format_validators: dict[FormatName, FormatValidator] = format_validators or {}
-        self._before_validators: dict[FormatName, BeforeValidatorFunc] = before_validators or {}
 
         self._defs_cache: dict[Ref, Schema] = {}
         self._models_cache: dict[SchemaHash, type[BaseModel]] = {}
@@ -445,7 +441,7 @@ class SchemaConverter:
     def _apply_validator(
         self,
         annotation: Any,
-        schema: Schema,
+        schema: Schema,  # noqa: ARG002
         /,
     ) -> Any:
         """
@@ -455,16 +451,7 @@ class SchemaConverter:
         :param schema: Schema to check for format.
         :returns: Annotation wrapped with BeforeValidator if applicable.
         """
-        # Check if schema has format and we have a before_validator for it
-        if not schema.schema_format:
-            return annotation
-
-        validator = self._before_validators.get(schema.schema_format)
-        if not validator:
-            return annotation
-
-        # Wrap annotation with BeforeValidator
-        return Annotated[annotation, BeforeValidator(validator)]
+        return annotation
 
     @staticmethod
     def _build_model_config(
