@@ -1,7 +1,7 @@
 # Directories to check
 SRC_DIR := "pydantic_jsonschema"
 TEST_DIR := "tests"
-ALL_DIRS := SRC_DIR + " " + TEST_DIR
+CODE_DIRS := SRC_DIR + " " + TEST_DIR
 
 # Default recipe to display help information
 default:
@@ -9,21 +9,21 @@ default:
 
 # Format code with ruff
 format:
-    uv run ruff format {{ALL_DIRS}}
-    uv run ruff check {{ALL_DIRS}} --fix
+    uv run ruff format {{CODE_DIRS}}
+    uv run ruff check {{CODE_DIRS}} --fix
 
 # Run linting checks
 lint:
-    uv run ruff check {{ALL_DIRS}}
-    uv run mypy {{ALL_DIRS}}
+    uv run ruff check {{CODE_DIRS}}
+    uv run mypy {{CODE_DIRS}}
 
 # Run tests
 test:
-    uv run pytest {{TEST_DIR}}/
+    uv run pytest {{TEST_DIR}}
 
-# Run tests with coverage
+# Run tests with coverage (require 88% minimum)
 test-cov:
-    uv run pytest {{TEST_DIR}}/ --cov={{SRC_DIR}} --cov-report=term-missing
+    uv run pytest {{TEST_DIR}} --cov={{SRC_DIR}} --cov-report=term-missing --cov-fail-under=88
 
 # Run all checks (lint + test)
 check: lint test

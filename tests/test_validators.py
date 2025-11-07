@@ -69,6 +69,12 @@ class TestDateTimeValidators:
         with pytest.raises(ValueError, match="Invalid time format"):
             validate_time("not-a-time")
 
+    @pytest.mark.parametrize("value", [123, None, [], {}])
+    def test_validate_time_wrong_type(self, value: object) -> None:
+        """Test time validation with wrong types."""
+        with pytest.raises(ValueError, match="Expected string"):
+            validate_time(value)
+
     def test_validate_datetime_success(self) -> None:
         """Test valid datetime formats."""
         assert validate_datetime("2018-11-13T20:20:39+00:00") == "2018-11-13T20:20:39+00:00"
@@ -81,6 +87,12 @@ class TestDateTimeValidators:
             validate_datetime("not-a-datetime")
         with pytest.raises(ValueError, match="Invalid datetime format"):
             validate_datetime("2018-13-01T20:20:39")
+
+    @pytest.mark.parametrize("value", [123, None, [], {}])
+    def test_validate_datetime_wrong_type(self, value: object) -> None:
+        """Test datetime validation with wrong types."""
+        with pytest.raises(ValueError, match="Expected string"):
+            validate_datetime(value)
 
     def test_validate_duration_success(self) -> None:
         """Test valid duration formats."""
@@ -95,6 +107,14 @@ class TestDateTimeValidators:
             validate_duration("P")  # Empty duration
         with pytest.raises(ValueError, match="Invalid duration format"):
             validate_duration("not-a-duration")
+        with pytest.raises(ValueError, match="Duration must have at least one component"):
+            validate_duration("PT")  # Empty time duration
+
+    @pytest.mark.parametrize("value", [123, None, [], {}])
+    def test_validate_duration_wrong_type(self, value: object) -> None:
+        """Test duration validation with wrong types."""
+        with pytest.raises(ValueError, match="Expected string"):
+            validate_duration(value)
 
 
 class TestNetworkValidators:
@@ -114,6 +134,12 @@ class TestNetworkValidators:
         with pytest.raises(ValueError, match="Invalid email format"):
             validate_email("user@")
 
+    @pytest.mark.parametrize("value", [123, None, [], {}])
+    def test_validate_email_wrong_type(self, value: object) -> None:
+        """Test email validation with wrong types."""
+        with pytest.raises(ValueError, match="Expected string"):
+            validate_email(value)
+
     def test_validate_hostname_success(self) -> None:
         """Test valid hostname formats."""
         assert validate_hostname("example.com") == "example.com"
@@ -126,6 +152,12 @@ class TestNetworkValidators:
             validate_hostname("-invalid.com")  # Starts with hyphen
         with pytest.raises(ValueError, match="Invalid hostname format"):
             validate_hostname("invalid-.com")  # Ends with hyphen
+
+    @pytest.mark.parametrize("value", [123, None, [], {}])
+    def test_validate_hostname_wrong_type(self, value: object) -> None:
+        """Test hostname validation with wrong types."""
+        with pytest.raises(ValueError, match="Expected string"):
+            validate_hostname(value)
 
     def test_validate_ipv4_success(self) -> None:
         """Test valid IPv4 formats."""
@@ -140,6 +172,12 @@ class TestNetworkValidators:
         with pytest.raises(ValueError, match="Invalid IPv4 address"):
             validate_ipv4("not-an-ip")
 
+    @pytest.mark.parametrize("value", [123, None, [], {}])
+    def test_validate_ipv4_wrong_type(self, value: object) -> None:
+        """Test IPv4 validation with wrong types."""
+        with pytest.raises(ValueError, match="Expected string"):
+            validate_ipv4(value)
+
     def test_validate_ipv6_success(self) -> None:
         """Test valid IPv6 formats."""
         assert (
@@ -153,6 +191,12 @@ class TestNetworkValidators:
         """Test invalid IPv6 formats."""
         with pytest.raises(ValueError, match="Invalid IPv6 address"):
             validate_ipv6("not-an-ip")
+
+    @pytest.mark.parametrize("value", [123, None, [], {}])
+    def test_validate_ipv6_wrong_type(self, value: object) -> None:
+        """Test IPv6 validation with wrong types."""
+        with pytest.raises(ValueError, match="Expected string"):
+            validate_ipv6(value)
 
 
 class TestURIValidators:
@@ -176,6 +220,18 @@ class TestURIValidators:
         with pytest.raises(ValueError, match="Invalid UUID format"):
             validate_uuid("3e4666bf-d5e5-4aa7-b8ce")  # Too short
 
+    def test_validate_uuid_non_canonical(self) -> None:
+        """Test UUID with non-canonical format."""
+        # Uppercase UUID should be rejected (not canonical)
+        with pytest.raises(ValueError, match="Invalid UUID format"):
+            validate_uuid("3E4666BF-D5E5-4AA7-B8CE-CEFE41C7568A")
+
+    @pytest.mark.parametrize("value", [123, None, [], {}])
+    def test_validate_uuid_wrong_type(self, value: object) -> None:
+        """Test UUID validation with wrong types."""
+        with pytest.raises(ValueError, match="Expected string"):
+            validate_uuid(value)
+
     def test_validate_uri_success(self) -> None:
         """Test valid URI formats."""
         assert (
@@ -190,6 +246,12 @@ class TestURIValidators:
             validate_uri("www.example.com")  # Missing scheme
         with pytest.raises(ValueError, match="Invalid URI format"):
             validate_uri("/relative/path")  # Relative path
+
+    @pytest.mark.parametrize("value", [123, None, [], {}])
+    def test_validate_uri_wrong_type(self, value: object) -> None:
+        """Test URI validation with wrong types."""
+        with pytest.raises(ValueError, match="Expected string"):
+            validate_uri(value)
 
     def test_validate_uri_reference_success(self) -> None:
         """Test valid URI reference formats."""
@@ -207,7 +269,19 @@ class TestURIValidators:
         with pytest.raises(ValueError, match="Invalid IRI format"):
             validate_iri("www.example.com")  # Missing scheme
 
+    @pytest.mark.parametrize("value", [123, None, [], {}])
+    def test_validate_iri_wrong_type(self, value: object) -> None:
+        """Test IRI validation with wrong types."""
+        with pytest.raises(ValueError, match="Expected string"):
+            validate_iri(value)
+
     def test_validate_iri_reference_success(self) -> None:
         """Test valid IRI reference formats."""
         result = validate_iri_reference("/relative/path/to/こんにちは")
         assert result == "/relative/path/to/こんにちは"
+
+    @pytest.mark.parametrize("value", [123, None, [], {}])
+    def test_validate_iri_reference_wrong_type(self, value: object) -> None:
+        """Test IRI reference validation with wrong types."""
+        with pytest.raises(ValueError, match="Expected string"):
+            validate_iri_reference(value)

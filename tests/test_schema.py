@@ -74,3 +74,19 @@ class TestSchemaDumping:
         assert "userName" in schema_alias["properties"]
         # Without alias
         assert "name" in schema_no_alias["properties"]
+
+    def test_dump_with_external_refs(self) -> None:
+        """Test that external refs (not starting with #/$defs/) are preserved."""
+        from pydantic_jsonschema.schema import _replace_refs
+
+        # Schema with external reference
+        schema = {
+            "type": "object",
+            "properties": {"user": {"$ref": "https://example.com/schemas/user.json"}},
+        }
+
+        refs: dict[str, type[BaseModel]] = {}  # Empty refs mapping
+        result = _replace_refs(schema, refs)
+
+        # External ref should be preserved as-is
+        assert result["properties"]["user"]["$ref"] == "https://example.com/schemas/user.json"
