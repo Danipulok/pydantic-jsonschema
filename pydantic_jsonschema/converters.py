@@ -25,12 +25,12 @@ __all__ = [
     "BeforeValidatorFunc",
     "FormatName",
     "FormatValidator",
+    "LaxSchemaConverter",
     "Ref",
     "SchemaConverter",
     "SchemaHash",
-    "to_model",
-    "LaxSchemaConverter",
     "to_lax_model",
+    "to_model",
 ]
 
 

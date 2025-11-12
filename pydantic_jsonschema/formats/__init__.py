@@ -16,7 +16,6 @@ from ._builtin import (
 )
 
 __all__ = [
-    "SchemaFormat",
     "DATE",
     "DATE_TIME",
     "DURATION",
@@ -30,4 +29,5 @@ __all__ = [
     "URI",
     "URI_REFERENCE",
     "UUID",
+    "SchemaFormat",
 ]
