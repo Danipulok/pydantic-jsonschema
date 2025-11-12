@@ -369,8 +369,7 @@ class SchemaConverter:
             return self._models_cache[cache_key]
 
         # Generate model from schema
-        model = self._convert_nested_schema(schema)
-        return model
+        return self._convert_nested_schema(schema)
 
     def _get_base_classes(
         self,
