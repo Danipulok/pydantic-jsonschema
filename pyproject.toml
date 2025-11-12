@@ -70,7 +70,6 @@ ignore = [
     "TRY004",   # Prefer TypeError - ValueError is fine for validation
     "TRY300",   # Consider moving to else block - readability preference
     "TRY301",   # Abstract raise to inner function - not needed
-    "FBT001",   # Boolean positional argument - false positive for type unions
     "C901",     # Function too complex - acceptable for schema conversion
     "PLR0911",  # Too many return statements - acceptable for schema conversion
     "PLR0912",  # Too many branches - acceptable for schema conversion
