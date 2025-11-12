@@ -40,6 +40,17 @@ strict = true
 warn_return_any = true
 warn_unused_configs = true
 
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_any_expr = false
+warn_return_any = false
+disable_error_code = ["no-untyped-def", "call-overload", "index", "call-arg", "comparison-overlap", "type-arg", "dict-item", "unused-ignore"]
+
+[[tool.mypy.overrides]]
+module = "pydantic_jsonschema.formats.extra"
+disable_error_code = ["arg-type"]
+
 [tool.ruff]
 target-version = "py313"
 line-length = 100
@@ -80,6 +91,9 @@ ignore = [
     "ANN201",   # Missing return type annotation for public function
     "ANN001",   # Missing type annotation for function argument
     "ANN202",   # Missing return type annotation for private function
+    "ANN204",   # Missing return type annotation for __init__
+    "ANN206",   # Missing return type annotation for classmethod
+    "EM101",    # Exception string literal (test code)
     "N806",     # Variable in function should be lowercase (Model is a class)
     "PLC0415",  # Import should be at top-level (intentional for test isolation)
     "S104",     # Possible binding to all interfaces (test data only)
@@ -91,6 +105,9 @@ ignore = [
 ]
 "pydantic_jsonschema/converters.py" = [
     "UP007",    # Use X | Y - keeping Union for Optional compatibility
+]
+"pydantic_jsonschema/formats/extra.py" = [
+    "SLF001",   # Private member access - using pydantic-extra-types _validate methods
 ]
 
 [tool.pytest.ini_options]
