@@ -585,7 +585,7 @@ class SchemaConverter:
                 with self._track_path(f"{union_type}[{idx}]"):
                     sub_schema_annotation = self._schema_to_annotation(sub_schema)
                     union_args.append(sub_schema_annotation)
-            union_annotation = Union[tuple(union_args)]  # type: ignore[valid-type]
+            union_annotation = Union[tuple(union_args)]  # type: ignore[valid-type]  # noqa: UP007
             return cast("type", union_annotation)
 
         # `allOf` -> nested model:
@@ -623,7 +623,7 @@ class SchemaConverter:
             if isinstance(schema.type, DataType):
                 return _DATA_TYPE_ANNOTATION_MAPPING[schema.type]
             union_args = [_DATA_TYPE_ANNOTATION_MAPPING[data_type] for data_type in schema.type]
-            union_annotation = Union[tuple(union_args)]
+            union_annotation = Union[tuple(union_args)]  # noqa: UP007
             return cast("type", union_annotation)
 
         return Any
