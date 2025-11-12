@@ -1,0 +1,45 @@
+"""Import CSV data with automatic type coercion."""
+
+import csv
+from io import StringIO
+
+from pydantic_jsonschema import Schema, to_lax_model
+
+# Define the schema for CSV rows
+product_schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "id": {"type": "integer"},
+            "name": {"type": "string"},
+            "price": {"type": "number"},
+            "quantity": {"type": "integer"},
+            "in_stock": {"type": "boolean"},
+            "tags": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["id", "name", "price"],
+    },
+)
+
+Product = to_lax_model(product_schema, model_name="Product")
+
+# Sample CSV data (everything is strings)
+csv_data = """id,name,price,quantity,in_stock,tags
+1,Widget,19.99,100,true,"electronics,gadgets"
+2,Gadget,29.99,50,false,"electronics"
+3,Tool,9.99,200,true,"hardware,tools"
+"""
+
+# Parse and validate
+reader = csv.DictReader(StringIO(csv_data))
+products = []
+
+for row in reader:
+    product = Product.model_validate(row)
+    products.append(product)
+
+for p in products:
+    print(f"{p.name}: ${p.price} (Stock: {p.quantity})")
+    # > Widget: $19.99 (Stock: 100)
+    # > Gadget: $29.99 (Stock: 50)
+    # > Tool: $9.99 (Stock: 200)

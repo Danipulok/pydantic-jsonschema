@@ -1,0 +1,159 @@
+site_name: Pydantic JSON Schema
+site_description: Convert JSON Schema to Pydantic models with type-safe validation
+site_url: https://danipulok.github.io/pydantic-jsonschema
+repo_url: https://github.com/danipulok/pydantic-jsonschema
+repo_name: danipulok/pydantic-jsonschema
+edit_uri: edit/main/docs/
+
+strict: true
+
+theme:
+  name: material
+  palette:
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: pink
+      accent: pink
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: pink
+      accent: pink
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - announce.dismiss
+    - content.action.edit
+    - content.code.annotate
+    - content.code.copy
+    - content.tooltips
+    - navigation.expand
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.path
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    annotation: material/arrow-right-circle
+
+extra_css:
+  - stylesheets/extra.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/danipulok/pydantic-jsonschema
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/pydantic-jsonschema/
+  generator: false
+
+copyright: Copyright &copy; 2024 - Present
+
+nav:
+  - Home: index.md
+  - Installation: install.md
+  - Converters: converters.md
+  - Lax Validation: lax.md
+  - Format Validators: formats.md
+  - Examples: examples.md
+  - API Reference:
+    - api/converters.md
+    - api/exceptions.md
+    - api/types.md
+    - api/formats.md
+  - Development:
+    - Contributing: contributing.md
+
+markdown_extensions:
+  # Python Markdown
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      permalink_title: Anchor link to this section
+      toc_depth: 3
+
+  # Python Markdown Extensions
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+plugins:
+  - search:
+      lang: en
+  - glightbox
+  - mkdocstrings:
+      enabled: true
+      default_handler: python
+      handlers:
+        python:
+          paths: [.]
+          options:
+            docstring_style: google
+            docstring_options:
+              ignore_init_summary: true
+            merge_init_into_class: true
+            show_signature_annotations: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            signature_crossrefs: true
+            separate_signature: true
+            line_length: 80
+            show_source: false
+            members_order: source
+            show_bases: true
+            show_root_heading: false
+            show_root_toc_entry: false
+            show_object_full_path: false
+            show_category_heading: false
+            show_if_no_docstring: false
+            inherited_members: false
+            group_by_category: true
+            summary: true
+
+watch:
+  - pydantic_jsonschema

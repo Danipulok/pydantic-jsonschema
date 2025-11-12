@@ -1,0 +1,58 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior
+labels: [bug]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for contributing to Pydantic JSON Schema! ✊
+
+  - type: checkboxes
+    id: initial-checks
+    attributes:
+      label: Initial Checks
+      options:
+        - label: I confirm that I'm using the latest version of Pydantic JSON Schema
+          required: true
+        - label: I have searched the existing issues and this is a new bug
+          required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: |
+        Please explain the bug and what you expected to happen.
+
+        Provide as much detail as possible to help us understand and reproduce the issue.
+    validations:
+      required: true
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Example Code
+      description: |
+        If possible, please provide a minimal, reproducible example demonstrating the bug.
+      render: python
+    validations:
+      required: false
+
+  - type: textarea
+    id: versions
+    attributes:
+      label: Version Information
+      description: |
+        Please run the following command and copy the output below:
+
+        ```bash
+        python -c "import sys, importlib.metadata as im; print(f'Python: {sys.version}\nPydantic: {im.version(\"pydantic\")}\nPydantic JSON Schema: {im.version(\"pydantic-jsonschema\")}\nopenapi-pydantic: {im.version(\"openapi-pydantic\")}')"
+        ```
+      placeholder: |
+        Python: 3.13.0
+        Pydantic: 2.10.0
+        Pydantic JSON Schema: 1.0.0
+        openapi-pydantic: 0.5.1
+    validations:
+      required: true

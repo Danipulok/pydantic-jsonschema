@@ -16,3 +16,6 @@ htmlcov/
 
 # Linting
 .mypy_cache/
+
+# Documentation
+site/

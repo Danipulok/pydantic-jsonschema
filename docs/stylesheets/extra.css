@@ -1,0 +1,78 @@
+/* Custom styling for Pydantic JSON Schema documentation */
+
+/* Adjust code block styling */
+.md-typeset code {
+  font-size: 0.85em;
+}
+
+/* Make inline code stand out slightly */
+.md-typeset :not(pre) > code {
+  padding: 0.1em 0.4em;
+  border-radius: 0.2em;
+  background-color: var(--md-code-bg-color);
+}
+
+/* Improve table readability */
+.md-typeset table:not([class]) {
+  font-size: 0.9em;
+  border-collapse: collapse;
+}
+
+.md-typeset table:not([class]) th {
+  font-weight: 600;
+  background-color: var(--md-default-fg-color--lightest);
+}
+
+/* Adjust admonition styling */
+.md-typeset .admonition,
+.md-typeset details {
+  font-size: 0.9em;
+}
+
+/* Make navigation sections more visible */
+.md-nav__title {
+  font-weight: 700;
+}
+
+/* Improve code annotation spacing */
+.md-annotation {
+  margin-top: 0.5em;
+}
+
+/* Better spacing for definition lists */
+.md-typeset dd {
+  margin-left: 1.5em;
+  margin-top: 0.5em;
+}
+
+/* Adjust footer spacing */
+.md-footer {
+  margin-top: 2em;
+}
+
+/* Make headers in content slightly smaller for better hierarchy */
+.md-typeset h1 {
+  font-weight: 600;
+  font-size: 2em;
+}
+
+.md-typeset h2 {
+  font-weight: 600;
+  font-size: 1.5em;
+  margin-top: 1.6em;
+}
+
+.md-typeset h3 {
+  font-weight: 600;
+  font-size: 1.25em;
+}
+
+/* Improve readability of parameter lists in API docs */
+.md-typeset .doc-parameters {
+  font-size: 0.9em;
+}
+
+/* Add some breathing room to content */
+.md-content__inner {
+  padding-bottom: 3em;
+}

@@ -16,6 +16,7 @@ repos:
       - id: check-vcs-permalinks
       - id: check-xml
       - id: check-yaml
+        exclude: mkdocs.yml
       - id: debug-statements
       - id: destroyed-symlinks
       - id: detect-aws-credentials
@@ -35,6 +36,11 @@ repos:
     rev: v2.4.1
     hooks:
       - id: codespell
+
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.19.0
+    hooks:
+      - id: markdownlint-cli2
 
   - repo: local
     hooks:

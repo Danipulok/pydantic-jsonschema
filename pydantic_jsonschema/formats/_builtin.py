@@ -1,23 +1,20 @@
 """Built-in JSON Schema format validators."""
 
+import uuid
+from datetime import date, datetime, time, timedelta
+from ipaddress import IPv4Address, IPv6Address
+
+from pydantic import EmailStr
+
+from pydantic_jsonschema.formats._base import SchemaFormat
 from pydantic_jsonschema.formats._validators import (
-    validate_date,
-    validate_datetime,
-    validate_duration,
-    validate_email,
     validate_hostname,
-    validate_ipv4,
-    validate_ipv6,
     validate_iri,
     validate_iri_reference,
-    validate_time,
     validate_uri,
     validate_uri_reference,
-    validate_uuid,
 )
 from pydantic_jsonschema.types import DataType
-
-from ._base import SchemaFormat
 
 __all__ = [
     "DATE",
@@ -25,8 +22,8 @@ __all__ = [
     "DURATION",
     "EMAIL",
     "HOSTNAME",
-    "IPV_4",
-    "IPV_6",
+    "IPV4",
+    "IPV6",
     "IRI",
     "IRI_REFERENCE",
     "TIME",
@@ -41,35 +38,35 @@ DATE_TIME = SchemaFormat(
     title="Date Time",
     examples=["2018-11-13T20:20:39+00:00"],
     types=[DataType.STRING],
-    validator=validate_datetime,
+    validator=datetime,
 )
 TIME = SchemaFormat(
     key="time",
     title="Time",
     examples=["20:20:39+00:00"],
     types=[DataType.STRING],
-    validator=validate_time,
+    validator=time,
 )
 DATE = SchemaFormat(
     key="date",
     title="Date",
     examples=["2018-11-13"],
     types=[DataType.STRING],
-    validator=validate_date,
+    validator=date,
 )
 DURATION = SchemaFormat(
     key="duration",
     title="Duration",
     examples=["P3D"],
     types=[DataType.STRING],
-    validator=validate_duration,
+    validator=timedelta,
 )
 EMAIL = SchemaFormat(
     key="email",
     title="Email",
     examples=["example@example.com"],
     types=[DataType.STRING],
-    validator=validate_email,
+    validator=EmailStr,
 )
 HOSTNAME = SchemaFormat(
     key="hostname",
@@ -78,26 +75,26 @@ HOSTNAME = SchemaFormat(
     types=[DataType.STRING],
     validator=validate_hostname,
 )
-IPV_4 = SchemaFormat(
+IPV4 = SchemaFormat(
     key="ipv4",
     title="IPv4",
     examples=["192.168.1.1"],
     types=[DataType.STRING],
-    validator=validate_ipv4,
+    validator=IPv4Address,
 )
-IPV_6 = SchemaFormat(
+IPV6 = SchemaFormat(
     key="ipv6",
     title="IPv6",
     examples=["2001:0db8:85a3:0000:0000:8a2e:0370:7334"],
     types=[DataType.STRING],
-    validator=validate_ipv6,
+    validator=IPv6Address,
 )
 UUID = SchemaFormat(
     key="uuid",
     title="UUID",
     examples=["3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a"],
     types=[DataType.STRING],
-    validator=validate_uuid,
+    validator=uuid.UUID,
 )
 URI = SchemaFormat(
     key="uri",

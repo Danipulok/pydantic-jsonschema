@@ -2,12 +2,13 @@ import importlib.util
 
 try:
     importlib.util.find_spec("pydantic_extra_types")
-except ImportError as exc:
+except ImportError as _import_error:
     msg = (
         "`pydantic-extra-types` is required to use extra formats. "
-        "Install it with: `pip install pydantic-jsonschema[formats]`"
+        "Install it with: `pip install pydantic-jsonschema[formats-extra]` or "
+        "`pip install pydantic-jsonschema[formats-all]`."
     )
-    raise ImportError(msg) from exc
+    raise ImportError(msg) from _import_error
 
 from pydantic_extra_types.country import (
     CountryAlpha2,
@@ -195,9 +196,7 @@ PAYMENT_CARD_NUMBER = SchemaFormat(
     validator=lambda value: PaymentCardNumber.validate(value, None),
 )
 
-# Note: ABARoutingNumber is not included because pydantic-extra-types ABARoutingNumber
-#  validator does not properly validate all invalid values (e.g., "123" passes validation)
-#  and doesn't fit our SchemaFormat validation pattern.
+# Note: ABARoutingNumber is not included because it does not have any validate methods
 
 # Other
 

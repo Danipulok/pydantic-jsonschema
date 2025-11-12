@@ -2,22 +2,35 @@
 name = "pydantic-jsonschema"
 version = "0.1.0"
 description = "JSON Schema to Pydantic model conversion library"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "openapi-pydantic>=0.5.0",
     "pydantic>=2.0.0",
 ]
 
 [project.optional-dependencies]
-formats = [
-    "pydantic-extra-types[all]>=2.0.0",
+formats-base = [
+    "email-validator>=2.0.0",
+    "fqdn",
+    "rfc3986>=2.0.0",
+]
+formats-extra = [
+    "pydantic-extra-types[all]>=2.10.6",
+]
+formats-all = [
+    # `formats-base`
+    "email-validator>=2.0.0",
+    "fqdn",
+    "rfc3986>=2.0.0",
+    # `formats-extra`
+    "pydantic-extra-types[all]>=2.10.6",
 ]
 
 [dependency-groups]
 dev = [
     {include-group = "lint"},
     {include-group = "test"},
-    {include-group = "extas"},
+    {include-group = "docs"},
 ]
 lint = [
     "mypy>=1.17.1",
@@ -27,9 +40,13 @@ lint = [
 test = [
     "pytest>=8.0.0",
     "pytest-cov>=6.0.0",
+    "pytest-examples>=0.0.13",
 ]
-extas = [
-    "pydantic-extra-types[all]>=2.0.0",
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material[imaging]>=9.5.45",
+    "mkdocs-glightbox>=0.4.0",
+    "mkdocstrings-python>=1.12.2",
 ]
 
 [tool.mypy]
@@ -50,6 +67,14 @@ disable_error_code = ["no-untyped-def", "call-overload", "index", "call-arg", "c
 [[tool.mypy.overrides]]
 module = "pydantic_jsonschema.formats.extra"
 disable_error_code = ["arg-type"]
+
+[[tool.mypy.overrides]]
+module = "examples.*"
+disable_error_code = ["attr-defined"]
+
+[[tool.mypy.overrides]]
+module = ["fqdn", "rfc3986"]
+follow_untyped_imports = true
 
 [tool.ruff]
 target-version = "py313"
@@ -74,24 +99,32 @@ ignore = [
 "tests/*" = [
     "S101",     # Use of `assert` detected
 ]
+"examples/*" = [
+    "T201",     # Remove `print`
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = [
-    "--strict-markers",  # Raise error for unregistered markers
-    "--strict-config",  # Raise error for unknown config options
+    "--strict-markers",     # Raise error for unregistered markers
+    "--strict-config",      # Raise error for unknown config options
 ]
 
+# https://coverage.readthedocs.io/en/latest/config.html#run
 [tool.coverage.run]
+branch = true       # Enable branch coverage in addition to statement coverage
+parallel = true     # Allow parallel coverage runs for multi-version testing
 source = ["pydantic_jsonschema"]
 omit = ["tests/*"]
 
+# https://coverage.readthedocs.io/en/latest/config.html#report
 [tool.coverage.report]
+fail_under = 100
+skip_covered = true # Omit fully covered files from report output
+show_missing = true # Show line numbers of missing coverage in report
+precision = 2       # Number of decimal places in coverage percentages
 exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if __name__ == .__main__.:",
-    "if TYPE_CHECKING:",
+    "pragma: no cover",     # Standard marker to exclude line from coverage
+    "except ImportError.*", # Import guards for optional dependencies
+    "\\(Protocol\\):$",     # Do not count Protocol definitions
 ]

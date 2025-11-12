@@ -313,20 +313,20 @@ class SchemaConverter:
         forward_refs = self._get_forward_refs_namespace()
         for schema_def in defs.values():
             cache_key = self._hash_schema(schema_def)
-            if cache_key in self._models_cache:
-                model = self._models_cache[cache_key]
-                if model in forward_refs.values():
-                    model.model_rebuild(_types_namespace=forward_refs)
+            # Model is guaranteed to be in cache after `_convert_nested_schema above`
+            model = self._models_cache[cache_key]
+            # Model is guaranteed to be in `forward_refs` as it was just added
+            model.model_rebuild(_types_namespace=forward_refs)
 
     def _get_forward_refs_namespace(self) -> dict[str, type[BaseModel]]:
         """Get namespace for forward reference resolution."""
         namespace: dict[str, type[BaseModel]] = {}
 
         # Add models from defs cache
+        # Models are guaranteed to be in cache after `_build_defs_cache`
         for ref, schema in self._defs_cache.items():
             cache_key = self._hash_schema(schema)
-            if cache_key in self._models_cache:
-                namespace[sanitize_identifier(ref)] = self._models_cache[cache_key]
+            namespace[sanitize_identifier(ref)] = self._models_cache[cache_key]
 
         # Add pre-built ref models
         for ref, model in self._refs.items():
@@ -478,11 +478,13 @@ class SchemaConverter:
         if get_origin(validator) is Annotated:
             return validator
 
-        # If validator is a type/class (e.g., from pydantic-extra-types), use it as annotation
+        # If validator is a type/class
+        # (custom Pydantic type or a python native type, supported by Pydantic) —
+        # use it directly as the annotation
         if isinstance(validator, type):
             return validator
 
-        # Otherwise, it's a callable function - wrap it with BeforeValidator
+        # Otherwise, it's a callable function - wrap it with `BeforeValidator`
         return Annotated[annotation, BeforeValidator(validator)]
 
     @staticmethod

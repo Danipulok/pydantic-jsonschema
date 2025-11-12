@@ -65,6 +65,26 @@ class MockCurrencyCode:
 class TestSchemaFormat:
     """Tests for SchemaFormat class."""
 
+    def test_format_auto_generate_title(self) -> None:
+        """Test SchemaFormat auto-generates title from key when title is None."""
+        # When title is explicitly None, auto-generate from key
+        fmt = SchemaFormat(
+            key="date-time",
+            title=None,
+            examples=["2024-01-01T00:00:00Z"],
+            types=[DataType.STRING],
+        )
+        assert fmt.title == "Date Time"
+
+        # Empty key generates empty title
+        fmt = SchemaFormat(
+            key="",
+            title=None,
+            examples=["example"],
+            types=[DataType.STRING],
+        )
+        assert fmt.title == ""
+
     def test_format_without_validator(self) -> None:
         """Test SchemaFormat without validator."""
         fmt = SchemaFormat(
@@ -136,14 +156,14 @@ class TestSchemaFormat:
             validator=MockLanguageCode,
         )
 
-        # Validator runs for validation, but original value is returned
+        # Validator returns instance of MockLanguageCode
         result = fmt("en")
-        assert result == "en"
-        assert isinstance(result, str)
+        assert isinstance(result, MockLanguageCode)
+        assert str(result) == "en"
 
         result = fmt("FR")
-        assert result == "FR"
-        assert isinstance(result, str)
+        assert isinstance(result, MockLanguageCode)
+        assert str(result) == "fr"  # MockLanguageCode lowercases the value
 
     def test_format_with_pydantic_type_validator_invalid(self) -> None:
         """Test SchemaFormat with Pydantic type validator rejects invalid input."""
@@ -187,15 +207,199 @@ class TestSchemaFormat:
             validator=MockCurrencyCode,
         )
 
-        # Validator runs for validation, but original value is returned
+        # Validator returns instance of MockCurrencyCode
         result = fmt("USD")
-        assert result == "USD"
-        assert isinstance(result, str)
+        assert isinstance(result, MockCurrencyCode)
+        assert str(result) == "USD"
 
         result = fmt("eur")
-        assert result == "eur"
-        assert isinstance(result, str)
+        assert isinstance(result, MockCurrencyCode)
+        assert str(result) == "EUR"  # MockCurrencyCode uppercases the value
 
         # Should raise on invalid input
         with pytest.raises(ValueError, match="Invalid currency code"):
             fmt("US")  # Too short
+
+    def test_call_without_validator(self) -> None:
+        """Test __call__ without validator returns original value."""
+        fmt = SchemaFormat(
+            key="test",
+            examples=["example"],
+            types=["string"],
+            validator=None,
+        )
+
+        values: list[JsonType] = ["hello", 123, None]
+        for val in values:
+            assert fmt(val) == val
+
+    def test_call_with_validating_validator(self) -> None:
+        """Test __call__ with validator that validates and returns value."""
+
+        def validate_positive(v: int) -> int:
+            if v <= 0:
+                msg = "Must be positive"
+                raise ValueError(msg)
+            return v
+
+        fmt = SchemaFormat(
+            key="positive",
+            examples=[1, 42],
+            types=["integer"],
+            validator=validate_positive,
+        )
+
+        # Valid value
+        for value in [1, 42, 999]:
+            assert fmt(value) == value
+
+        # Invalid value
+        with pytest.raises(ValueError, match="Must be positive"):
+            fmt(-1)
+
+    def test_call_with_transforming_validator(self) -> None:
+        """Test __call__ with validator that transforms the value."""
+
+        def uppercase(v: str) -> str:
+            return v.upper()
+
+        fmt = SchemaFormat(
+            key="uppercase",
+            examples=["HELLO", "WORLD"],
+            types=["string"],
+            validator=uppercase,
+        )
+
+        assert fmt("hello") == "HELLO"
+        assert fmt("world") == "WORLD"
+        assert fmt("TeSt") == "TEST"
+
+    def test_call_with_transforming_validator_lowercase(self) -> None:
+        """Test __call__ with lowercase transformer."""
+
+        def lowercase(v: str) -> str:
+            return v.lower()
+
+        fmt = SchemaFormat(
+            key="lowercase",
+            examples=["hello", "world"],
+            types=["string"],
+            validator=lowercase,
+        )
+
+        assert fmt("HELLO") == "hello"
+        assert fmt("WoRlD") == "world"
+        assert fmt("TEST") == "test"
+
+    def test_call_with_type_converting_validator(self) -> None:
+        """Test __call__ with validator that converts types."""
+
+        def to_int(v: str) -> int:
+            return int(v)
+
+        fmt = SchemaFormat(
+            key="string-to-int",
+            examples=["123", "456"],
+            types=["string"],
+            validator=to_int,
+        )
+
+        for value in ["0", "1", "99"]:
+            assert fmt(value) == int(value)
+            assert isinstance(fmt(value), int)
+
+    def test_call_with_validator_raising_error(self) -> None:
+        """Test __call__ with validator that raises error."""
+
+        def validate_email(v: str) -> str:
+            if "@" not in v:
+                msg = "Invalid email"
+                raise ValueError(msg)
+            return v
+
+        fmt = SchemaFormat(
+            key="email",
+            examples=["test@example.com"],
+            types=["string"],
+            validator=validate_email,
+        )
+
+        # Valid email
+        assert fmt("test@example.com") == "test@example.com"
+
+        # Invalid email
+        with pytest.raises(ValueError, match="Invalid email"):
+            fmt("invalid")
+
+    def test_examples_validation_with_transforming_validator(self) -> None:
+        """Test that examples are validated during SchemaFormat creation."""
+
+        def uppercase(v: str) -> str:
+            return v.upper()
+
+        # Valid examples (can be uppercased)
+        fmt = SchemaFormat(
+            key="uppercase",
+            examples=["hello", "world"],
+            types=["string"],
+            validator=uppercase,
+        )
+        assert fmt.examples == ["hello", "world"]
+
+        # Invalid example (can't uppercase an int)
+        with pytest.raises(ValueError, match="Invalid example"):
+            SchemaFormat(
+                key="uppercase",
+                examples=["hello", 123],  # type: ignore[list-item]
+                types=["string"],
+                validator=uppercase,
+            )
+
+    def test_call_preserves_validator_return_value(self) -> None:
+        """Test that __call__ returns exactly what validator returns."""
+
+        def add_prefix(v: str) -> str:
+            return f"prefix_{v}"
+
+        fmt = SchemaFormat(
+            key="prefixed",
+            examples=["prefix_test"],
+            types=["string"],
+            validator=add_prefix,
+        )
+
+        result = fmt("hello")
+        assert result == "prefix_hello"
+        assert result != "hello"  # Ensure it's not the original value
+
+    def test_default_factory_for_examples_and_types(self) -> None:
+        """Test that examples and types have default_factory (empty lists)."""
+        # Create format without providing examples and types
+        fmt = SchemaFormat(key="test-format")
+
+        # Should have empty lists as defaults
+        assert fmt.examples == []
+        assert fmt.types == []
+        assert isinstance(fmt.examples, list)
+        assert isinstance(fmt.types, list)
+
+        # Should auto-generate title
+        assert fmt.title == "Test Format"
+
+    def test_default_factory_creates_independent_lists(self) -> None:
+        """Test that default_factory creates independent list instances."""
+        # Create two formats without providing examples and types
+        fmt1 = SchemaFormat(key="format1")
+        fmt2 = SchemaFormat(key="format2")
+
+        # Modify one format's lists
+        fmt1.examples.append("example1")
+        fmt1.types.append(DataType.STRING)
+
+        # Other format should not be affected
+        assert fmt2.examples == []
+        assert fmt2.types == []
+
+        # First format should have modifications
+        assert fmt1.examples == ["example1"]
+        assert fmt1.types == [DataType.STRING]

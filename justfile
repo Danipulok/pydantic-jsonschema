@@ -1,44 +1,73 @@
-# Directories to check
-SRC_DIR := "pydantic_jsonschema"
-TEST_DIR := "tests"
-CODE_DIRS := SRC_DIR + " " + TEST_DIR
-
 # Default recipe to display help information
 default:
     @just --list
 
-# Format code with ruff
+# Check that `uv` is installed
+_check-uv:
+    @uv --version > /dev/null || echo "Please install uv: https://docs.astral.sh/uv/getting-started/installation"
+
+# Install the package, dependencies, and pre-commit for local development
+install: _check-uv
+    uv sync --frozen --all-extras --all-packages
+    pre-commit install --install-hooks
+
+# Install and synchronize an interpreter for every supported python version
+install-all-python:
+    UV_PROJECT_ENVIRONMENT=.venv312 uv sync --python 3.12 --frozen --all-extras --all-packages
+    UV_PROJECT_ENVIRONMENT=.venv313 uv sync --python 3.13 --frozen --all-extras --all-packages
+    UV_PROJECT_ENVIRONMENT=.venv314 uv sync --python 3.14 --frozen --all-extras --all-packages
+
+# Update local packages and `uv.lock`
+sync: _check-uv
+    uv sync --all-extras --all-packages
+
+# Format code
 format:
-    uv run ruff format {{CODE_DIRS}}
-    uv run ruff check {{CODE_DIRS}} --fix
+    uv run ruff format
+    uv run ruff check --fix --fix-only
 
-# Run linting checks
+# Run linting
 lint:
-    uv run ruff check {{CODE_DIRS}}
-    uv run mypy {{CODE_DIRS}}
+    uv run ruff format --check
+    uv run ruff check
+    uv run mypy .
 
-# Run tests
+# Run tests and show coverage report
 test:
-    uv run pytest {{TEST_DIR}}
+    uv run coverage run -m pytest
+    uv run coverage combine
+    uv run coverage report
 
-# Run tests with coverage (require 88% minimum)
-test-cov:
-    uv run pytest {{TEST_DIR}} --cov={{SRC_DIR}} --cov-report=term-missing --cov-fail-under=88
+# Run tests for every supported python version and show combined coverage report
+test-all-python: install-all-python
+    UV_PROJECT_ENVIRONMENT=.venv312 uv run --python 3.12 --all-extras --all-packages coverage run -p -m pytest
+    UV_PROJECT_ENVIRONMENT=.venv313 uv run --python 3.13 --all-extras --all-packages coverage run -p -m pytest
+    UV_PROJECT_ENVIRONMENT=.venv314 uv run --python 3.14 --all-extras --all-packages coverage run -p -m pytest
+    uv run coverage combine
+    uv run coverage report
 
-# Run all checks (lint + test)
-check: lint test
-
-# Install dependencies
-install:
-    uv sync --all-groups
-
-# Install pre-commit hooks
-install-hooks:
-    uv run pre-commit install
+# Run tests and generate an HTML coverage report
+testcov: test
+    uv run coverage html
 
 # Run pre-commit on all files
-pre-commit:
+precommit:
     uv run pre-commit run --all-files
+
+# Run all checks
+all: format lint test docs-build
+
+# Build documentation
+docs-build:
+    uv run mkdocs build
+
+# Serve documentation locally with live reload
+docs-serve:
+    uv run mkdocs serve
+
+# Deploy documentation to GitHub Pages
+docs-deploy:
+    uv run mkdocs gh-deploy --force
 
 # Clean up generated files
 clean:
@@ -47,5 +76,6 @@ clean:
     rm -rf .mypy_cache
     rm -rf .coverage
     rm -rf htmlcov
+    rm -rf site
     find . -type d -name __pycache__ -exec rm -rf {} +
     find . -type f -name "*.pyc" -delete

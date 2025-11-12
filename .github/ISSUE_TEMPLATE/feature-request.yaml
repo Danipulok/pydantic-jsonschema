@@ -1,0 +1,51 @@
+name: 🚀 Feature Request
+description: Suggest a new feature or enhancement
+labels: [enhancement]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for contributing to Pydantic JSON Schema! ✊
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: |
+        Please describe the feature you'd like to see added.
+
+        Include:
+        - What problem does this solve?
+        - How would you use this feature?
+        - Example code showing how it would work
+        - References to similar features in other projects
+    validations:
+      required: true
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: |
+        Links to related issues, documentation, or other resources that support this feature request.
+    validations:
+      required: false
+
+  - type: textarea
+    id: versions
+    attributes:
+      label: Version Information
+      description: |
+        Please run the following command and copy the output below:
+
+        ```bash
+        python -c "import sys, importlib.metadata as im; print(f'Python: {sys.version}\nPydantic: {im.version(\"pydantic\")}\nPydantic JSON Schema: {im.version(\"pydantic-jsonschema\")}\nopenapi-pydantic: {im.version(\"openapi-pydantic\")}')"
+        ```
+      placeholder: |
+        Python: 3.13.0
+        Pydantic: 2.10.0
+        Pydantic JSON Schema: 1.0.0
+        openapi-pydantic: 0.5.1
+    validations:
+      required: true
