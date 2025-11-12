@@ -83,11 +83,6 @@ ignore = [
     "PLC0415",  # Import should be at top-level (intentional for test isolation)
     "S104",     # Possible binding to all interfaces (test data only)
 ]
-"pydantic_jsonschema/lax.py" = [
-    "ARG002",   # Unused method argument - intentional override signature
-    "ARG004",   # Unused static method argument - required for override signature
-    "UP007",    # Use X | Y - keeping Union for type compatibility
-]
 "pydantic_jsonschema/formats/extra.py" = [
     "SLF001",   # Private member access - using pydantic-extra-types _validate methods
 ]
