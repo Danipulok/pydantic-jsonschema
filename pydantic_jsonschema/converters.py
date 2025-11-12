@@ -550,7 +550,7 @@ class SchemaConverter:
             max_length=self._get_max_length(schema),
         )
 
-    def _schema_to_annotation(
+    def _schema_to_annotation(  # noqa: C901, PLR0911, PLR0912
         self,
         schema: Schema | Reference,
         /,

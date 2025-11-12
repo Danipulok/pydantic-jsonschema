@@ -65,9 +65,6 @@ ignore = [
     "COM812",   # Missing trailing comma (conflicts with formatter)
     "ISC001",   # Implicit string concatenation (conflicts with formatter)
     "ANN401",   # Dynamically typed expressions (Any) - needed for JSON schema flexibility
-    "C901",     # Function too complex - acceptable for schema conversion
-    "PLR0911",  # Too many return statements - acceptable for schema conversion
-    "PLR0912",  # Too many branches - acceptable for schema conversion
     "FURB162",  # Timezone replacement needed for ISO 8601 compatibility
 ]
 
