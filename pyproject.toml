@@ -65,7 +65,6 @@ ignore = [
     "COM812",   # Missing trailing comma (conflicts with formatter)
     "ISC001",   # Implicit string concatenation (conflicts with formatter)
     "ANN401",   # Dynamically typed expressions (Any) - needed for JSON schema flexibility
-    "EM102",    # Exception must not use f-string literal - acceptable for inline errors
     "TRY003",   # Avoid specifying long messages - acceptable for descriptive errors
     "TRY004",   # Prefer TypeError - ValueError is fine for validation
     "TRY300",   # Consider moving to else block - readability preference
