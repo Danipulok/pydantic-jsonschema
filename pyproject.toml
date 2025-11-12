@@ -65,7 +65,6 @@ ignore = [
     "COM812",   # Missing trailing comma (conflicts with formatter)
     "ISC001",   # Implicit string concatenation (conflicts with formatter)
     "ANN401",   # Dynamically typed expressions (Any) - needed for JSON schema flexibility
-    "FURB162",  # Timezone replacement needed for ISO 8601 compatibility
 ]
 
 [tool.ruff.lint.per-file-ignores]

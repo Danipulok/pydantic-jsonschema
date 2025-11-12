@@ -95,7 +95,7 @@ def validate_datetime(value: Any) -> str:
         )
 
     try:
-        datetime.fromisoformat(value.replace("Z", "+00:00"))
+        datetime.fromisoformat(value)
     except ValueError:
         msg = f"Invalid datetime format: `{value!r}`"
         raise FormatValidationError(
