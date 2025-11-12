@@ -434,15 +434,19 @@ class SchemaConverter:
             with self._track_path(f"properties.{field_name}"):
                 # Handle reference fields
                 annotation: type[BaseModel] | None = None
+                schema_for_field: Schema
+
                 if isinstance(field_schema, Reference):
                     # Get model for annotation
                     annotation = self._get_model(field_schema.ref)
                     # Use schema from defs for field metadata, or empty schema
-                    field_schema = self._defs_cache.get(field_schema.ref, Schema())
+                    schema_for_field = self._defs_cache.get(field_schema.ref, Schema())
+                else:
+                    schema_for_field = field_schema
 
                 # Convert to Pydantic field
                 field = self._schema_to_field(
-                    field_schema,
+                    schema_for_field,
                     is_required=field_name in (schema.required or []),
                     annotation=annotation,
                 )
