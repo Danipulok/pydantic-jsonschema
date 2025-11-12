@@ -1,12 +1,13 @@
 from typing import Annotated, Any
 
 import pytest
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, GetCoreSchemaHandler, ValidationError
 from pydantic.functional_validators import AfterValidator, BeforeValidator
+from pydantic_core import CoreSchema, core_schema
 
 from pydantic_jsonschema import SchemaConverter, to_lax_model, to_model
 from pydantic_jsonschema.exceptions import SchemaConvertionError, SchemaReferenceError
-from pydantic_jsonschema.types import Schema
+from pydantic_jsonschema.types import JsonType, Schema
 from tests.conftest import SchemaRaw
 
 
@@ -24,17 +25,17 @@ class TestBasicConversion:
             "required": ["name"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
         # Valid instance
-        instance = Model(name="Alice", age=30)
+        instance = model(name="Alice", age=30)
         assert instance.model_dump() == {
             "name": "Alice",
             "age": 30,
         }
 
         # Missing optional field
-        instance = Model(name="Bob")
+        instance = model(name="Bob")
         assert instance.model_dump() == {
             "name": "Bob",
             "age": None,
@@ -42,7 +43,7 @@ class TestBasicConversion:
 
         # Missing required field
         with pytest.raises(ValidationError):
-            Model(age=25)
+            model(age=25)
 
     def test_array_schema(self) -> None:
         """Test array schema conversion."""
@@ -56,9 +57,9 @@ class TestBasicConversion:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(tags=["python", "dev"])
+        instance = model(tags=["python", "dev"])
         assert instance.model_dump() == {
             "tags": ["python", "dev"],
         }
@@ -77,9 +78,9 @@ class TestBasicConversion:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(user={"name": "Alice"})
+        instance = model(user={"name": "Alice"})
         assert instance.model_dump() == {
             "user": {"name": "Alice"},
         }
@@ -103,9 +104,9 @@ class TestBasicConversion:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(level1={"level2": {"value": 42}})
+        instance = model(level1={"level2": {"value": 42}})
         assert instance.model_dump() == {
             "level1": {
                 "level2": {
@@ -123,14 +124,14 @@ class TestBasicConversion:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(anything="string")
+        instance = model(anything="string")
         assert instance.model_dump() == {
             "anything": "string",
         }
 
-        instance = Model(anything=123)
+        instance = model(anything=123)
         assert instance.model_dump() == {
             "anything": 123,
         }
@@ -154,9 +155,9 @@ class TestReferences:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(address={"street": "Main St", "city": "NYC"})
+        instance = model(address={"street": "Main St", "city": "NYC"})
         assert instance.model_dump() == {
             "address": {
                 "street": "Main St",
@@ -183,9 +184,9 @@ class TestReferences:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(home={"street": "Main St", "city": "NYC"})
+        instance = model(home={"street": "Main St", "city": "NYC"})
         assert instance.model_dump() == {
             "home": {
                 "street": "Main St",
@@ -225,9 +226,9 @@ class TestReferences:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(
+        instance = model(
             owner={"name": "Alice", "age": 30},
             address={"street": "Main St"},
             employer={"name": "ACME Corp"},
@@ -262,9 +263,9 @@ class TestReferences:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(home={"street": "Main St", "city": {"name": "NYC"}})
+        instance = model(home={"street": "Main St", "city": {"name": "NYC"}})
         assert instance.model_dump() == {
             "home": {
                 "street": "Main St",
@@ -307,9 +308,9 @@ class TestReferences:
             "required": ["contact"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(contact={"email": "test@example.com", "phone": "123-456"})
+        instance = model(contact={"email": "test@example.com", "phone": "123-456"})
         assert instance.model_dump() == {
             "contact": {
                 "email": "test@example.com",
@@ -338,9 +339,9 @@ class TestReferences:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(items=[{"name": "A", "value": 1}, {"name": "B", "value": 2}])
+        instance = model(items=[{"name": "A", "value": 1}, {"name": "B", "value": 2}])
         assert instance.model_dump() == {
             "items": [
                 {"name": "A", "value": 1},
@@ -372,9 +373,9 @@ class TestReferences:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(featured={"title": "Test", "author": {"name": "Alice"}})
+        instance = model(featured={"title": "Test", "author": {"name": "Alice"}})
         assert instance.model_dump() == {
             "featured": {"title": "Test", "author": {"name": "Alice"}},
         }
@@ -397,11 +398,11 @@ class TestReferences:
         converter = SchemaConverter(
             refs={
                 "#/$defs/CustomAddress": CustomAddress,
-            }
+            },
         )
-        Model = converter.convert_schema(schema)
+        model = converter.convert_schema(schema)
 
-        instance = Model(address={"street": "Main St", "city": "NYC"})
+        instance = model(address={"street": "Main St", "city": "NYC"})
         assert instance.model_dump() == {
             "address": {"street": "Main St", "city": "NYC"},
         }
@@ -424,9 +425,9 @@ class TestReferences:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(
+        instance = model(
             field1={"value": "test1"},
             field2={"value": "test2"},
         )
@@ -450,9 +451,9 @@ class TestReferences:
             "items": {"$ref": "#/$defs/Item"},
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model([{"name": "item1"}, {"name": "item2"}])
+        instance = model([{"name": "item1"}, {"name": "item2"}])
         assert instance.model_dump() == [{"name": "item1"}, {"name": "item2"}]
 
     def test_forward_ref_unresolved(self) -> None:
@@ -477,9 +478,9 @@ class TestReferences:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(items=["text", {"nested": "value"}])
+        instance = model(items=["text", {"nested": "value"}])
         assert instance.model_dump() == {
             "items": ["text", {"nested": "value"}],
         }
@@ -505,9 +506,9 @@ class TestComposition:
             ],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(name="Alice", age=30)
+        instance = model(name="Alice", age=30)
         assert instance.model_dump() == {
             "name": "Alice",
             "age": 30,
@@ -527,12 +528,12 @@ class TestComposition:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(value="hello")
+        instance = model(value="hello")
         assert instance.model_dump() == {"value": "hello"}
 
-        instance = Model(value=42)
+        instance = model(value=42)
         assert instance.model_dump() == {"value": 42}
 
     def test_oneof_union(self) -> None:
@@ -549,12 +550,12 @@ class TestComposition:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(value="text")
+        instance = model(value="text")
         assert instance.model_dump() == {"value": "text"}
 
-        instance = Model(value=True)
+        instance = model(value=True)
         assert instance.model_dump() == {"value": True}
 
     def test_allof_with_reference(self) -> None:
@@ -581,9 +582,9 @@ class TestComposition:
             ],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(id=1, name="Test")
+        instance = model(id=1, name="Test")
         assert instance.model_dump() == {
             "id": 1,
             "name": "Test",
@@ -597,9 +598,9 @@ class TestComposition:
             ],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model("hello world")
+        instance = model("hello world")
         assert instance.model_dump() == "hello world"
 
     def test_allof_in_property(self) -> None:
@@ -622,9 +623,9 @@ class TestComposition:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(combined={"a": "test", "b": 42})
+        instance = model(combined={"a": "test", "b": 42})
         assert instance.model_dump() == {
             "combined": {"a": "test", "b": 42},
         }
@@ -644,15 +645,15 @@ class TestComposition:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(multi_value="text")
+        instance = model(multi_value="text")
         assert instance.model_dump() == {"multi_value": "text"}
 
-        instance = Model(multi_value=42)
+        instance = model(multi_value=42)
         assert instance.model_dump() == {"multi_value": 42}
 
-        instance = Model(multi_value=True)
+        instance = model(multi_value=True)
         assert instance.model_dump() == {"multi_value": True}
 
 
@@ -668,9 +669,9 @@ class TestLaxConversion:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_lax_model(schema)
+        model = to_lax_model(schema)
 
-        instance = Model()
+        instance = model()
         assert instance.model_dump() == {"status": "pending"}
 
     def test_lax_accepts_full_data(self) -> None:
@@ -685,9 +686,9 @@ class TestLaxConversion:
             "required": ["name", "age"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_lax_model(schema)
+        model = to_lax_model(schema)
 
-        instance = Model(name="Alice", age=30, tags=["dev", "python"])
+        instance = model(name="Alice", age=30, tags=["dev", "python"])
         assert instance.model_dump() == {
             "name": "Alice",
             "age": 30,
@@ -705,9 +706,9 @@ class TestLaxConversion:
             "required": ["name", "age"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_lax_model(schema)
+        model = to_lax_model(schema)
 
-        instance = Model(name=123, age="42")
+        instance = model(name=123, age="42")
         assert instance.model_dump() == {
             "name": "123",
             "age": 42,
@@ -729,9 +730,9 @@ class TestLaxConversion:
             "required": ["value"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_lax_model(schema, format_validators={"upper": AnnotatedUpper})
+        model = to_lax_model(schema, format_validators={"upper": AnnotatedUpper})
 
-        instance = Model(value=123)
+        instance = model(value=123)
         assert instance.model_dump() == {"value": "123"}
 
     def test_lax_mode_with_nested_annotated(self) -> None:
@@ -756,9 +757,9 @@ class TestLaxConversion:
             "required": ["text"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_lax_model(schema, format_validators={"custom": NestedAnnotated})
+        model = to_lax_model(schema, format_validators={"custom": NestedAnnotated})
 
-        instance = Model(text=456)
+        instance = model(text=456)
         assert instance.model_dump() == {
             "text": "456_SUFFIX",
         }
@@ -781,9 +782,9 @@ class TestLaxConversion:
             "required": ["name"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_lax_model(schema, format_validators={"stripped": StrippedStr})
+        model = to_lax_model(schema, format_validators={"stripped": StrippedStr})
 
-        instance = Model(name=789)
+        instance = model(name=789)
         assert instance.model_dump() == {"name": "789"}
 
     def test_extract_annotated_in_lax_mode(self) -> None:
@@ -802,9 +803,9 @@ class TestLaxConversion:
             "required": ["name"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_lax_model(schema, format_validators={"upper": UpperStr})
+        model = to_lax_model(schema, format_validators={"upper": UpperStr})
 
-        instance = Model(name=12345)
+        instance = model(name=12345)
         assert instance.model_dump() == {"name": "12345"}
 
 
@@ -851,13 +852,13 @@ def test_literal_types(schema_field: dict, valid_value: str, invalid_value: str)
         "properties": {"field": schema_field},
     }
     schema = Schema.model_validate(schema_raw)
-    Model = to_model(schema)
+    model = to_model(schema)
 
-    instance = Model(field=valid_value)
+    instance = model(field=valid_value)
     assert instance.model_dump() == {"field": valid_value}
 
     with pytest.raises(ValidationError):
-        Model(field=invalid_value)
+        model(field=invalid_value)
 
 
 class TestDictTypes:
@@ -872,9 +873,9 @@ class TestDictTypes:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(metadata={"count": 42, "total": 100})
+        instance = model(metadata={"count": 42, "total": 100})
         assert instance.model_dump() == {
             "metadata": {"count": 42, "total": 100},
         }
@@ -888,9 +889,9 @@ class TestDictTypes:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(data={})
+        instance = model(data={})
         assert instance.model_dump() == {"data": {}}
 
     def test_additional_properties_true(self) -> None:
@@ -905,9 +906,9 @@ class TestDictTypes:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(data={"a": 1, "b": "text", "c": [1, 2, 3]})
+        instance = model(data={"a": 1, "b": "text", "c": [1, 2, 3]})
         assert instance.model_dump() == {
             "data": {"a": 1, "b": "text", "c": [1, 2, 3]},
         }
@@ -925,15 +926,15 @@ class TestMultipleTypes:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(value="text")
+        instance = model(value="text")
         assert instance.model_dump() == {"value": "text"}
 
-        instance = Model(value=42)
+        instance = model(value=42)
         assert instance.model_dump() == {"value": 42}
 
-        instance = Model(value=None)
+        instance = model(value=None)
         assert instance.model_dump() == {"value": None}
 
 
@@ -948,13 +949,13 @@ class TestAdditionalPropertiesConfig:
             "additionalProperties": False,
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(name="Alice")
+        instance = model(name="Alice")
         assert instance.model_dump() == {"name": "Alice"}
 
         with pytest.raises(ValidationError):
-            Model(name="Alice", extra="field")
+            model(name="Alice", extra="field")
 
     def test_additional_properties_allow(self) -> None:
         """Test that additionalProperties allows extra fields."""
@@ -964,9 +965,9 @@ class TestAdditionalPropertiesConfig:
             "additionalProperties": True,
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(name="Alice", extra="allowed")
+        instance = model(name="Alice", extra="allowed")
         assert instance.model_dump() == {
             "name": "Alice",
             "extra": "allowed",
@@ -1000,19 +1001,19 @@ class TestAdditionalPropertiesConfig:
 )
 def test_constraints(
     schema_property: dict,
-    valid_value,
-    invalid_value,
+    valid_value: JsonType,
+    invalid_value: JsonType,
 ) -> None:
     """Test min/max constraints."""
     schema_raw: SchemaRaw = {"type": "object", "properties": {"field": schema_property}}
     schema = Schema.model_validate(schema_raw)
-    Model = to_model(schema)
+    model = to_model(schema)
 
-    instance = Model(field=valid_value)
+    instance = model(field=valid_value)
     assert instance.model_dump() == {"field": valid_value}
 
     with pytest.raises(ValidationError):
-        Model(field=invalid_value)
+        model(field=invalid_value)
 
 
 class TestAnnotatedValidators:
@@ -1023,7 +1024,8 @@ class TestAnnotatedValidators:
 
         def validate_positive(v: int) -> int:
             if v <= 0:
-                raise ValueError("Must be positive")
+                msg = "Must be positive"
+                raise ValueError(msg)
             return v
 
         PositiveInt = Annotated[int, AfterValidator(validate_positive)]
@@ -1034,23 +1036,24 @@ class TestAnnotatedValidators:
             "required": ["count"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema, format_validators={"positive": PositiveInt})
+        model = to_model(schema, format_validators={"positive": PositiveInt})
 
-        instance = Model(count=5)
+        instance = model(count=5)
         assert instance.model_dump() == {"count": 5}
 
         with pytest.raises(ValidationError, match="Must be positive"):
-            Model(count=-1)
+            model(count=-1)
 
     def test_annotated_validator_with_transformation(self) -> None:
         """Test Annotated type with value transformation."""
 
-        def double(v: Any) -> Any:
+        def double(v: int) -> int:
             return v * 2
 
         def check_even(v: int) -> int:
             if v % 2 != 0:
-                raise ValueError("Must be even")
+                msg = "Must be even"
+                raise ValueError(msg)
             return v
 
         DoubledEvenInt = Annotated[int, AfterValidator(double), AfterValidator(check_even)]
@@ -1061,12 +1064,12 @@ class TestAnnotatedValidators:
             "required": ["count"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema, format_validators={"doubled-even": DoubledEvenInt})
+        model = to_model(schema, format_validators={"doubled-even": DoubledEvenInt})
 
-        instance = Model(count=3)
+        instance = model(count=3)
         assert instance.model_dump() == {"count": 6}
 
-        instance = Model(count=4)
+        instance = model(count=4)
         assert instance.model_dump() == {"count": 8}
 
     def test_callable_validator(self) -> None:
@@ -1074,7 +1077,8 @@ class TestAnnotatedValidators:
 
         def validate_email_simple(v: str) -> str:
             if "@" not in v:
-                raise ValueError("Invalid email")
+                msg = "Invalid email"
+                raise ValueError(msg)
             return v
 
         schema_raw: SchemaRaw = {
@@ -1083,25 +1087,27 @@ class TestAnnotatedValidators:
             "required": ["email"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema, format_validators={"email-simple": validate_email_simple})
+        model = to_model(schema, format_validators={"email-simple": validate_email_simple})
 
-        instance = Model(email="test@example.com")
+        instance = model(email="test@example.com")
         assert instance.model_dump() == {"email": "test@example.com"}
 
         with pytest.raises(ValidationError, match="Invalid email"):
-            Model(email="invalid")
+            model(email="invalid")
 
     def test_mixed_validators(self) -> None:
         """Test multiple validator types in one schema."""
 
         def validate_positive(v: int) -> int:
             if v <= 0:
-                raise ValueError("Must be positive")
+                msg = "Must be positive"
+                raise ValueError(msg)
             return v
 
         def validate_uppercase(v: str) -> str:
             if not v.isupper():
-                raise ValueError("Must be uppercase")
+                msg = "Must be uppercase"
+                raise ValueError(msg)
             return v
 
         PositiveInt = Annotated[int, AfterValidator(validate_positive)]
@@ -1115,26 +1121,27 @@ class TestAnnotatedValidators:
             "required": ["count", "code"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(
+        model = to_model(
             schema,
             format_validators={"positive": PositiveInt, "uppercase": validate_uppercase},
         )
 
-        instance = Model(count=5, code="ABC")
+        instance = model(count=5, code="ABC")
         assert instance.model_dump() == {"count": 5, "code": "ABC"}
 
         with pytest.raises(ValidationError, match="Must be positive"):
-            Model(count=-1, code="ABC")
+            model(count=-1, code="ABC")
 
         with pytest.raises(ValidationError, match="Must be uppercase"):
-            Model(count=5, code="abc")
+            model(count=5, code="abc")
 
     def test_annotated_validator_with_lax_mode(self) -> None:
         """Test Annotated validators work with lax mode."""
 
         def validate_positive(v: int) -> int:
             if v <= 0:
-                raise ValueError("Must be positive")
+                msg = "Must be positive"
+                raise ValueError(msg)
             return v
 
         PositiveInt = Annotated[int, AfterValidator(validate_positive)]
@@ -1145,38 +1152,42 @@ class TestAnnotatedValidators:
             "required": ["count"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_lax_model(schema, format_validators={"positive": PositiveInt})
+        model = to_lax_model(schema, format_validators={"positive": PositiveInt})
 
-        instance = Model(count=5)
+        instance = model(count=5)
         assert instance.model_dump() == {"count": 5}
 
-        instance = Model(count="10")  # type: ignore[arg-type]
+        instance = model(count="10")  # type: ignore[arg-type]
         assert instance.model_dump() == {"count": 10}
 
         with pytest.raises(ValidationError, match="Must be positive"):
-            Model(count=-1)
+            model(count=-1)
 
     def test_validator_as_type_class(self) -> None:
         """Test validator as type class."""
 
         class CustomType:
-            def __init__(self, value: str):
+            def __init__(self, value: str) -> None:
                 if not value.startswith("custom:"):
-                    raise ValueError("Must start with 'custom:'")
+                    msg = "Must start with 'custom:'"
+                    raise ValueError(msg)
                 self.value = value
 
             def __str__(self) -> str:
                 return self.value
 
             @classmethod
-            def __get_pydantic_core_schema__(cls, source_type, handler):
-                from pydantic_core import core_schema
-
+            def __get_pydantic_core_schema__(
+                cls,
+                source_type: Any,  # noqa: ANN401
+                handler: GetCoreSchemaHandler,
+            ) -> CoreSchema:
                 return core_schema.no_info_after_validator_function(
                     cls,
                     handler(str),
                     serialization=core_schema.plain_serializer_function_ser_schema(
-                        lambda x: x.value, return_schema=core_schema.str_schema()
+                        lambda x: x.value,
+                        return_schema=core_schema.str_schema(),
                     ),
                 )
 
@@ -1187,9 +1198,9 @@ class TestAnnotatedValidators:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema, format_validators={"custom": CustomType})
+        model = to_model(schema, format_validators={"custom": CustomType})
 
-        instance = Model(field="custom:value")
+        instance = model(field="custom:value")
         assert instance.model_dump() == {
             "field": "custom:value",
         }
@@ -1226,9 +1237,9 @@ class TestSchemaEdgeCases:
             "items": {"type": "string"},
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(["item1", "item2", "item3"])
+        instance = model(["item1", "item2", "item3"])
         assert instance.model_dump() == ["item1", "item2", "item3"]
 
     def test_root_model_for_string_type(self) -> None:
@@ -1238,13 +1249,13 @@ class TestSchemaEdgeCases:
             "minLength": 5,
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model("hello world")
+        instance = model("hello world")
         assert instance.model_dump() == "hello world"
 
         with pytest.raises(ValidationError):
-            Model("hi")
+            model("hi")
 
     def test_root_model_for_integer_type(self) -> None:
         """Test RootModel creation for integer type schemas."""
@@ -1254,16 +1265,22 @@ class TestSchemaEdgeCases:
             "maximum": 100,
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(42)
-        assert instance.model_dump() == 42
+        # Valid value
+        valid_value = 42
+        instance = model(valid_value)
+        assert instance.model_dump() == valid_value
 
+        # Too low
+        invalid_value = -1
         with pytest.raises(ValidationError):
-            Model(-1)
+            model(invalid_value)
 
+        # Too high
+        invalid_value = 101
         with pytest.raises(ValidationError):
-            Model(101)
+            model(invalid_value)
 
     def test_allof_without_properties_single_base(self) -> None:
         """Test allOf without properties with single base class."""
@@ -1281,9 +1298,9 @@ class TestSchemaEdgeCases:
             ],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(name="Alice", age=30)
+        instance = model(name="Alice", age=30)
         assert instance.model_dump() == {
             "name": "Alice",
             "age": 30,
@@ -1316,9 +1333,9 @@ class TestSchemaEdgeCases:
             ],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(name="Alice", age=30, email="alice@example.com")
+        instance = model(name="Alice", age=30, email="alice@example.com")
         assert instance.model_dump() == {
             "name": "Alice",
             "age": 30,
@@ -1339,12 +1356,12 @@ class TestSchemaEdgeCases:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(value="text")
+        instance = model(value="text")
         assert instance.model_dump() == {"value": "text"}
 
-        instance = Model(value=True)
+        instance = model(value=True)
         assert instance.model_dump() == {"value": True}
 
     def test_anyof_with_null(self) -> None:
@@ -1361,12 +1378,12 @@ class TestSchemaEdgeCases:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(value="text")
+        instance = model(value="text")
         assert instance.model_dump() == {"value": "text"}
 
-        instance = Model(value=None)
+        instance = model(value=None)
         assert instance.model_dump() == {"value": None}
 
     def test_unique_items_array(self) -> None:
@@ -1382,11 +1399,12 @@ class TestSchemaEdgeCases:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(tags=["python", "coding", "dev"])
-        result = instance.model_dump()
-        assert len(result["tags"]) == 3
+        instance = model(tags=["python", "coding", "dev"])
+        assert instance.model_dump() == {
+            "tags": ["python", "coding", "dev"],
+        }
 
     def test_number_constraints(self) -> None:
         """Test number with min/max and multiple constraints."""
@@ -1402,19 +1420,19 @@ class TestSchemaEdgeCases:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(score=50.5)
+        instance = model(score=50.5)
         assert instance.model_dump() == {"score": 50.5}
 
         with pytest.raises(ValidationError):
-            Model(score=-1)
+            model(score=-1)
 
         with pytest.raises(ValidationError):
-            Model(score=101)
+            model(score=101)
 
         with pytest.raises(ValidationError):
-            Model(score=50.3)
+            model(score=50.3)
 
     def test_additional_properties_with_schema(self) -> None:
         """Test additionalProperties with schema definition."""
@@ -1428,9 +1446,9 @@ class TestSchemaEdgeCases:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(name="test", extra1=10, extra2=20)
+        instance = model(name="test", extra1=10, extra2=20)
         assert instance.model_dump() == {
             "name": "test",
             "extra1": 10,
@@ -1447,9 +1465,9 @@ class TestSchemaEdgeCases:
             "additionalProperties": {"type": "string"},
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_model(schema)
+        model = to_model(schema)
 
-        instance = Model(valid_name="test", another_name="value")
+        instance = model(valid_name="test", another_name="value")
         assert instance.model_dump() == {
             "valid_name": "test",
             "another_name": "value",
@@ -1501,6 +1519,33 @@ class TestConverterCaching:
         model2 = converter.convert_schema(schema2)
 
         assert model1 is not model2
+
+    def test_ref_model_cached_in_get_model(self) -> None:
+        """Test that `_get_model` properly caches resolved reference models."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "$defs": {
+                "User": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "age": {"type": "integer"},
+                    },
+                    "required": ["name"],
+                },
+            },
+            "properties": {
+                "user1": {"$ref": "#/$defs/User"},
+                "user2": {"$ref": "#/$defs/User"},
+            },
+        }
+
+        converter = SchemaConverter()
+        schema = Schema.model_validate(schema_raw)
+        model = converter.convert_schema(schema)
+
+        # Verify both fields use the same cached model
+        assert model.model_fields["user1"].annotation is model.model_fields["user2"].annotation
 
 
 @pytest.mark.parametrize(
@@ -1556,13 +1601,16 @@ class TestConverterCaching:
         ),
     ],
 )
-def test_lax_coercion_by_type(schema_raw: SchemaRaw, test_cases: list[Any]) -> None:
+def test_lax_coercion_by_type(
+    schema_raw: SchemaRaw,
+    test_cases: list[tuple[JsonType, JsonType]],
+) -> None:
     """Test lax mode coercion for different types."""
     schema = Schema.model_validate(schema_raw)
-    Model = to_lax_model(schema)
+    model = to_lax_model(schema)
 
     for input_value, expected_output in test_cases:
-        instance = Model(field=input_value)
+        instance = model(field=input_value)
         assert instance.model_dump() == {
             "field": expected_output,
         }
@@ -1580,9 +1628,9 @@ class TestLaxSchemaConverter:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_lax_model(schema)
+        model = to_lax_model(schema)
 
-        instance = Model()
+        instance = model()
         assert instance.model_dump() == {
             "status": "pending",
         }
@@ -1599,9 +1647,9 @@ class TestLaxSchemaConverter:
             "required": ["name", "age"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_lax_model(schema)
+        model = to_lax_model(schema)
 
-        instance = Model(name="Alice", age=30, tags=["dev", "python"])
+        instance = model(name="Alice", age=30, tags=["dev", "python"])
         assert instance.model_dump() == {
             "name": "Alice",
             "age": 30,
@@ -1619,9 +1667,9 @@ class TestLaxSchemaConverter:
             "required": ["name", "age"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_lax_model(schema)
+        model = to_lax_model(schema)
 
-        instance = Model(name=123, age="42")
+        instance = model(name=123, age="42")
         assert instance.model_dump() == {
             "name": "123",  # String coercion: int -> str
             "age": 42,  # Int coercion: str -> int
@@ -1637,12 +1685,12 @@ class TestLaxSchemaConverter:
             "required": ["name"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_lax_model(schema)
+        model = to_lax_model(schema)
 
         # Required field must be provided
         # TODO: catch specific error by regex
         with pytest.raises(ValidationError) as exc_info:
-            Model()
+            model()
         assert "name" in str(exc_info.value)
 
     def test_optional_fields_stay_optional(self) -> None:
@@ -1656,10 +1704,10 @@ class TestLaxSchemaConverter:
             "required": ["name"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_lax_model(schema)
+        model = to_lax_model(schema)
 
         # Optional field can be omitted
-        instance = Model(name="Alice")
+        instance = model(name="Alice")
         assert instance.model_dump() == {
             "name": "Alice",
             "age": None,
@@ -1682,17 +1730,17 @@ class TestLaxSchemaConverter:
             "required": ["count"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_lax_model(schema, format_validators={"positive": validate_positive})
+        model = to_lax_model(schema, format_validators={"positive": validate_positive})
 
         # Coercion happens first, then validation
-        instance = Model(count="42")
+        instance = model(count="42")
         assert instance.model_dump() == {
             "count": 42,
         }
 
         # Negative value fails validation after coercion
         with pytest.raises(ValidationError):
-            Model(count="-5")
+            model(count="-5")
 
     def test_multiple_fields_with_different_types(self) -> None:
         """Test coercion on multiple fields with different types."""
@@ -1707,9 +1755,9 @@ class TestLaxSchemaConverter:
             "required": ["name", "age", "balance", "tags"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_lax_model(schema)
+        model = to_lax_model(schema)
 
-        instance = Model(
+        instance = model(
             name=123,  # int -> str
             age="25",  # str -> int
             balance="99.99",  # str -> float
@@ -1739,10 +1787,10 @@ class TestLaxSchemaConverter:
             "required": ["user"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_lax_model(schema)
+        model = to_lax_model(schema)
 
         # Nested object fields still work
-        instance = Model(user={"name": 123})
+        instance = model(user={"name": 123})
         assert instance.model_dump() == {
             "user": {
                 "name": "123",  # Coercion happens on nested string field
@@ -1764,16 +1812,16 @@ class TestLaxSchemaConverter:
             "required": ["value"],
         }
         schema = Schema.model_validate(schema_raw)
-        Model = to_lax_model(schema)
+        model = to_lax_model(schema)
 
         # String value works
-        instance = Model(value="test")
+        instance = model(value="test")
         assert instance.model_dump() == {
             "value": "test",
         }
 
         # Int value works
-        instance = Model(value=42)
+        instance = model(value=42)
         assert instance.model_dump() == {
             "value": 42,
         }

@@ -13,8 +13,8 @@ __all__ = [
 
 
 def load_json_simple(data: str, /) -> list[Any] | dict[str, Any] | None:
-    """
-    Load complex JSON (dict, list) from the given string.
+    """Load complex JSON (dict, list) from the given string.
+
     Return `None` if the string is not a valid complex JSON.
     Do not attempt to fix malformed JSON.
     """
@@ -33,7 +33,7 @@ def load_json_simple(data: str, /) -> list[Any] | dict[str, Any] | None:
     return None
 
 
-def coerce_to_str(value: Any) -> Any:
+def coerce_to_str(value: Any) -> Any:  # noqa: ANN401
     # None -> str
     if value is None:
         return ""
@@ -41,7 +41,7 @@ def coerce_to_str(value: Any) -> Any:
     return str(value)
 
 
-def coerce_to_int(value: Any) -> Any:
+def coerce_to_int(value: Any) -> Any:  # noqa: ANN401
     # str -> int
     if isinstance(value, str):
         try:
@@ -56,7 +56,7 @@ def coerce_to_int(value: Any) -> Any:
     return value
 
 
-def coerce_to_float(value: Any) -> Any:
+def coerce_to_float(value: Any) -> Any:  # noqa: ANN401
     # str -> float
     if isinstance(value, str):
         try:
@@ -71,7 +71,7 @@ def coerce_to_float(value: Any) -> Any:
     return value
 
 
-def coerce_to_list(value: Any) -> Any:
+def coerce_to_list(value: Any) -> Any:  # noqa: ANN401
     # None -> list
     if value is None:
         return []

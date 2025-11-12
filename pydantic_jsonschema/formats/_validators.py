@@ -1,11 +1,11 @@
 import ipaddress
 import re
 from datetime import date, datetime, time
-from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
 
 from pydantic_jsonschema.exceptions import FormatValidationError
+from pydantic_jsonschema.types import JsonType
 
 __all__ = [
     "validate_date",
@@ -25,9 +25,8 @@ __all__ = [
 
 
 # Date/Time validators
-def validate_date(value: Any) -> str:
-    """
-    Validate ISO 8601 date format (YYYY-MM-DD).
+def validate_date(value: JsonType) -> str:
+    """Validate ISO 8601 date format (YYYY-MM-DD).
 
     :param value: Value to validate.
     :returns: Original value if valid.
@@ -52,9 +51,8 @@ def validate_date(value: Any) -> str:
     return value
 
 
-def validate_time(value: Any) -> str:
-    """
-    Validate ISO 8601 time format (HH:MM:SS or HH:MM:SS.ffffff with optional timezone).
+def validate_time(value: JsonType) -> str:
+    """Validate ISO 8601 time format (HH:MM:SS or HH:MM:SS.ffffff with optional timezone).
 
     :param value: Value to validate.
     :returns: Original value if valid.
@@ -79,9 +77,8 @@ def validate_time(value: Any) -> str:
     return value
 
 
-def validate_datetime(value: Any) -> str:
-    """
-    Validate ISO 8601 datetime format (RFC 3339).
+def validate_datetime(value: JsonType) -> str:
+    """Validate ISO 8601 datetime format (RFC 3339).
 
     :param value: Value to validate.
     :returns: Original value if valid.
@@ -109,13 +106,12 @@ def validate_datetime(value: Any) -> str:
 # ISO 8601 Duration validator
 _DURATION_PATTERN = re.compile(
     r"^P(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?"
-    r"(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$"
+    r"(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$",
 )
 
 
-def validate_duration(value: Any) -> str:
-    """
-    Validate ISO 8601 duration format (P[n]Y[n]M[n]DT[n]H[n]M[n]S).
+def validate_duration(value: JsonType) -> str:
+    """Validate ISO 8601 duration format (P[n]Y[n]M[n]DT[n]H[n]M[n]S).
 
     :param value: Value to validate.
     :returns: Original value if valid.
@@ -149,13 +145,12 @@ def validate_duration(value: Any) -> str:
 # Email validator
 _EMAIL_PATTERN = re.compile(
     r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}"
-    r"[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"
+    r"[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
 )
 
 
-def validate_email(value: Any) -> str:
-    """
-    Validate email address format (simple validation).
+def validate_email(value: JsonType) -> str:
+    """Validate email address format (simple validation).
 
     :param value: Value to validate.
     :returns: Original value if valid.
@@ -180,13 +175,12 @@ def validate_email(value: Any) -> str:
 
 # Hostname validator
 _HOSTNAME_PATTERN = re.compile(
-    r"^(?=.{1,253}$)(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})*$"
+    r"^(?=.{1,253}$)(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})*$",
 )
 
 
-def validate_hostname(value: Any) -> str:
-    """
-    Validate hostname format (RFC 1123).
+def validate_hostname(value: JsonType) -> str:
+    """Validate hostname format (RFC 1123).
 
     :param value: Value to validate.
     :returns: Original value if valid.
@@ -210,9 +204,8 @@ def validate_hostname(value: Any) -> str:
 
 
 # IP address validators
-def validate_ipv4(value: Any) -> str:
-    """
-    Validate IPv4 address format.
+def validate_ipv4(value: JsonType) -> str:
+    """Validate IPv4 address format.
 
     :param value: Value to validate.
     :returns: Original value if valid.
@@ -237,9 +230,8 @@ def validate_ipv4(value: Any) -> str:
     return value
 
 
-def validate_ipv6(value: Any) -> str:
-    """
-    Validate IPv6 address format.
+def validate_ipv6(value: JsonType) -> str:
+    """Validate IPv6 address format.
 
     :param value: Value to validate.
     :returns: Original value if valid.
@@ -265,9 +257,8 @@ def validate_ipv6(value: Any) -> str:
 
 
 # UUID validator
-def validate_uuid(value: Any) -> str:
-    """
-    Validate UUID format (RFC 4122).
+def validate_uuid(value: JsonType) -> str:
+    """Validate UUID format (RFC 4122).
 
     :param value: Value to validate.
     :returns: Original value if valid.
@@ -300,9 +291,8 @@ def validate_uuid(value: Any) -> str:
 
 
 # URI validators
-def validate_uri(value: Any) -> str:
-    """
-    Validate URI format (RFC 3986).
+def validate_uri(value: JsonType) -> str:
+    """Validate URI format (RFC 3986).
 
     :param value: Value to validate.
     :returns: Original value if valid.
@@ -335,9 +325,9 @@ def validate_uri(value: Any) -> str:
     return value
 
 
-def validate_uri_reference(value: Any) -> str:
-    """
-    Validate URI reference format (RFC 3986).
+def validate_uri_reference(value: JsonType) -> str:
+    """Validate URI reference format (RFC 3986).
+
     Can be absolute URI, relative reference, or fragment.
 
     :param value: Value to validate.
@@ -364,9 +354,9 @@ def validate_uri_reference(value: Any) -> str:
 
 
 # IRI validators (Internationalized Resource Identifier)
-def validate_iri(value: Any) -> str:
-    """
-    Validate IRI format (RFC 3987).
+def validate_iri(value: JsonType) -> str:
+    """Validate IRI format (RFC 3987).
+
     Similar to URI but allows international characters.
 
     Note: This is a basic validation. For full RFC 3987 compliance,
@@ -403,9 +393,9 @@ def validate_iri(value: Any) -> str:
     return value
 
 
-def validate_iri_reference(value: Any) -> str:
-    """
-    Validate IRI reference format (RFC 3987).
+def validate_iri_reference(value: JsonType) -> str:
+    """Validate IRI reference format (RFC 3987).
+
     Similar to URI reference but allows international characters.
 
     Note: This is a basic validation. For full RFC 3987 compliance,

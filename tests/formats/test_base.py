@@ -1,19 +1,23 @@
+from typing import ClassVar
+
 import pytest
 from pydantic import GetCoreSchemaHandler
-from pydantic_core import core_schema
+from pydantic_core import CoreSchema, core_schema
 
 from pydantic_jsonschema.formats import SchemaFormat
-from pydantic_jsonschema.types import DataType
+from pydantic_jsonschema.types import DataType, JsonType
 
 
 class MockLanguageCode:
     """Mock Pydantic type that validates language codes (like LanguageAlpha2)."""
 
+    LANGUAGE_CODE_LENGTH: ClassVar[int] = 2
+
     def __init__(self, value: str) -> None:
         if not isinstance(value, str):
             msg = "Must be a string"
             raise TypeError(msg)
-        if len(value) != 2 or not value.isalpha():
+        if len(value) != self.LANGUAGE_CODE_LENGTH or not value.isalpha():
             msg = f"Invalid language code: {value!r}. Must be 2 letters."
             raise ValueError(msg)
         self.value = value.lower()
@@ -23,8 +27,10 @@ class MockLanguageCode:
 
     @classmethod
     def __get_pydantic_core_schema__(
-        cls, source_type: type, handler: GetCoreSchemaHandler
-    ) -> core_schema.CoreSchema:
+        cls,
+        source_type: type,
+        handler: GetCoreSchemaHandler,
+    ) -> CoreSchema:
         """Pydantic core schema for validation."""
         return core_schema.no_info_after_validator_function(cls, handler(str))
 
@@ -32,11 +38,13 @@ class MockLanguageCode:
 class MockCurrencyCode:
     """Mock Pydantic type that validates currency codes (like Currency)."""
 
+    CURRENCY_CODE_LENGTH: ClassVar[int] = 3
+
     def __init__(self, value: str) -> None:
         if not isinstance(value, str):
             msg = "Must be a string"
             raise TypeError(msg)
-        if len(value) != 3 or not value.isalpha():
+        if len(value) != self.CURRENCY_CODE_LENGTH or not value.isalpha():
             msg = f"Invalid currency code: {value!r}. Must be 3 letters."
             raise ValueError(msg)
         self.value = value.upper()
@@ -46,8 +54,10 @@ class MockCurrencyCode:
 
     @classmethod
     def __get_pydantic_core_schema__(
-        cls, source_type: type, handler: GetCoreSchemaHandler
-    ) -> core_schema.CoreSchema:
+        cls,
+        source_type: type,
+        handler: GetCoreSchemaHandler,
+    ) -> CoreSchema:
         """Pydantic core schema for validation."""
         return core_schema.no_info_after_validator_function(cls, handler(str))
 
@@ -66,8 +76,9 @@ class TestSchemaFormat:
         )
 
         # Should return value as-is when validator is None
-        assert fmt("test") == "test"
-        assert fmt(123) == 123
+        values: list[JsonType] = ["test", 123, 45.6, True, None, {"key": "value"}, [1, 2, 3]]
+        for val in values:
+            assert fmt(val) == val
 
     def test_format_with_validator(self) -> None:
         """Test SchemaFormat with validator."""
@@ -75,7 +86,8 @@ class TestSchemaFormat:
         def string_validator(value: object) -> str:
             if not isinstance(value, str):
                 msg = "Must be string"
-                raise ValueError(msg)
+                # Pydantic expects only `ValueError` and `AssertionError`, not `TypeError`
+                raise ValueError(msg)  # noqa: TRY004
             return value
 
         fmt = SchemaFormat(
@@ -100,7 +112,8 @@ class TestSchemaFormat:
         def int_validator(value: object) -> int:
             if not isinstance(value, (int, str)):
                 msg = "Must be int or string"
-                raise ValueError(msg)
+                # Pydantic expects only `ValueError` and `AssertionError`, not `TypeError`
+                raise ValueError(msg)  # noqa: TRY004
             return int(value) if isinstance(value, str) else value
 
         # This should raise during creation because example is invalid

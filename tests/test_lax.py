@@ -1,3 +1,6 @@
+from collections.abc import Callable
+from typing import Any
+
 import pytest
 
 from pydantic_jsonschema._lax import (
@@ -8,6 +11,7 @@ from pydantic_jsonschema._lax import (
     coerce_to_str,
     load_json_simple,
 )
+from pydantic_jsonschema.types import JsonType
 
 
 class TestCoerceFunctions:
@@ -27,7 +31,7 @@ class TestCoerceFunctions:
             ),
         ],
     )
-    def test_load_valid_json(self, data: str, expected) -> None:
+    def test_load_valid_json(self, data: str, expected: JsonType) -> None:
         """Test loading valid JSON."""
         result = load_json_simple(data)
         assert result == expected
@@ -55,7 +59,7 @@ class TestCoerceFunctions:
             ("false", False),
         ],
     )
-    def test_load_valid_primitives(self, data: str, expected) -> None:
+    def test_load_valid_primitives(self, data: str, expected: JsonType) -> None:
         """Test loading valid JSON primitives returns the parsed value."""
         result = load_json_simple(data)
         assert result == expected
@@ -111,7 +115,12 @@ class TestCoerceFunctions:
             (coerce_to_list, "a,,c", ["a", "", "c"]),
         ],
     )
-    def test_coerce_functions(self, coerce_func, value, expected) -> None:
+    def test_coerce_functions(
+        self,
+        coerce_func: Callable[[Any], Any],
+        value: JsonType,
+        expected: JsonType,
+    ) -> None:
         """Test all coerce functions with various inputs."""
         result = coerce_func(value)
         assert result == expected
@@ -128,7 +137,7 @@ class TestCoerceFunctions:
             (coerce_to_float, None),
         ],
     )
-    def test_coerce_unchanged(self, coerce_func, value) -> None:
+    def test_coerce_unchanged(self, coerce_func: Callable[[Any], Any], value: JsonType) -> None:
         """Test coerce functions return unchanged for invalid values."""
         result = coerce_func(value)
         assert result == value
@@ -137,11 +146,14 @@ class TestCoerceFunctions:
 
     def test_coerce_chain_str_to_int_to_float(self) -> None:
         """Test chaining coercions."""
-        value = "123"
-        value = coerce_to_int(value)
-        assert value == 123
+        initial_value = "123"
+        expected_int_value = 123
+        expected_float_value = 123.0
+
+        value = coerce_to_int(initial_value)
+        assert value == expected_int_value
         value = coerce_to_float(value)
-        assert value == 123.0
+        assert value == expected_float_value
 
     @pytest.mark.parametrize(
         "value",
@@ -150,7 +162,7 @@ class TestCoerceFunctions:
             -999999999999999999999,
         ],
     )
-    def test_coerce_large_numbers(self, value) -> None:
+    def test_coerce_large_numbers(self, value: int) -> None:
         """Test coercion with large numbers."""
         assert coerce_to_str(value) == str(value)
         assert coerce_to_float(value) == float(value)
@@ -163,7 +175,7 @@ class TestCoerceFunctions:
             (float("nan"), "nan"),
         ],
     )
-    def test_coerce_special_floats(self, special_value, expected) -> None:
+    def test_coerce_special_floats(self, special_value: float, expected: str) -> None:
         """Test coercion with special float values."""
         result = coerce_to_str(special_value)
         assert result == expected
@@ -174,14 +186,17 @@ class TestCoerceFunctions:
             '{"str": "value", "int": 123, "float": 3.14, "bool": true, '
             '"null": null, "list": [1, 2], "dict": {}}'
         )
+        expected_result = {
+            "str": "value",
+            "int": 123,
+            "float": 3.14,
+            "bool": True,
+            "null": None,
+            "list": [1, 2],
+            "dict": {},
+        }
         result = load_json_simple(data)
-        assert result["str"] == "value"
-        assert result["int"] == 123
-        assert result["float"] == 3.14
-        assert result["bool"] is True
-        assert result["null"] is None
-        assert result["list"] == [1, 2]
-        assert result["dict"] == {}
+        assert result == expected_result
 
     def test_csv_with_empty_values(self) -> None:
         """Test CSV parsing with empty values."""
@@ -196,7 +211,7 @@ class TestCoerceFunctions:
             ("🚀", "🚀"),
         ],
     )
-    def test_unicode_handling(self, value, expected) -> None:
+    def test_unicode_handling(self, value: str, expected: str) -> None:
         """Test handling of Unicode characters."""
         assert coerce_to_str(value) == expected
         result = load_json_simple(f'{{"greeting": "{value}"}}')
@@ -232,7 +247,12 @@ class TestCoerceFunctionsMapping:
             (list, "a, b", ["a", "b"]),
         ],
     )
-    def test_coerce_function_from_dict(self, func_type, value, expected) -> None:
+    def test_coerce_function_from_dict(
+        self,
+        func_type: type,
+        value: JsonType,
+        expected: JsonType,
+    ) -> None:
         """Test coerce functions in COERCE_FUNCTIONS dict."""
         result = COERCE_FUNCTIONS[func_type](value)
         assert result == expected

@@ -19,7 +19,7 @@ from pydantic.fields import FieldInfo
 from ._lax import COERCE_FUNCTIONS
 from ._utils import sanitize_identifier
 from .exceptions import SchemaConvertionError, SchemaReferenceError
-from .types import DataType, Reference, Schema
+from .types import DataType, JsonType, Reference, Schema
 
 __all__ = [
     "BeforeValidatorFunc",
@@ -54,10 +54,17 @@ _DATA_TYPE_ANNOTATION_MAPPING: Final[dict[DataType, type]] = {
     DataType.OBJECT: Any,
 }
 
+# Type aliases
+type Ref = str  # Reference path like "#/$defs/User"
+type SchemaHash = str  # Schema cache key (JSON hash)
+type FormatName = str  # Format name like "date-time", "uuid"
+type AnnotationType = Any  # `type`, `Annotated`, `Union`, `Literal`, `ForwardRef`, etc.
+type PythonType = Any  # Anything that Pydantic supports
+type FormatValidatorType = FormatValidator | type  # `FormatValidator` or `Annotated`
+
 
 class FormatValidator(Protocol):
-    """
-    Protocol for format validator callables.
+    """Protocol for format validator callables.
 
     Can be:
     - Callable: validation function
@@ -75,13 +82,14 @@ class FormatValidator(Protocol):
 
     def __call__(
         self,
-        value: Any,
-    ) -> Any: ...
+        value: PythonType,
+    ) -> PythonType:
+        """Process the value after Pydantic's standard validation."""
+        ...
 
 
 class BeforeValidatorFunc(Protocol):
-    """
-    Protocol for before validator callables.
+    """Protocol for before validator callables.
 
     Called before Pydantic's standard validation.
     Should either accept any value and return processed value of the desired type,
@@ -92,14 +100,10 @@ class BeforeValidatorFunc(Protocol):
 
     def __call__(
         self,
-        value: Any,
-    ) -> Any: ...
-
-
-# Type aliases
-type Ref = str  # Reference path like "#/$defs/User"
-type SchemaHash = str  # Schema cache key (JSON hash)
-type FormatName = str  # Format name like "date-time", "uuid"
+        value: JsonType,
+    ) -> PythonType:
+        """Process the value before Pydantic's standard validation."""
+        ...
 
 
 class SchemaConverter:
@@ -111,11 +115,11 @@ class SchemaConverter:
         default_model_name: str = _DEFAULT_MODEL_NAME,
         refs: dict[Ref, type[BaseModel]] | None = None,
         # FormatValidator can be a callable, type class, or Annotated type
-        format_validators: dict[FormatName, FormatValidator | type] | None = None,
+        format_validators: dict[FormatName, FormatValidatorType] | None = None,
     ) -> None:
         self._default_model_name: str = default_model_name
         self._refs: dict[Ref, type[BaseModel]] = refs or {}
-        self._format_validators: dict[FormatName, FormatValidator | type] = format_validators or {}
+        self._format_validators: dict[FormatName, FormatValidatorType] = format_validators or {}
 
         self._defs_cache: dict[Ref, Schema] = {}
         self._models_cache: dict[SchemaHash, type[BaseModel]] = {}
@@ -126,8 +130,7 @@ class SchemaConverter:
         schema: Schema,
         /,
     ) -> SchemaHash:
-        """
-        Get cache key for schema.
+        """Get cache key for schema.
 
         :param schema: Schema to hash.
         :returns: hash string (using JSON representation).
@@ -140,8 +143,7 @@ class SchemaConverter:
         segment: str,
         /,
     ) -> Iterator[None]:
-        """
-        Context manager for tracking resolution path.
+        """Context manager for tracking resolution path.
 
         :param segment: Path segment to add.
         :yields: None
@@ -159,8 +161,7 @@ class SchemaConverter:
         *,
         model_name: str | None = None,
     ) -> type[BaseModel]:
-        """
-        Convert JSON Schema (root schema) to Pydantic model.
+        """Convert JSON Schema (root schema) to Pydantic model.
 
         :param schema: Schema to convert.
         :param model_name: Name for the generated model.
@@ -180,8 +181,7 @@ class SchemaConverter:
         *,
         model_name: str | None = None,
     ) -> type[BaseModel]:
-        """
-        Convert JSON Schema to Pydantic model (for nested/def schemas).
+        """Convert JSON Schema to Pydantic model (for nested/def schemas).
 
         :param schema: Schema to convert.
         :param model_name: Name for the generated model.
@@ -203,8 +203,7 @@ class SchemaConverter:
         *,
         model_name: str | None = None,
     ) -> type[BaseModel]:
-        """
-        Build Pydantic model from schema (common logic for root and nested).
+        """Build Pydantic model from schema (common logic for root and nested).
 
         :param schema: Schema to convert.
         :param model_name: Name for the generated model.
@@ -272,8 +271,7 @@ class SchemaConverter:
         schema: Schema,
         /,
     ) -> dict[Ref, Schema]:
-        """
-        Extract inline schema defs from `$defs` field.
+        """Extract inline schema defs from `$defs` field.
 
         :param schema: Schema to extract defs from.
         :returns: Mapping of reference paths to schemas.
@@ -298,8 +296,7 @@ class SchemaConverter:
         schema: Schema,
         /,
     ) -> None:
-        """
-        Build defs cache from schema `$defs` field.
+        """Build defs cache from schema `$defs` field.
 
         :param schema: Schema to extract defs from.
         :returns: None
@@ -342,8 +339,7 @@ class SchemaConverter:
         ref: Ref,
         /,
     ) -> type[BaseModel]:
-        """
-        Get or generate Pydantic model for reference.
+        """Get or generate Pydantic model for reference.
 
         :param ref: Reference path (e.g., "#/$defs/User").
         :returns: Pydantic model (from cache or generated).
@@ -369,15 +365,16 @@ class SchemaConverter:
             return self._models_cache[cache_key]
 
         # Generate model from schema
-        return self._convert_nested_schema(schema)
+        model = self._convert_nested_schema(schema)
+        self._models_cache[cache_key] = model
+        return model
 
     def _get_base_classes(
         self,
         schema: Schema,
         /,
     ) -> tuple[type[BaseModel], ...]:
-        """
-        Get base classes from `allOf` composition.
+        """Get base classes from `allOf` composition.
 
         :param schema: Schema to extract base classes from.
         :returns: Tuple of base classes.
@@ -433,7 +430,7 @@ class SchemaConverter:
         for field_name, field_schema in (schema.properties or {}).items():
             with self._track_path(f"properties.{field_name}"):
                 # Handle reference fields
-                annotation: type[BaseModel] | None = None
+                annotation: AnnotationType | None = None
                 schema_for_field: Schema
 
                 if isinstance(field_schema, Reference):
@@ -457,12 +454,11 @@ class SchemaConverter:
 
     def _apply_validators(
         self,
-        annotation: Any,
+        annotation: AnnotationType,
         schema: Schema,
         /,
-    ) -> Any:
-        """
-        Apply validator to annotation.
+    ) -> AnnotationType:
+        """Apply validator to annotation.
 
         Handles three types of validators:
         - Annotated types: used directly as annotation (replaces original)
@@ -511,10 +507,9 @@ class SchemaConverter:
         /,
         *,
         is_required: bool | None = None,
-        annotation: Any | None = None,
+        annotation: AnnotationType | None = None,
     ) -> FieldInfo:
-        """
-        Convert schema to Pydantic FieldInfo.
+        """Convert schema to Pydantic FieldInfo.
 
         :param schema: Schema to convert.
         :param is_required: Whether field is is_required.
@@ -523,10 +518,12 @@ class SchemaConverter:
         """
         # Get annotation if not provided
         if annotation is None:
-            annotation = self._schema_to_annotation(schema)
+            valid_annotation: AnnotationType = self._schema_to_annotation(schema)
+        else:
+            valid_annotation = annotation
 
         # Apply validators
-        annotation = self._apply_validators(annotation, schema)
+        valid_annotation = self._apply_validators(valid_annotation, schema)
 
         # Determine default value
         default = self._get_field_default(schema, is_required=is_required)
@@ -536,7 +533,7 @@ class SchemaConverter:
 
         # Create FieldInfo
         return FieldInfo(
-            annotation=annotation,
+            annotation=valid_annotation,
             default=default,
             examples=examples,
             title=schema.title,
@@ -555,8 +552,7 @@ class SchemaConverter:
         schema: Schema | Reference,
         /,
     ) -> type | ForwardRef:
-        """
-        Convert schema to Python type annotation.
+        """Convert schema to Python type annotation.
 
         :param schema: Schema to convert.
         :returns: Type annotation.
@@ -634,9 +630,8 @@ class SchemaConverter:
         /,
         *,
         is_required: bool | None,
-    ) -> Any:
-        """
-        Determine default value for the field based on its schema.
+    ) -> Any:  # noqa:  ANN401
+        """Determine default value for the field based on its schema.
 
         :param schema: Schema to get default from.
         :param is_required: Whether field is required.
@@ -658,8 +653,7 @@ class SchemaConverter:
         schema: Schema,
         /,
     ) -> int | None:
-        """
-        Get min items length based on the schema type.
+        """Get min items length based on the schema type.
 
         :param schema: Schema to get min length from.
         :returns: min items length or None.
@@ -673,8 +667,7 @@ class SchemaConverter:
         schema: Schema,
         /,
     ) -> int | None:
-        """
-        Get max items length based on the schema type.
+        """Get max items length based on the schema type.
 
         :param schema: Schema to get max length from.
         :returns: max items length or None.
@@ -685,8 +678,7 @@ class SchemaConverter:
 
 
 class LaxSchemaConverter(SchemaConverter):
-    """
-    Lax schema conversion with type coercion.
+    """Lax schema conversion with type coercion.
 
     Provides lax validation that:
     - Adds before validators to coerce values to expected types
@@ -695,12 +687,11 @@ class LaxSchemaConverter(SchemaConverter):
 
     def _apply_validators(
         self,
-        annotation: Any,
+        annotation: AnnotationType,
         schema: Schema,
         /,
-    ) -> Any:
-        """
-        Apply validators to annotation with lax coercion.
+    ) -> AnnotationType:
+        """Apply validators to annotation with lax coercion.
 
         Adds BeforeValidators for type coercion before format validators.
 
@@ -722,7 +713,12 @@ class LaxSchemaConverter(SchemaConverter):
         coerce_validator = BeforeValidator(coerce_func)
 
         # If already Annotated (from format validator), add coerce validator
-        if get_origin(annotation_with_format) is Annotated:
+        # mypy doesn't understand that `AnnotationType` can be `Annotated` special form
+        if get_origin(annotation_with_format) is Annotated:  # type: ignore[comparison-overlap]
+            # `annotation_with_format` is `Annotated`, so it has `__args__` and `__metadata__`
+            assert hasattr(annotation_with_format, "__args__")  # noqa: S101
+            assert hasattr(annotation_with_format, "__metadata__")  # noqa: S101
+
             # Extract the base type and existing metadata
             base_annotation = annotation_with_format.__args__[0]
             existing_metadata = annotation_with_format.__metadata__
@@ -734,15 +730,17 @@ class LaxSchemaConverter(SchemaConverter):
         return Annotated[annotation_with_format, coerce_validator]
 
     @staticmethod
-    def _extract_base_type(annotation: Any) -> type | None:
-        """
-        Extract base type from annotation for coercion.
+    def _extract_base_type(annotation: AnnotationType) -> type | None:
+        """Extract base type from annotation for coercion.
 
         :param annotation: Type annotation to extract from.
         :returns: Base type if coercible, None otherwise.
         """
         # Handle Annotated types (shouldn't happen at this stage, but just in case)
-        if get_origin(annotation) is Annotated:
+        # mypy doesn't understand that `AnnotationType` can be `Annotated` special form
+        if get_origin(annotation) is Annotated:  # type: ignore[comparison-overlap]
+            # `annotation` is `Annotated`, so it has __args__
+            assert hasattr(annotation, "__args__")  # noqa: S101
             annotation = annotation.__args__[0]
 
         # Handle direct types
@@ -751,7 +749,8 @@ class LaxSchemaConverter(SchemaConverter):
 
         # Handle list types (list[...])
         origin = get_origin(annotation)
-        if origin is list:
+        # mypy doesn't understand that `get_origin` can return `list` type
+        if origin is list:  # type: ignore[comparison-overlap]
             return list
 
         return None
@@ -764,10 +763,9 @@ def to_model(
     *,
     model_name: str | None = None,
     refs: dict[Ref, type[BaseModel]] | None = None,
-    format_validators: dict[FormatName, FormatValidator | type] | None = None,
+    format_validators: dict[FormatName, FormatValidatorType] | None = None,
 ) -> type[BaseModel]:
-    """
-    Convert schema to Pydantic model.
+    """Convert schema to Pydantic model.
 
     :param schema: Schema to convert.
     :param refs: Pre-built reference models.
@@ -788,10 +786,9 @@ def to_lax_model(
     *,
     model_name: str | None = None,
     refs: dict[Ref, type[BaseModel]] | None = None,
-    format_validators: dict[FormatName, FormatValidator | type] | None = None,
+    format_validators: dict[FormatName, FormatValidatorType] | None = None,
 ) -> type[BaseModel]:
-    """
-    Convert schema to Pydantic model with lax validation.
+    """Convert schema to Pydantic model with lax validation.
 
     All fields are optional and have sensible defaults.
 

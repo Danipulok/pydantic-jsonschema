@@ -7,8 +7,7 @@ __all__ = [
 
 # TODO: refactor
 def sanitize_identifier(name: str) -> str:
-    """
-    Sanitize string to be a valid Python identifier.
+    """Sanitize string to be a valid Python identifier.
 
     :param name: String to sanitize.
     :returns: Valid Python identifier.

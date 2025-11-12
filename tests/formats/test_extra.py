@@ -82,7 +82,9 @@ def test_iso_formats(format_name: str, valid_values: list[str], invalid_values: 
     ],
 )
 def test_identifier_formats(
-    format_name: str, valid_values: list[str], invalid_values: list[str]
+    format_name: str,
+    valid_values: list[str],
+    invalid_values: list[str],
 ) -> None:
     """Test identifier formats with valid and invalid values."""
     format_map = {
@@ -132,7 +134,9 @@ def test_ulid_format() -> None:
     ],
 )
 def test_network_formats(
-    format_name: str, valid_values: list[str], invalid_values: list[str]
+    format_name: str,
+    valid_values: list[str],
+    invalid_values: list[str],
 ) -> None:
     """Test network and web formats with valid and invalid values."""
     format_map = {
@@ -193,7 +197,9 @@ def test_s3_path() -> None:
     ],
 )
 def test_other_formats(
-    format_name: str, valid_values: list[str], invalid_values: list[str]
+    format_name: str,
+    valid_values: list[str],
+    invalid_values: list[str],
 ) -> None:
     """Test other specialized formats with valid and invalid values."""
     format_map = {

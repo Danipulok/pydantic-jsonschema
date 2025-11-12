@@ -1,3 +1,6 @@
+from collections.abc import Callable
+from typing import Any
+
 import pytest
 
 from pydantic_jsonschema.formats._validators import (
@@ -15,6 +18,7 @@ from pydantic_jsonschema.formats._validators import (
     validate_uri_reference,
     validate_uuid,
 )
+from pydantic_jsonschema.types import JsonType
 
 
 class TestDateTimeValidators:
@@ -179,7 +183,7 @@ class TestNetworkValidators:
         [
             "192.168.1.1",
             "127.0.0.1",
-            "0.0.0.0",
+            "0.0.0.0",  # noqa: S104
         ],
     )
     def test_validate_ipv4_success(self, value: str) -> None:
@@ -332,7 +336,10 @@ class TestURIValidators:
     ],
 )
 @pytest.mark.parametrize("invalid_value", [123, None, [], {}])
-def test_all_validators_reject_wrong_types(validator, invalid_value) -> None:
+def test_all_validators_reject_wrong_types(
+    validator: Callable[[Any], str],
+    invalid_value: JsonType,
+) -> None:
     """Test that all validators reject non-string types."""
     with pytest.raises(ValueError, match="Expected string"):
         validator(invalid_value)

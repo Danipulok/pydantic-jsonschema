@@ -10,8 +10,7 @@ __all__ = ["SchemaFormat"]
 
 
 class SchemaFormat(BaseModel):
-    """
-    Schema format definition with validation.
+    """Schema format definition with validation.
 
     Represents a JSON Schema format with examples and optional validation.
 
@@ -25,6 +24,7 @@ class SchemaFormat(BaseModel):
             - type: Pydantic type class (e.g., Currency from pydantic-extra-types)
             - Annotated type with validators (e.g., Annotated[int, AfterValidator(...)])
             Should raise `ValueError` on an invalid input.
+
     """
 
     key: str = Field(
@@ -74,7 +74,7 @@ class SchemaFormat(BaseModel):
 
         return self
 
-    def __call__(self, value: JsonType) -> Any:
+    def __call__(self, value: JsonType) -> Any:  # noqa: ANN401
         """Validate and return value using the validator if defined.
 
         :param value: Value to validate
