@@ -49,5 +49,5 @@ product = Product(
     price=19.99,
 )
 
-print(product.sku)  # > WDG-1234-PRO
-print(product.price)  # > 19.99
+print(product.sku)  # type: ignore[attr-defined]  # > WDG-1234-PRO
+print(product.price)  # type: ignore[attr-defined]  # > 19.99

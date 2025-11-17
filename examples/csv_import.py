@@ -39,7 +39,7 @@ for row in reader:
     products.append(product)
 
 for p in products:
-    print(f"{p.name}: ${p.price} (Stock: {p.quantity})")
+    print(f"{p.name}: ${p.price} (Stock: {p.quantity})")  # type: ignore[attr-defined]
     # > Widget: $19.99 (Stock: 100)
     # > Gadget: $29.99 (Stock: 50)
     # > Tool: $9.99 (Stock: 200)

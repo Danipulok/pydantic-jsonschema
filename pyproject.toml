@@ -69,10 +69,6 @@ module = "pydantic_jsonschema.formats.extra"
 disable_error_code = ["arg-type"]
 
 [[tool.mypy.overrides]]
-module = "examples.*"
-disable_error_code = ["attr-defined"]
-
-[[tool.mypy.overrides]]
 module = ["fqdn", "rfc3986"]
 follow_untyped_imports = true
 
