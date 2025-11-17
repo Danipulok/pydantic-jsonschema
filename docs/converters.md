@@ -7,7 +7,7 @@ This guide shows how to convert JSON Schema into Pydantic models for type-safe v
 Convert a simple schema to a Pydantic model:
 
 ```python
-from pydantic_jsonschema import to_model, Schema
+from pydantic_jsonschema import Schema, to_model
 
 schema = Schema.model_validate({
     "type": "object",
@@ -22,7 +22,8 @@ User = to_model(schema, model_name="User")
 
 # Use it like any Pydantic model
 user = User(username="alice", email="alice@example.com")
-print(user.username)  #> alice
+print(user.username)
+#> alice
 ```
 
 *This example is complete and can be run as-is.*
@@ -36,15 +37,15 @@ There are two ways to define schemas:
 ### Using Schema class
 
 ```python
-from pydantic_jsonschema import Schema, DataType
+from pydantic_jsonschema import DataType, Schema
 
 schema = Schema(
     type=DataType.OBJECT,
     properties={
         "name": Schema(type=DataType.STRING),
-        "age": Schema(type=DataType.INTEGER, minimum=0)
+        "age": Schema(type=DataType.INTEGER, minimum=0),
     },
-    required=["name"]
+    required=["name"],
 )
 ```
 
@@ -53,14 +54,16 @@ schema = Schema(
 ```python
 from pydantic_jsonschema import Schema
 
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "name": {"type": "string"},
-        "age": {"type": "integer", "minimum": 0}
-    },
-    "required": ["name"]
-})
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "age": {"type": "integer", "minimum": 0},
+        },
+        "required": ["name"],
+    }
+)
 ```
 
 Both approaches are equivalent. Use whichever suits your workflow.
@@ -74,14 +77,16 @@ Object schemas become Pydantic models:
 ```python
 from pydantic_jsonschema import Schema, to_model
 
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "title": {"type": "string"},
-        "views": {"type": "integer", "minimum": 0}
-    },
-    "required": ["title"]
-})
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string"},
+            "views": {"type": "integer", "minimum": 0},
+        },
+        "required": ["title"],
+    }
+)
 
 Post = to_model(schema, model_name="Post")
 
@@ -109,7 +114,8 @@ schema = Schema.model_validate({
 Model = to_model(schema)
 
 data = Model(tags=["python", "pydantic"])
-print(data.tags)  #> ["python", "pydantic"]
+print(data.tags)
+#> ['python', 'pydantic']
 ```
 
 ### Enums
@@ -117,6 +123,8 @@ print(data.tags)  #> ["python", "pydantic"]
 Enums become Literal types:
 
 ```python
+from pydantic import ValidationError
+
 from pydantic_jsonschema import Schema, to_model
 
 schema = Schema.model_validate({
@@ -131,8 +139,18 @@ schema = Schema.model_validate({
 
 Article = to_model(schema, model_name="Article")
 
-article = Article(status="published")  # ✓
-# Article(status="invalid")  # ✗ ValidationError
+article = Article(status="published")
+
+try:
+    Article(status="invalid")
+except ValidationError as e:
+    print(e)
+    """
+    1 validation error for Article
+    status
+      Input should be 'draft', 'published' or 'archived' [type=literal_error, input_value='invalid', input_type=str]
+        For further information visit https://errors.pydantic.dev/2.12/v/literal_error
+    """
 ```
 
 *This example is complete and can be run as-is.*
@@ -159,7 +177,7 @@ schema = Schema.model_validate({
 Model = to_model(schema)
 
 m1 = Model(value="hello")  # ✓
-m2 = Model(value=42)       # ✓
+m2 = Model(value=42)  # ✓
 ```
 
 ## Nested Objects
@@ -186,7 +204,8 @@ schema = Schema.model_validate({
 BlogPost = to_model(schema, model_name="BlogPost")
 
 post = BlogPost(author={"name": "Alice", "email": "alice@example.com"})
-print(post.author["name"])  #> Alice
+print(post.author.name)
+#> Alice
 ```
 
 ## Schema References
@@ -218,7 +237,7 @@ Document = to_model(schema, model_name="Document")
 
 doc = Document(
     author={"name": "Alice", "email": "alice@example.com"},
-    editor={"name": "Bob", "email": "bob@example.com"}
+    editor={"name": "Bob", "email": "bob@example.com"},
 )
 ```
 
@@ -229,14 +248,16 @@ Both `author` and `editor` reference the same `Person` model definition.
 Provide existing Pydantic models for references:
 
 ```python
+from pydantic import BaseModel
+
 from pydantic_jsonschema import Schema, to_model
 
-from pydantic import BaseModel
 
 class Address(BaseModel):
     street: str
     city: str
     country: str
+
 
 schema = Schema.model_validate({
     "type": "object",
@@ -260,6 +281,8 @@ person = Person(
 Schema constraints map to Pydantic validators:
 
 ```python
+from pydantic import ValidationError
+
 from pydantic_jsonschema import Schema, to_model
 
 schema = Schema.model_validate({
@@ -284,9 +307,29 @@ schema = Schema.model_validate({
 
 User = to_model(schema, model_name="User")
 
-# User(username="ab")  # ✗ Too short
-# User(age=17)         # ✗ Below minimum
-user = User(username="alice", age=25, score=4.5)  # ✓
+user = User(username="alice", age=25, score=4.5)
+
+try:
+    User(username="ab")
+except ValidationError as e:
+    print(e)
+    """
+    1 validation error for User
+    username
+      String should have at least 3 characters [type=string_too_short, input_value='ab', input_type=str]
+        For further information visit https://errors.pydantic.dev/2.12/v/string_too_short
+    """
+
+try:
+    User(age=17)
+except ValidationError as e:
+    print(e)
+    """
+    1 validation error for User
+    age
+      Input should be greater than or equal to 18 [type=greater_than_equal, input_value=17, input_type=int]
+        For further information visit https://errors.pydantic.dev/2.12/v/greater_than_equal
+    """
 ```
 
 ## Additional Properties
@@ -294,6 +337,8 @@ user = User(username="alice", age=25, score=4.5)  # ✓
 Control whether extra fields are allowed:
 
 ```python
+from pydantic import ValidationError
+
 from pydantic_jsonschema import Schema, to_model
 
 # Forbid extra fields
@@ -306,7 +351,18 @@ schema = Schema.model_validate({
 })
 
 Strict = to_model(schema)
-# Strict(name="Alice", age=30)  # ✗ ValidationError
+
+try:
+    Strict(name="Alice", age=30)
+except ValidationError as e:
+    print(e)
+    """
+    1 validation error for Model
+    age
+      Extra inputs are not permitted [type=extra_forbidden, input_value=30, input_type=int]
+        For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
+    """
+
 
 # Allow extra fields
 schema = Schema.model_validate({

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from ipaddress import IPv4Address
 from typing import Annotated, Any
 from uuid import UUID
@@ -8,8 +8,16 @@ from pydantic import BaseModel, EmailStr, GetCoreSchemaHandler, ValidationError
 from pydantic.functional_validators import AfterValidator, BeforeValidator
 from pydantic_core import CoreSchema, core_schema
 
-from pydantic_jsonschema import LaxSchemaConverter, SchemaConverter, to_lax_model, to_model
+from pydantic_jsonschema import (
+    DataType,
+    LaxSchemaConverter,
+    SchemaConverter,
+    to_lax_model,
+    to_model,
+)
 from pydantic_jsonschema.exceptions import SchemaConvertionError, SchemaReferenceError
+from pydantic_jsonschema.formats import DATE_TIME, EMAIL, IPV4, URI, SchemaFormat
+from pydantic_jsonschema.formats import UUID as UUID_FORMAT
 from pydantic_jsonschema.types import JsonType, Schema
 from tests.conftest import SchemaRaw
 
@@ -1246,7 +1254,7 @@ class TestAnnotatedValidators:
             ip="192.168.1.1",
         )
         assert isinstance(instance.created_at, datetime)  # type: ignore[attr-defined]
-        assert isinstance(instance.email, EmailStr)  # type: ignore[attr-defined]
+        assert isinstance(instance.email, str)  # type: ignore[attr-defined]
         assert isinstance(instance.id, UUID)  # type: ignore[attr-defined]
         assert isinstance(instance.ip, IPv4Address)  # type: ignore[attr-defined]
 
@@ -2070,4 +2078,231 @@ class TestLaxSchemaConverter:
         instance = model(value=42)
         assert instance.model_dump() == {
             "value": 42,
+        }
+
+
+class TestSchemaFormatValidators:
+    """Tests for built-in SchemaFormat validators with to_model."""
+
+    def test_schema_format_email(self) -> None:
+        """Test SchemaFormat EMAIL validator with to_model."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "email": {"type": "string", "format": "email"},
+            },
+            "required": ["email"],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema, format_validators={"email": EMAIL})
+
+        # Valid email
+        instance = model(email="alice@example.com")
+        assert instance.model_dump() == {
+            "email": "alice@example.com",
+        }
+
+        # Invalid email
+        with pytest.raises(ValidationError):
+            model(email="not-an-email")
+
+    def test_schema_format_date_time(self) -> None:
+        """Test SchemaFormat DATE_TIME validator with to_model."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "created_at": {"type": "string", "format": "date-time"},
+            },
+            "required": ["created_at"],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema, format_validators={"date-time": DATE_TIME})
+
+        # Valid datetime
+        instance = model(created_at="2024-01-15T10:30:00Z")
+
+        assert instance.model_dump() == {
+            "created_at": datetime(
+                year=2024,
+                month=1,
+                day=15,
+                hour=10,
+                minute=30,
+                tzinfo=UTC,
+            ),
+        }
+
+        # Invalid datetime
+        with pytest.raises(ValidationError):
+            model(created_at="not-a-datetime")
+
+    def test_schema_format_uuid(self) -> None:
+        """Test SchemaFormat UUID validator with to_model."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "id": {"type": "string", "format": "uuid"},
+            },
+            "required": ["id"],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema, format_validators={"uuid": UUID_FORMAT})
+
+        # Valid UUID
+        instance = model(id="550e8400-e29b-41d4-a716-446655440000")
+        assert instance.model_dump() == {
+            "id": UUID("550e8400-e29b-41d4-a716-446655440000"),
+        }
+
+        # Invalid UUID
+        with pytest.raises(ValidationError):
+            model(id="not-a-uuid")
+
+    def test_schema_format_ipv4(self) -> None:
+        """Test SchemaFormat IPV4 validator with to_model."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "ip": {"type": "string", "format": "ipv4"},
+            },
+            "required": ["ip"],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema, format_validators={"ipv4": IPV4})
+
+        # Valid IPv4
+        instance = model(ip="192.168.1.1")
+        assert instance.model_dump() == {
+            "ip": IPv4Address("192.168.1.1"),
+        }
+
+        # Invalid IPv4
+        with pytest.raises(ValidationError):
+            model(ip="999.999.999.999")
+
+    def test_schema_format_uri(self) -> None:
+        """Test SchemaFormat URI validator with to_model."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "website": {"type": "string", "format": "uri"},
+            },
+            "required": ["website"],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema, format_validators={"uri": URI})
+
+        # Valid URI
+        instance = model(website="https://example.com")
+        assert instance.model_dump() == {
+            "website": "https://example.com",
+        }
+
+        # Invalid URI (missing scheme)
+        with pytest.raises(ValidationError):
+            model(website="example.com")
+
+    def test_schema_format_multiple_formats(self) -> None:
+        """Test multiple SchemaFormat validators in one model."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "email": {"type": "string", "format": "email"},
+                "website": {"type": "string", "format": "uri"},
+                "created_at": {"type": "string", "format": "date-time"},
+                "id": {"type": "string", "format": "uuid"},
+                "ip": {"type": "string", "format": "ipv4"},
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(
+            schema,
+            format_validators={
+                "email": EMAIL,
+                "uri": URI,
+                "date-time": DATE_TIME,
+                "uuid": UUID_FORMAT,
+                "ipv4": IPV4,
+            },
+        )
+
+        # Valid data
+        instance = model(
+            email="alice@example.com",
+            website="https://example.com",
+            created_at="2024-01-15T10:30:00Z",
+            id="550e8400-e29b-41d4-a716-446655440000",
+            ip="192.168.1.1",
+        )
+
+        assert instance.model_dump() == {
+            "email": "alice@example.com",
+            "website": "https://example.com",
+            "created_at": datetime(
+                year=2024,
+                month=1,
+                day=15,
+                hour=10,
+                minute=30,
+                tzinfo=UTC,
+            ),
+            "id": UUID("550e8400-e29b-41d4-a716-446655440000"),
+            "ip": IPv4Address("192.168.1.1"),
+        }
+
+    def test_schema_format_with_lax_model(self) -> None:
+        """Test SchemaFormat validators work with to_lax_model."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "created_at": {"type": "string", "format": "date-time"},
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_lax_model(schema, format_validators={"date-time": DATE_TIME})
+
+        # Valid datetime
+        instance = model(created_at="2024-01-15T10:30:00Z")
+        assert instance.model_dump() == {
+            "created_at": datetime(
+                year=2024,
+                month=1,
+                day=15,
+                hour=10,
+                minute=30,
+                tzinfo=UTC,
+            ),
+        }
+
+        # Lax mode should handle optional fields
+        instance = model()
+        assert instance.model_dump() == {
+            "created_at": None,
+        }
+
+    def test_schema_format_without_validator(self) -> None:
+        """Test SchemaFormat with validator=None in to_model."""
+        # Create a SchemaFormat with validator=None (no validation, just pass-through)
+        no_op_format = SchemaFormat(
+            key="no-op",
+            title="No Operation",
+            examples=["example"],
+            types=[DataType.STRING],
+            validator=None,
+        )
+
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "data": {"type": "string", "format": "no-op"},
+            },
+            "required": ["data"],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema, format_validators={"no-op": no_op_format})
+
+        # Should accept any string value without validation
+        instance = model(data="test-value")
+        assert instance.model_dump() == {
+            "data": "test-value",
         }

@@ -73,17 +73,6 @@ uv add pydantic-jsonschema[formats-all]
 pip install pydantic-jsonschema[formats-all]
 ```
 
-## Verify Installation
-
-Check that everything is working:
-
-```python
-from pydantic_jsonschema import to_model, Schema
-
-print("Installation successful!")
-#> Installation successful!
-```
-
 ## Development Installation
 
 Want to contribute? See the [contributing guide](contributing.md) for setup instructions.

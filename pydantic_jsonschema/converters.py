@@ -464,6 +464,7 @@ class SchemaConverter:
         - Annotated types: used directly as annotation (replaces original)
         - type classes: used directly as annotation (replaces original)
         - Callables: wrapped with BeforeValidator
+        - SchemaFormat: use its validator attribute
 
         :param annotation: Original annotation.
         :param schema: Schema to check for format.
@@ -473,6 +474,14 @@ class SchemaConverter:
             return annotation
 
         validator = self._format_validators[schema.schema_format]
+
+        # Handle SchemaFormat objects (without importing to avoid circular dependency)
+        # TODO: rewrite
+        if hasattr(validator, "validator"):
+            nested_validator = validator.validator
+            if nested_validator is None:
+                return annotation
+            validator = nested_validator
 
         # If validator is an Annotated type, use it directly as the annotation
         if get_origin(validator) is Annotated:

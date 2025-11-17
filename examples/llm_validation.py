@@ -7,7 +7,10 @@ schema = Schema.model_validate(
     {
         "type": "object",
         "properties": {
-            "sentiment": {"type": "string", "enum": ["positive", "negative", "neutral"]},
+            "sentiment": {
+                "type": "string",
+                "enum": ["positive", "negative", "neutral"],
+            },
             "confidence": {"type": "number", "minimum": 0, "maximum": 1},
             "entities": {"type": "array", "items": {"type": "string"}},
             "summary": {"type": "string"},
@@ -29,6 +32,9 @@ llm_response = {
 # Lax validation handles it gracefully
 result = SentimentAnalysis.model_validate(llm_response)
 
-print(f"Sentiment: {result.sentiment}")  # type: ignore[attr-defined]  # > Sentiment: positive
-print(f"Confidence: {result.confidence}")  # type: ignore[attr-defined]  # > Confidence: 0.92
-print(f"Entities: {result.entities}")  # type: ignore[attr-defined]  # > Entities: ['Apple', 'iPhone']
+print(f"Sentiment: {result.sentiment}")  # type: ignore[attr-defined]
+# > Sentiment: positive
+print(f"Confidence: {result.confidence}")  # type: ignore[attr-defined]
+# > Confidence: 0.92
+print(f"Entities: {result.entities}")  # type: ignore[attr-defined]
+# > Entities: ['Apple', 'iPhone']

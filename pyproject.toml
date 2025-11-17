@@ -15,7 +15,7 @@ formats-base = [
     "rfc3986>=2.0.0",
 ]
 formats-extra = [
-    "pydantic-extra-types[all]>=2.10.6",
+    "pydantic-extra-types[all] @ git+https://github.com/Danipulok/pydantic-extra-types.git@refactor/s3",
 ]
 formats-all = [
     # `formats-base`
@@ -23,7 +23,7 @@ formats-all = [
     "fqdn",
     "rfc3986>=2.0.0",
     # `formats-extra`
-    "pydantic-extra-types[all]>=2.10.6",
+    "pydantic-extra-types[all] @ git+https://github.com/Danipulok/pydantic-extra-types.git@refactor/s3",
 ]
 
 [dependency-groups]
@@ -40,7 +40,7 @@ lint = [
 test = [
     "pytest>=8.0.0",
     "pytest-cov>=6.0.0",
-    "pytest-examples>=0.0.13",
+    "pytest-examples @ git+https://github.com/Danipulok/pytest-examples.git@feat/windows-compatible",
 ]
 docs = [
     "mkdocs>=1.6.1",

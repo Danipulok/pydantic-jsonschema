@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from pydantic_jsonschema.formats.extra import (
     DOMAIN,
@@ -176,12 +177,7 @@ def test_payment_card_number() -> None:
 
 
 def test_s3_path() -> None:
-    """Test S3 path format with valid and invalid values.
-
-    Note: S3Path validator from pydantic-extra-types has a bug where it raises
-    AttributeError ('NoneType' object has no attribute 'groups') for invalid values
-    instead of ValueError. This is a known issue in pydantic-extra-types.
-    """
+    """Test S3 path format with valid and invalid values."""
     valid_values = ["s3://bucket-name/path/to/file.txt", "s3://my-bucket/file.json"]
     invalid_values = ["http://example.com", "invalid"]
 
@@ -191,8 +187,8 @@ def test_s3_path() -> None:
         assert result is not None  # Just check it returns something
 
     for value in invalid_values:
-        # Bug in pydantic-extra-types: raises AttributeError instead of ValueError
-        with pytest.raises(AttributeError):
+        # Should raise ValidationError for invalid S3 paths
+        with pytest.raises(ValidationError):
             S3_PATH(value)
 
 

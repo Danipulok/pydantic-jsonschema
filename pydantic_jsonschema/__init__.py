@@ -5,12 +5,13 @@ from pydantic_jsonschema.converters import (
     to_lax_model,
     to_model,
 )
-from pydantic_jsonschema.types import DataType, Schema
+from pydantic_jsonschema.types import DataType, JsonType, Schema
 
 # TODO: add `__version__`
 
 __all__ = [
     "DataType",
+    "JsonType",
     "LaxSchemaConverter",
     "Ref",
     "Schema",

@@ -27,7 +27,7 @@ Requires Python 3.12+
 Convert a simple JSON Schema to a Pydantic model:
 
 ```python
-from pydantic_jsonschema import to_model, Schema
+from pydantic_jsonschema import Schema, to_model
 
 # Define your schema
 schema = Schema.model_validate({
@@ -45,7 +45,7 @@ User = to_model(schema, model_name="User")
 # Use it like any Pydantic model
 user = User(name="Alice", age=30)
 print(user.model_dump_json())
-#> {"name": "Alice", "age": 30}
+#> {"name":"Alice","age":30}
 ```
 
 *This example is complete and can be run as-is.*
@@ -55,7 +55,7 @@ print(user.model_dump_json())
 LLMs often return data with incorrect types (strings instead of numbers, etc.). Use lax validation for automatic type coercion:
 
 ```python
-from pydantic_jsonschema import to_lax_model, Schema
+from pydantic_jsonschema import Schema, to_lax_model
 
 schema = Schema.model_validate({
     "type": "object",
@@ -72,14 +72,16 @@ Analysis = to_lax_model(schema, model_name="Analysis")
 # LLM returns everything as strings
 llm_output = {
     "sentiment": "positive",
-    "confidence": "0.87",      # String, not number
-    "keywords": "happy, great"  # String, not array
+    "confidence": "0.87",  # String, not number
+    "keywords": "happy, great",  # String, not array
 }
 
 # Lax validation coerces to correct types
 analysis = Analysis.model_validate(llm_output)
-print(analysis.confidence)  #> 0.87 (float)
-print(analysis.keywords)    #> ["happy", "great"] (list)
+print(analysis.confidence)
+#> 0.87
+print(analysis.keywords)
+#> ['happy', 'great']
 ```
 
 *This example is complete and can be run as-is.*
@@ -91,7 +93,7 @@ print(analysis.keywords)    #> ["happy", "great"] (list)
 Handle complex schemas with `$ref` and `$defs`:
 
 ```python
-from pydantic_jsonschema import to_model, Schema
+from pydantic_jsonschema import Schema, to_model
 
 schema = Schema.model_validate({
     "type": "object",

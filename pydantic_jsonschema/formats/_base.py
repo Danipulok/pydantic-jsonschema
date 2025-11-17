@@ -12,6 +12,8 @@ from pydantic_jsonschema.types import DataType, JsonType
 
 __all__ = ["SchemaFormat"]
 
+# TODO: docs - add `required` everywhere
+
 # Python native types that Pydantic handles natively
 _NATIVE_TYPES: Final[Iterable[type]] = (
     date,
@@ -111,4 +113,8 @@ class SchemaFormat(BaseModel):
         if self.validator is None:
             return value
 
+        # For types (classes, Annotated types), use Pydantic validation
+        if _is_type_validator(self.validator):
+            return validate_with_type(self.validator, value)
+        # For callable validators, call them directly
         return self.validator(value)

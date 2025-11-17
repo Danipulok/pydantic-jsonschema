@@ -41,11 +41,18 @@ post = BlogPost(
     title="Getting Started with Pydantic JSON Schema",
     author={"name": "Alice", "email": "alice@example.com"},
     comments=[
-        {"author": {"name": "Bob"}, "text": "Great article!", "timestamp": "2024-01-15T10:30:00Z"},
+        {
+            "author": {"name": "Bob"},
+            "text": "Great article!",
+            "timestamp": "2024-01-15T10:30:00Z",
+        },
     ],
     tags=["python", "pydantic", "json-schema"],
 )
 
-print(post.title)  # type: ignore[attr-defined]  # > Getting Started with Pydantic JSON Schema
-print(len(post.comments))  # type: ignore[attr-defined]  # > 1
-print(post.comments[0]["text"])  # type: ignore[attr-defined]  # > Great article!
+print(post.title)  # type: ignore[attr-defined]
+# > Getting Started with Pydantic JSON Schema
+print(len(post.comments))  # type: ignore[attr-defined]
+# > 1
+print(post.comments[0].text)  # type: ignore[attr-defined]
+# > Great article!

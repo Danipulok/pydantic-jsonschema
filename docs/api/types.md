@@ -1,6 +1,7 @@
 # Types
 
-Re-exported types from [`openapi-pydantic`](https://github.com/kuimono/openapi-pydantic).
+Note:
+`Schema` and `DataType` types are re-exported types from [`openapi-pydantic`](https://github.com/kuimono/openapi-pydantic).
 
 ## Schema
 

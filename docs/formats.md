@@ -7,23 +7,25 @@ Add validation for schema formats like email, UUID, dates, and custom domain-spe
 JSON Schema's `format` keyword lets you specify semantic validation beyond basic types:
 
 ```python
-from pydantic_jsonschema import to_model, Schema
+from uuid import UUID
 
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "email": {"type": "string", "format": "email"},
-        "id": {"type": "string", "format": "uuid"}
+from pydantic import EmailStr, ValidationError
+
+from pydantic_jsonschema import Schema, to_model
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "email": {"type": "string", "format": "email"},
+            "id": {"type": "string", "format": "uuid"},
+        },
     }
-})
+)
 
 # Without format validators, these are just strings
 User = to_model(schema)
 user = User(email="not-an-email", id="not-a-uuid")  # ✓ No validation
-
-# With format validators, they're validated
-from pydantic import EmailStr
-from uuid import UUID
 
 User = to_model(
     schema,
@@ -32,7 +34,16 @@ User = to_model(
         "uuid": UUID
     }
 )
-# User(email="invalid")  # ✗ ValidationError
+
+try:
+    User(email="invalid")
+except ValidationError as e:
+    print(e)
+    """
+    1 validation error for Model
+    email
+      value is not a valid email address: An email address must have an @-sign. [type=value_error, input_value='invalid', input_type=str]
+    """
 ```
 
 ## Built-in Format Validators
@@ -68,12 +79,8 @@ This provides validators for formats defined in the JSON Schema specification:
 **Example using base formats:**
 
 ```python
-from datetime import datetime
-from ipaddress import IPv4Address
-
-from pydantic import EmailStr
 from pydantic_jsonschema import Schema, to_model
-from pydantic_jsonschema.formats import EMAIL, URI, DATE_TIME, UUID, IPV4
+from pydantic_jsonschema.formats import DATE_TIME, EMAIL, IPV4, URI, UUID
 
 schema = Schema.model_validate({
     "type": "object",
@@ -86,20 +93,23 @@ schema = Schema.model_validate({
     }
 })
 
-User = to_model(schema, format_validators={
-    "email": EMAIL,
-    "uri": URI,
-    "date-time": DATE_TIME,
-    "uuid": UUID,
-    "ipv4": IPV4
-})
+User = to_model(
+    schema,
+    format_validators={
+        "email": EMAIL,
+        "uri": URI,
+        "date-time": DATE_TIME,
+        "uuid": UUID,
+        "ipv4": IPV4,
+    },
+)
 
 user = User(
     email="alice@example.com",
     website="https://example.com/profile",
     created_at="2024-01-15T10:30:00Z",
     id="550e8400-e29b-41d4-a716-446655440000",
-    ip="192.168.1.1"
+    ip="192.168.1.1",
 )
 ```
 
@@ -114,9 +124,10 @@ uv add pydantic-jsonschema[formats-extra]
 This adds validators from [`pydantic-extra-types`](https://github.com/pydantic/pydantic-extra-types):
 
 ```python
-from pydantic_jsonschema import to_model, Schema
-from pydantic_extra_types.phone_numbers import PhoneNumber
 from pydantic_extra_types.payment import PaymentCardNumber
+from pydantic_extra_types.phone_numbers import PhoneNumber
+
+from pydantic_jsonschema import Schema, to_model
 
 schema = Schema.model_validate({
     "type": "object",
@@ -157,25 +168,31 @@ Create your own validators for domain-specific formats.
 ### Simple Function Validator
 
 ```python
-from pydantic_jsonschema import to_model, Schema
+from pydantic_jsonschema import Schema, to_model
+
 
 def validate_sku(value: str) -> str:
     """Validate SKU format: ABC-1234-XYZ"""
     parts = value.split("-")
 
     if len(parts) != 3:
-        raise ValueError("SKU must have 3 parts")
+        msg = "SKU must have 3 parts"
+        raise ValueError(msg)
 
     if not parts[0].isalpha() or len(parts[0]) != 3:
-        raise ValueError("First part must be 3 letters")
+        msg = "First part must be 3 letters"
+        raise ValueError(msg)
 
     if not parts[1].isdigit() or len(parts[1]) != 4:
-        raise ValueError("Second part must be 4 digits")
+        msg = "Second part must be 4 digits"
+        raise ValueError(msg)
 
     if not parts[2].isalpha() or len(parts[2]) != 3:
-        raise ValueError("Third part must be 3 letters")
+        msg = "Third part must be 3 letters"
+        raise ValueError(msg)
 
     return value.upper()  # Normalize to uppercase
+
 
 schema = Schema.model_validate({
     "type": "object",
@@ -187,7 +204,8 @@ schema = Schema.model_validate({
 Product = to_model(schema, format_validators={"sku": validate_sku})
 
 product = Product(sku="abc-1234-xyz")
-print(product.sku)  #> ABC-1234-XYZ
+print(product.sku)
+#> ABC-1234-XYZ
 ```
 
 *This example is complete and can be run as-is.*
@@ -198,19 +216,24 @@ For more complex validation, use Pydantic's `Annotated` types:
 
 ```python
 from typing import Annotated
-from pydantic import Field, AfterValidator
+
+from pydantic import AfterValidator, Field
+
 from pydantic_jsonschema import Schema, to_model
+
 
 def validate_positive(value: float) -> float:
     if value <= 0:
-        raise ValueError("Must be positive")
+        msg = "Must be positive"
+        raise ValueError(msg)
     return value
+
 
 # Create a custom type
 PositivePrice = Annotated[
     float,
     Field(gt=0, description="Product price"),
-    AfterValidator(lambda v: round(v, 2))  # Round to 2 decimals
+    AfterValidator(lambda v: round(v, 2)),  # Round to 2 decimals
 ]
 
 schema = Schema.model_validate({
@@ -223,7 +246,8 @@ schema = Schema.model_validate({
 Product = to_model(schema, format_validators={"price": PositivePrice})
 
 product = Product(price=19.999)
-print(product.price)  #> 19.99
+print(product.price)
+#> 20.0
 ```
 
 *This example is complete and can be run as-is.*
@@ -233,19 +257,22 @@ print(product.price)  #> 19.99
 Validate semantic versioning format:
 
 ```python
-from pydantic_jsonschema import to_model, Schema
 import re
+
+from pydantic import ValidationError
+
+from pydantic_jsonschema import Schema, to_model
+
 
 def validate_semver(value: str) -> str:
     """Validate semantic version (e.g., 1.2.3)"""
-    pattern = r'^\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?$'
+    pattern = r"^\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?$"
 
     if not re.match(pattern, value):
-        raise ValueError(
-            "Must be semantic version format (e.g., 1.2.3 or 1.2.3-beta)"
-        )
-
+        msg = "Must be semantic version format (e.g., 1.2.3 or 1.2.3-beta)"
+        raise ValueError(msg)
     return value
+
 
 schema = Schema.model_validate({
     "type": "object",
@@ -256,9 +283,19 @@ schema = Schema.model_validate({
 
 Package = to_model(schema, format_validators={"semver": validate_semver})
 
-Package(version="1.2.3")       # ✓
+Package(version="1.2.3")  # ✓
 Package(version="2.0.0-beta")  # ✓
-# Package(version="1.2")  # ✗ ValidationError
+
+try:
+    Package(version="1.2")
+except ValidationError as e:
+    print(e)
+    """
+    1 validation error for Model
+    version
+      Value error, Must be semantic version format (e.g., 1.2.3 or 1.2.3-beta) [type=value_error, input_value='1.2', input_type=str]
+        For further information visit https://errors.pydantic.dev/2.12/v/value_error
+    """
 ```
 
 *This example is complete and can be run as-is.*
@@ -268,7 +305,8 @@ Package(version="2.0.0-beta")  # ✓
 Validate and normalize hex color codes:
 
 ```python
-from pydantic_jsonschema import to_model, Schema
+from pydantic_jsonschema import Schema, to_model
+
 
 def validate_hex_color(value: str) -> str:
     """Validate and normalize hex color (#RRGGBB)"""
@@ -280,15 +318,18 @@ def validate_hex_color(value: str) -> str:
 
     # Check format
     if len(value) != 7:
-        raise ValueError("Must be 6 hex digits")
+        msg = "Must be 6 hex digits"
+        raise ValueError(msg)
 
     # Validate hex digits
     try:
         int(value[1:], 16)
     except ValueError:
-        raise ValueError("Invalid hex digits") from None
+        msg = "Invalid hex digits"
+        raise ValueError(msg) from None
 
     return value.upper()
+
 
 schema = Schema.model_validate({
     "type": "object",
@@ -297,13 +338,16 @@ schema = Schema.model_validate({
     }
 })
 
+
 Theme = to_model(schema, format_validators={"hex-color": validate_hex_color})
 
 theme = Theme(color="ff5733")
-print(theme.color)  #> #FF5733
+print(theme.color)
+#> #FF5733
 
 theme = Theme(color="#1a2b3c")
-print(theme.color)  #> #1A2B3C
+print(theme.color)
+#> #1A2B3C
 ```
 
 *This example is complete and can be run as-is.*
@@ -317,19 +361,23 @@ Format validators can be:
 Simple callables that validate and return the value:
 
 ```python
-from typing import Any
+from pydantic_jsonschema import JsonType
 
-def is_valid(value: Any) -> bool:
+
+def is_valid(_value: JsonType) -> bool:
     # Your validation logic here
     return True
 
-def transform(value: Any) -> Any:
+
+def transform(value: JsonType) -> JsonType:
     # Your transformation logic here
     return value
 
-def my_validator(value: Any) -> Any:
+
+def my_validator(value: JsonType) -> JsonType:
     if not is_valid(value):
-        raise ValueError("Invalid")
+        msg = "Invalid"
+        raise ValueError(msg)
     return transform(value)
 ```
 
@@ -354,14 +402,17 @@ Types with validators attached:
 
 ```python
 from typing import Annotated
-from pydantic import Field, AfterValidator
+
+from pydantic import AfterValidator
+
 
 def uppercase(v: str) -> str:
     return v.upper()
 
+
 UpperStr = Annotated[str, AfterValidator(uppercase)]
 
-format_validators={"upper": UpperStr}
+format_validators = {"upper": UpperStr}
 ```
 
 ## Validator Execution Order
@@ -369,16 +420,22 @@ format_validators={"upper": UpperStr}
 Validators run at different stages:
 
 ```python
-from typing import Annotated, Any
-from pydantic import BeforeValidator, AfterValidator
+from typing import Annotated
 
-def before_validation(v: Any) -> str:
+from pydantic import AfterValidator, BeforeValidator
+
+from pydantic_jsonschema import JsonType
+
+
+def before_validation(v: JsonType) -> str:
     """Runs before type validation - for coercion"""
     return str(v)
+
 
 def after_validation(v: str) -> str:
     """Runs after type validation - for additional checks"""
     return v.strip().upper()
+
 
 CustomStr = Annotated[
     str,
@@ -399,8 +456,9 @@ CustomStr = Annotated[
 Format validators work with both strict and lax converters:
 
 ```python
-from pydantic_jsonschema import to_lax_model, Schema
 from pydantic import EmailStr
+
+from pydantic_jsonschema import Schema, to_lax_model
 
 schema = Schema.model_validate({
     "type": "object",
@@ -423,28 +481,36 @@ user = User(email="alice@example.com")  # ✓
 
 ```python
 from typing import Annotated
+
 from pydantic import Field
+
 
 def validate_port(value: int) -> int:
     if not 1 <= value <= 65535:
-        raise ValueError("Port must be 1-65535")
+        msg = "Port must be 1-65535"
+        raise ValueError(msg)
     return value
+
 
 Port = Annotated[int, Field(ge=1, le=65535)]
 
-format_validators={"port": Port}
+format_validators = {"port": Port}
 ```
 
 ### Multiple Constraints
 
 ```python
 from typing import Annotated
-from pydantic import Field, AfterValidator
+
+from pydantic import AfterValidator, Field
+
 
 def validate_username(value: str) -> str:
     if not value.isalnum():
-        raise ValueError("Must be alphanumeric")
+        msg = "Must be alphanumeric"
+        raise ValueError(msg)
     return value.lower()
+
 
 Username = Annotated[
     str,
@@ -452,7 +518,7 @@ Username = Annotated[
     AfterValidator(validate_username)
 ]
 
-format_validators={"username": Username}
+format_validators = {"username": Username}
 ```
 
 ### Normalization
@@ -460,15 +526,17 @@ format_validators={"username": Username}
 ```python
 def normalize_phone(value: str) -> str:
     """Remove all non-digits"""
-    digits = ''.join(c for c in value if c.isdigit())
+    digits = "".join(c for c in value if c.isdigit())
 
     if len(digits) != 10:
-        raise ValueError("Must be 10 digits")
+        msg = "Must be 10 digits"
+        raise ValueError(msg)
 
     # Format as (XXX) XXX-XXXX
     return f"({digits[:3]}) {digits[3:6]}-{digits[6:]}"
 
-format_validators={"phone": normalize_phone}
+
+format_validators = {"phone": normalize_phone}
 ```
 
 ## Error Handling
@@ -478,10 +546,12 @@ Validators should raise `ValueError` with a clear message:
 ```python
 def validate_age(value: int) -> int:
     if value < 0:
-        raise ValueError("Age cannot be negative")
+        msg = "Age cannot be negative"
+        raise ValueError(msg)
 
     if value > 150:
-        raise ValueError("Age seems unrealistic")
+        msg = "Age seems unrealistic"
+        raise ValueError(msg)
 
     return value
 ```

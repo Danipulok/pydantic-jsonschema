@@ -7,7 +7,7 @@ Lax validation provides automatic type coercion for flexible validation of exter
 Use `to_lax_model()` when working with data that might have type inconsistencies. Lax validation automatically coerces values to the expected types.
 
 ```python
-from pydantic_jsonschema import to_lax_model, Schema
+from pydantic_jsonschema import Schema, to_lax_model
 
 schema = Schema.model_validate({
     "type": "object",
@@ -18,7 +18,8 @@ schema = Schema.model_validate({
 
 User = to_lax_model(schema)
 user = User(age="30")  # ✓ Coerced to integer 30
-print(user.age)  #> 30
+print(user.age)
+#> 30
 ```
 
 *This example is complete and can be run as-is.*
@@ -41,69 +42,28 @@ print(user.age)  #> 30
 
 ## Coercion Rules
 
-### String Coercion
-
-```python
-from pydantic_jsonschema import to_lax_model, Schema
-
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "name": {"type": "string"}
-    }
-})
-
-Product = to_lax_model(schema)
-
-# None → empty string
-Product(name=None)  # name=""
-
-# Any value → str(value)
-Product(name=123)   # name="123"
-```
-
-### Integer Coercion
-
-```python
-# String → int
-Product(count="42")   # count=42
-
-# Float → int (truncated)
-Product(count=42.9)   # count=42
-
-# Invalid strings raise ValidationError
-# Product(count="abc")  # ✗ ValidationError
-```
-
-### Float Coercion
-
-```python
-# String → float
-Product(price="19.99")   # price=19.99
-
-# Integer → float
-Product(price=20)        # price=20.0
-```
-
-### List Coercion
-
-```python
-# None → empty list
-Product(tags=None)  # tags=[]
-
-# Comma-separated string → list
-Product(tags="python, pydantic, json")  # tags=["python", "pydantic", "json"]
-
-# JSON string → list
-Product(tags='["a", "b", "c"]')  # tags=["a", "b", "c"]
-```
+| Target Type | Input Type               | Behavior              | Example                               |
+|-------------|--------------------------|-----------------------|---------------------------------------|
+| **string**  | `None`                   | Empty string          | `None` → `""`                         |
+|             | Any                      | `str(value)`          | `123` → `"123"`                       |
+| **integer** | String (numeric)         | Parse to int          | `"42"` → `42`                         |
+|             | Float                    | Truncate              | `42.9` → `42`                         |
+|             | String (invalid)         | ❌ ValidationError     | `"abc"` → Error                       |
+| **number**  | String (numeric)         | Parse to float        | `"19.99"` → `19.99`                   |
+|             | Integer                  | Convert               | `20` → `20.0`                         |
+| **boolean** | String                   | Parse "true"/"false"  | `"true"` → `True`                     |
+|             | Integer                  | 0 is False, else True | `1` → `True`                          |
+| **array**   | `None`                   | Empty list            | `None` → `[]`                         |
+|             | String (comma-separated) | Split and strip       | `"a, b"` → `["a", "b"]`               |
+|             | String (JSON)            | Parse JSON            | `'["a"]'` → `["a"]`                   |
+| **object**  | String (JSON)            | Parse JSON            | `'{"key": "val"}'` → `{"key": "val"}` |
 
 ## Real-World Example: LLM Outputs
 
 LLMs often return data with type inconsistencies:
 
 ```python
-from pydantic_jsonschema import to_lax_model, Schema
+from pydantic_jsonschema import Schema, to_lax_model
 
 schema = Schema.model_validate({
     "type": "object",
@@ -132,9 +92,12 @@ llm_response = {
 # Lax validation handles it gracefully
 analysis = Analysis.model_validate(llm_response)
 
-print(analysis.confidence)   #> 0.87 (float)
-print(analysis.keywords)     #> ["innovation", "growth"] (list)
-print(analysis.word_count)   #> 342 (int)
+print(analysis.confidence)
+#> 0.87
+print(analysis.keywords)
+#> ['innovation', 'growth']
+print(analysis.word_count)
+#> 342
 ```
 
 *This example is complete and can be run as-is.*
@@ -144,9 +107,10 @@ print(analysis.word_count)   #> 342 (int)
 CSV data is always strings, but your schema expects various types:
 
 ```python
-from pydantic_jsonschema import to_lax_model, Schema
 import csv
 from io import StringIO
+
+from pydantic_jsonschema import Schema, to_lax_model
 
 schema = Schema.model_validate({
     "type": "object",
@@ -180,7 +144,7 @@ for p in products:
 For more control, use the `LaxSchemaConverter` class directly:
 
 ```python
-from pydantic_jsonschema import Schema, LaxSchemaConverter
+from pydantic_jsonschema import LaxSchemaConverter, Schema
 
 converter = LaxSchemaConverter(
     default_model_name="Model",
@@ -209,7 +173,7 @@ data = Model(count="42")  # ✓ Coerced to 42
 Lax validation works with format validators - coercion happens first, then format validation:
 
 ```python
-from pydantic_jsonschema import to_lax_model, Schema
+from pydantic_jsonschema import Schema, to_lax_model
 
 schema = Schema.model_validate({
     "type": "object",
@@ -218,9 +182,11 @@ schema = Schema.model_validate({
     }
 })
 
+
 def email_validator(value: str) -> str:
     # Add actual email validation logic
     return value
+
 
 User = to_lax_model(schema, format_validators={"email": email_validator})
 

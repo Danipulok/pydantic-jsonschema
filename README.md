@@ -42,7 +42,7 @@ Requires Python 3.12+
 ## Quick Start
 
 ```python
-from pydantic_jsonschema import to_model, Schema
+from pydantic_jsonschema import Schema, to_model
 
 # Define your JSON Schema
 schema = Schema.model_validate({
@@ -60,7 +60,8 @@ User = to_model(schema, model_name="User")
 
 # Use it like any Pydantic model
 user = User(name="Alice", age=30, email="alice@example.com")
-print(user.model_dump_json())  # {"name": "Alice", "age": 30, "email": "alice@example.com"}
+print(user.model_dump_json())
+#> {"name":"Alice","age":30,"email":"alice@example.com"}
 ```
 
 ## LLM-Friendly Validation
@@ -69,7 +70,7 @@ When working with LLM outputs that might return incorrect types,
 use lax validation for automatic coercion:
 
 ```python
-from pydantic_jsonschema import to_lax_model, Schema
+from pydantic_jsonschema import Schema, to_lax_model
 
 schema = Schema.model_validate({
     "type": "object",
@@ -87,19 +88,21 @@ Analysis = to_lax_model(schema, model_name="Analysis")
 llm_output = {
     "sentiment": "positive",
     "confidence": "0.87",  # String instead of number
-    "keywords": "happy, great"  # String instead of array
+    "keywords": "happy, great",  # String instead of array
 }
 
 analysis = Analysis.model_validate(llm_output)
-print(analysis.confidence)  # 0.87 (properly converted to float)
-print(analysis.keywords)    # ["happy", "great"] (properly converted to list)
+print(analysis.confidence)
+#> 0.87
+print(analysis.keywords)
+#> ['happy', 'great']
 ```
 
 ## Learn More
 
 - [Documentation](https://danipulok.github.io/pydantic-jsonschema/)
 - [Examples](https://danipulok.github.io/pydantic-jsonschema/examples/)
-- [Contributing](CONTRIBUTING.md)
+- [Contributing](https://danipulok.github.io/pydantic-jsonschema/contributing/)
 
 ## License
 

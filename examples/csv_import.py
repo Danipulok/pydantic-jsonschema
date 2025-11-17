@@ -26,7 +26,7 @@ Product = to_lax_model(product_schema, model_name="Product")
 # Sample CSV data (everything is strings)
 csv_data = """id,name,price,quantity,in_stock,tags
 1,Widget,19.99,100,true,"electronics,gadgets"
-2,Gadget,29.99,50,false,"electronics"
+2,Gadget,29.99,50,false,"electronics,tech"
 3,Tool,9.99,200,true,"hardware,tools"
 """
 

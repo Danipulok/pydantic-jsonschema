@@ -57,6 +57,10 @@ precommit:
 # Run all checks
 all: format lint test docs-build
 
+# Format documentation examples
+docs-format:
+    uv run pytest tests/test_docs.py --update-examples -v --tb=long
+
 # Build documentation
 docs-build:
     uv run mkdocs build
