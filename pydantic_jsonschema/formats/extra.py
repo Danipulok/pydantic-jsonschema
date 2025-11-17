@@ -67,7 +67,7 @@ ISO_4217 = SchemaFormat(
     title="Currency Code",
     examples=["USD", "EUR", "GBP", "JPY"],
     types=[DataType.STRING],
-    validator=lambda value: Currency._validate(value, None),  # noqa: SLF001
+    validator=lambda value: Currency._validate(value, None),  # type: ignore[arg-type]  # noqa: SLF001
 )
 
 ISO_639_1_ALPHA_2 = SchemaFormat(
@@ -75,7 +75,7 @@ ISO_639_1_ALPHA_2 = SchemaFormat(
     title="Language Code (Alpha-2)",
     examples=["en", "fr", "de", "es"],
     types=[DataType.STRING],
-    validator=lambda value: LanguageAlpha2._validate(value, None),  # noqa: SLF001
+    validator=lambda value: LanguageAlpha2._validate(value, None),  # type: ignore[arg-type]  # noqa: SLF001
 )
 
 ISO_639_LANGUAGE_NAME = SchemaFormat(
@@ -83,7 +83,7 @@ ISO_639_LANGUAGE_NAME = SchemaFormat(
     title="Language Name",
     examples=["English", "French", "German", "Spanish"],
     types=[DataType.STRING],
-    validator=lambda value: LanguageName._validate(value, None),  # noqa: SLF001
+    validator=lambda value: LanguageName._validate(value, None),  # type: ignore[arg-type]  # noqa: SLF001
 )
 
 ISO_3166_ALPHA_2 = SchemaFormat(
@@ -91,7 +91,7 @@ ISO_3166_ALPHA_2 = SchemaFormat(
     title="Country Code (Alpha-2)",
     examples=["US", "GB", "FR", "DE"],
     types=[DataType.STRING],
-    validator=lambda value: CountryAlpha2._validate(value, None),  # noqa: SLF001
+    validator=lambda value: CountryAlpha2._validate(value, None),  # type: ignore[arg-type]  # noqa: SLF001
 )
 
 ISO_3166_ALPHA_3 = SchemaFormat(
@@ -99,7 +99,7 @@ ISO_3166_ALPHA_3 = SchemaFormat(
     title="Country Code (Alpha-3)",
     examples=["USA", "GBR", "FRA", "DEU"],
     types=[DataType.STRING],
-    validator=lambda value: CountryAlpha3._validate(value, None),  # noqa: SLF001
+    validator=lambda value: CountryAlpha3._validate(value, None),  # type: ignore[arg-type]  # noqa: SLF001
 )
 
 ISO_3166_NUMERIC = SchemaFormat(
@@ -107,7 +107,7 @@ ISO_3166_NUMERIC = SchemaFormat(
     title="Country Code (Numeric)",
     examples=["840", "826", "250", "276"],
     types=[DataType.STRING],
-    validator=lambda value: CountryNumericCode._validate(value, None),  # noqa: SLF001
+    validator=lambda value: CountryNumericCode._validate(value, None),  # type: ignore[arg-type]  # noqa: SLF001
 )
 
 ISO_3166_SHORT_NAME = SchemaFormat(
@@ -115,7 +115,7 @@ ISO_3166_SHORT_NAME = SchemaFormat(
     title="Country Short Name",
     examples=["United States", "United Kingdom", "France", "Germany"],
     types=[DataType.STRING],
-    validator=lambda value: CountryShortName._validate(value, None),  # noqa: SLF001
+    validator=lambda value: CountryShortName._validate(value, None),  # type: ignore[arg-type]  # noqa: SLF001
 )
 
 ISO_15924 = SchemaFormat(
@@ -123,7 +123,7 @@ ISO_15924 = SchemaFormat(
     title="Script Code",
     examples=["Latn", "Cyrl", "Arab", "Hani"],
     types=[DataType.STRING],
-    validator=lambda value: ScriptCodeType._validate(value, None),  # noqa: SLF001
+    validator=lambda value: ScriptCodeType._validate(value, None),  # type: ignore[arg-type]  # noqa: SLF001
 )
 
 # Identifiers
@@ -175,7 +175,7 @@ PHONE_NUMBER = SchemaFormat(
     title="Phone Number",
     examples=["+1-202-555-0173", "+44 20 7946 0958"],
     types=[DataType.STRING],
-    validator=lambda value: PhoneNumber._validate(value, None),  # noqa: SLF001
+    validator=lambda value: PhoneNumber._validate(value, None),  # type: ignore[arg-type]  # noqa: SLF001
 )
 
 S3_PATH = SchemaFormat(
@@ -183,7 +183,7 @@ S3_PATH = SchemaFormat(
     title="AWS S3 Path",
     examples=["s3://bucket-name/path/to/file.txt"],
     types=[DataType.STRING],
-    validator=lambda value: S3Path._validate(value, None),  # noqa: SLF001
+    validator=lambda value: S3Path._validate(value, None),  # type: ignore[arg-type]  # noqa: SLF001
 )
 
 # Financial
@@ -193,7 +193,7 @@ PAYMENT_CARD_NUMBER = SchemaFormat(
     title="Payment Card Number",
     examples=["4532015112830366", "5425233430109903"],
     types=[DataType.STRING],
-    validator=lambda value: PaymentCardNumber.validate(value, None),
+    validator=lambda value: PaymentCardNumber.validate(value, None),  # type: ignore[arg-type]
 )
 
 # Note: ABARoutingNumber is not included because it does not have any validate methods
@@ -205,7 +205,7 @@ TIMEZONE_NAME = SchemaFormat(
     title="IANA Timezone Name",
     examples=["America/New_York", "Europe/London", "Asia/Tokyo"],
     types=[DataType.STRING],
-    validator=lambda value: TimeZoneName._validate(value, None),  # noqa: SLF001
+    validator=lambda value: TimeZoneName._validate(value, None),  # type: ignore[arg-type]  # noqa: SLF001
 )
 
 SEMANTIC_VERSION = SchemaFormat(
