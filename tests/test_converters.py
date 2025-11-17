@@ -456,8 +456,8 @@ class TestReferences:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
 
-        instance = model([{"name": "item1"}, {"name": "item2"}])
-        assert instance.model_dump() == [{"name": "item1"}, {"name": "item2"}]
+        instance = model([{"name": "item1"}, {"name": "item2"}])  # type: ignore[call-arg]
+        assert instance.model_dump() == [{"name": "item1"}, {"name": "item2"}]  # type: ignore[comparison-overlap]
 
     def test_forward_ref_unresolved(self) -> None:
         """Test ForwardRef creation when reference isn't resolved yet."""
@@ -603,8 +603,8 @@ class TestComposition:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
 
-        instance = model("hello world")
-        assert instance.model_dump() == "hello world"
+        instance = model("hello world")  # type: ignore[call-arg]
+        assert instance.model_dump() == "hello world"  # type: ignore[comparison-overlap]
 
     def test_allof_in_property(self) -> None:
         """Test allOf in property annotation."""
@@ -848,7 +848,7 @@ class TestConverterErrorHandling:
         ({"const": "fixed_value"}, "fixed_value", "wrong_value"),
     ],
 )
-def test_literal_types(schema_field: dict, valid_value: str, invalid_value: str) -> None:
+def test_literal_types(schema_field: dict[str, Any], valid_value: str, invalid_value: str) -> None:
     """Test enum and const conversion to Literal."""
     schema_raw: SchemaRaw = {
         "type": "object",
@@ -1003,7 +1003,7 @@ class TestAdditionalPropertiesConfig:
     ],
 )
 def test_constraints(
-    schema_property: dict,
+    schema_property: dict[str, Any],
     valid_value: JsonType,
     invalid_value: JsonType,
 ) -> None:
@@ -1090,7 +1090,7 @@ class TestAnnotatedValidators:
             "required": ["email"],
         }
         schema = Schema.model_validate(schema_raw)
-        model = to_model(schema, format_validators={"email-simple": validate_email_simple})
+        model = to_model(schema, format_validators={"email-simple": validate_email_simple})  # type: ignore[dict-item]
 
         instance = model(email="test@example.com")
         assert instance.model_dump() == {"email": "test@example.com"}
@@ -1126,7 +1126,7 @@ class TestAnnotatedValidators:
         schema = Schema.model_validate(schema_raw)
         model = to_model(
             schema,
-            format_validators={"positive": PositiveInt, "uppercase": validate_uppercase},
+            format_validators={"positive": PositiveInt, "uppercase": validate_uppercase},  # type: ignore[dict-item]
         )
 
         instance = model(count=5, code="ABC")
@@ -1160,7 +1160,7 @@ class TestAnnotatedValidators:
         instance = model(count=5)
         assert instance.model_dump() == {"count": 5}
 
-        instance = model(count="10")  # type: ignore[arg-type]
+        instance = model(count="10")
         assert instance.model_dump() == {"count": 10}
 
         with pytest.raises(ValidationError, match="Must be positive"):
@@ -1284,8 +1284,8 @@ class TestSchemaEdgeCases:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
 
-        instance = model(["item1", "item2", "item3"])
-        assert instance.model_dump() == ["item1", "item2", "item3"]
+        instance = model(["item1", "item2", "item3"])  # type: ignore[call-arg]
+        assert instance.model_dump() == ["item1", "item2", "item3"]  # type: ignore[comparison-overlap]
 
     def test_root_model_for_string_type(self) -> None:
         """Test RootModel creation for string type schemas."""
@@ -1296,11 +1296,11 @@ class TestSchemaEdgeCases:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
 
-        instance = model("hello world")
-        assert instance.model_dump() == "hello world"
+        instance = model("hello world")  # type: ignore[call-arg]
+        assert instance.model_dump() == "hello world"  # type: ignore[comparison-overlap]
 
         with pytest.raises(ValidationError):
-            model("hi")
+            model("hi")  # type: ignore[call-arg]
 
     def test_root_model_for_integer_type(self) -> None:
         """Test RootModel creation for integer type schemas."""
@@ -1314,18 +1314,18 @@ class TestSchemaEdgeCases:
 
         # Valid value
         valid_value = 42
-        instance = model(valid_value)
-        assert instance.model_dump() == valid_value
+        instance = model(valid_value)  # type: ignore[call-arg]
+        assert instance.model_dump() == valid_value  # type: ignore[comparison-overlap]
 
         # Too low
         invalid_value = -1
         with pytest.raises(ValidationError):
-            model(invalid_value)
+            model(invalid_value)  # type: ignore[call-arg]
 
         # Too high
         invalid_value = 101
         with pytest.raises(ValidationError):
-            model(invalid_value)
+            model(invalid_value)  # type: ignore[call-arg]
 
     def test_allof_without_properties_single_base(self) -> None:
         """Test allOf without properties with single base class."""

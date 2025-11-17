@@ -350,7 +350,7 @@ class TestSchemaFormat:
         with pytest.raises(ValueError, match="Invalid example"):
             SchemaFormat(
                 key="uppercase",
-                examples=["hello", 123],  # type: ignore[list-item]
+                examples=["hello", 123],
                 types=["string"],
                 validator=uppercase,
             )
