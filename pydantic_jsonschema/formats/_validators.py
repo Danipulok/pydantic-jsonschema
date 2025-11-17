@@ -11,8 +11,8 @@ except ImportError as _import_error:
     )
     raise ImportError(msg) from _import_error
 
-from fqdn import FQDN
-from rfc3986 import (  # type: ignore[attr-defined]
+from fqdn import FQDN  # type: ignore[import-untyped]
+from rfc3986 import (  # type: ignore[import-untyped]
     IRIReference,
     URIReference,
     exceptions,
@@ -57,7 +57,7 @@ def validate_hostname(value: JsonType) -> str:
 
     # RFC 1123 allows hostnames with a single label (min_labels=1)
     # Default is 2, which would reject "localhost"
-    fqdn = FQDN(value, min_labels=1)  # type: ignore[no-untyped-call]
+    fqdn = FQDN(value, min_labels=1)
     if not fqdn.is_valid:
         msg = f"Invalid hostname format: `{value!r}`"
         raise FormatValidationError(

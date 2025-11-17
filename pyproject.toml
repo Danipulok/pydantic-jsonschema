@@ -68,10 +68,6 @@ disable_error_code = ["no-untyped-def", "call-overload", "index", "call-arg", "c
 module = "pydantic_jsonschema.formats.extra"
 disable_error_code = ["arg-type"]
 
-[[tool.mypy.overrides]]
-module = ["fqdn", "rfc3986"]
-follow_untyped_imports = true
-
 [tool.ruff]
 target-version = "py313"
 line-length = 100
