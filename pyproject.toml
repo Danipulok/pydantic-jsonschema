@@ -5,6 +5,29 @@ build-backend = "hatchling.build"
 [tool.hatch.metadata]
 allow-direct-references = true
 
+[tool.hatch.build.targets.sdist]
+exclude = [
+    ".venv*",
+    ".github",
+    ".idea",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".coverage",
+    "htmlcov",
+    "site",
+    "*.pyc",
+    "__pycache__",
+    "check_*.py",
+    "NOTES.md",
+    ".pre-commit-config.yaml",
+    ".markdownlint.yaml",
+    ".claude",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["pydantic_jsonschema"]
+
 [project]
 name = "pydantic-jsonschema"
 version = "0.1.0"
