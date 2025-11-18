@@ -1,12 +1,48 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "pydantic-jsonschema"
 version = "0.1.0"
 description = "JSON Schema to Pydantic model conversion library"
+authors = [
+    {name = "Danipulok", email = "danipulok@users.noreply.github.com"}
+]
+readme = "README.md"
+license = {text = "MIT"}
 requires-python = ">=3.12"
+keywords = [
+    "pydantic",
+    "json-schema",
+    "validation",
+    "type-safety",
+    "schema",
+    "llm",
+    "ai",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
 dependencies = [
     "openapi-pydantic>=0.5.0",
     "pydantic>=2.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Danipulok/pydantic-jsonschema"
+Documentation = "https://danipulok.github.io/pydantic-jsonschema/"
+Repository = "https://github.com/Danipulok/pydantic-jsonschema"
+Issues = "https://github.com/Danipulok/pydantic-jsonschema/issues"
+Changelog = "https://github.com/Danipulok/pydantic-jsonschema/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 formats-base = [
