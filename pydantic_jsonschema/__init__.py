@@ -7,7 +7,7 @@ from pydantic_jsonschema.converters import (
 )
 from pydantic_jsonschema.types import DataType, JsonType, Schema
 
-# TODO: add `__version__`
+__version__ = "0.1.0"
 
 __all__ = [
     "DataType",
