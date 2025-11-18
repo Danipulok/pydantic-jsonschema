@@ -16,6 +16,12 @@ htmlcov/
 
 # Linting
 .mypy_cache/
+.ruff_cache/
 
 # Documentation
 site/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
