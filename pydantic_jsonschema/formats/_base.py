@@ -12,8 +12,6 @@ from pydantic_jsonschema.types import DataType, JsonType
 
 __all__ = ["SchemaFormat"]
 
-# TODO: docs - add `required` everywhere
-
 # Python native types that Pydantic handles natively
 _NATIVE_TYPES: Final[Iterable[type]] = (
     date,

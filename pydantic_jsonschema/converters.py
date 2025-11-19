@@ -77,7 +77,9 @@ class FormatValidator(Protocol):
     See:
     https://json-schema.org/draft/2020-12/json-schema-validation#section-7.1
 
-    # todo: add pydantic validation info
+    For Pydantic validation details, see:
+    https://docs.pydantic.dev/latest/concepts/validators/#annotated-validators
+    https://docs.pydantic.dev/latest/concepts/validators/#after-validators
     """
 
     def __call__(
@@ -95,7 +97,9 @@ class BeforeValidatorFunc(Protocol):
     Should either accept any value and return processed value of the desired type,
     or raise a ValueError.
 
-    # todo: add pydantic validation info
+    For Pydantic validation details, see:
+    https://docs.pydantic.dev/latest/concepts/validators/#annotated-validators
+    https://docs.pydantic.dev/latest/concepts/validators/#before-validators
     """
 
     def __call__(
