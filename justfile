@@ -70,9 +70,25 @@ docs-build:
 docs-serve:
     uv run mkdocs serve
 
-# Deploy documentation to GitHub Pages
+# Deploy documentation to GitHub Pages (latest version)
 docs-deploy:
-    uv run mkdocs gh-deploy --force
+    uv run mike deploy --push --update-aliases latest dev
+
+# Deploy documentation for a specific version
+docs-deploy-version version:
+    uv run mike deploy --push --update-aliases {{version}}
+
+# Set default version for documentation
+docs-set-default version:
+    uv run mike set-default --push {{version}}
+
+# List all deployed documentation versions
+docs-list:
+    uv run mike list
+
+# Delete a documentation version
+docs-delete version:
+    uv run mike delete --push {{version}}
 
 # Clean up generated files
 clean:

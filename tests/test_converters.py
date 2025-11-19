@@ -1942,10 +1942,7 @@ class TestLaxSchemaConverter:
         model = to_lax_model(schema)
 
         # Required field must be provided
-        with pytest.raises(
-            ValidationError,
-            match=r".*Field required.*\n.*name.*",
-        ):
+        with pytest.raises(ValidationError, match=r"name[\s\S]*Field required"):
             model()
 
     def test_optional_fields_stay_optional(self) -> None:

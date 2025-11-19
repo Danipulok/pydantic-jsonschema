@@ -34,7 +34,10 @@ result = SentimentAnalysis.model_validate(llm_response)
 
 print(f"Sentiment: {result.sentiment}")  # type: ignore[attr-defined]
 # > Sentiment: positive
+# > Sentiment: positive
 print(f"Confidence: {result.confidence}")  # type: ignore[attr-defined]
 # > Confidence: 0.92
+# > Confidence: 0.92
 print(f"Entities: {result.entities}")  # type: ignore[attr-defined]
+# > Entities: ['Apple', 'iPhone']
 # > Entities: ['Apple', 'iPhone']

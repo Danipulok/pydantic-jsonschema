@@ -1,3 +1,4 @@
+from pydantic_jsonschema._version import __version__
 from pydantic_jsonschema.converters import (
     LaxSchemaConverter,
     Ref,
@@ -7,8 +8,6 @@ from pydantic_jsonschema.converters import (
 )
 from pydantic_jsonschema.types import DataType, JsonType, Schema
 
-__version__ = "0.1.0"
-
 __all__ = [
     "DataType",
     "JsonType",
@@ -16,6 +15,7 @@ __all__ = [
     "Ref",
     "Schema",
     "SchemaConverter",
+    "__version__",
     "to_lax_model",
     "to_model",
 ]

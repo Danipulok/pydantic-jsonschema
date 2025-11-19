@@ -5,6 +5,9 @@ build-backend = "hatchling.build"
 [tool.hatch.metadata]
 allow-direct-references = true
 
+[tool.hatch.version]
+path = "pydantic_jsonschema/_version.py"
+
 [tool.hatch.build.targets.sdist]
 exclude = [
     ".venv*",
@@ -30,7 +33,7 @@ packages = ["pydantic_jsonschema"]
 
 [project]
 name = "pydantic-jsonschema"
-version = "0.1.0"
+dynamic = ["version"]
 description = "JSON Schema to Pydantic model conversion library"
 authors = [
     {name = "Danipulok", email = "danipulok@users.noreply.github.com"}
@@ -106,6 +109,7 @@ test = [
     "pytest-examples @ git+https://github.com/Danipulok/pytest-examples.git@feat/windows-compatible",
 ]
 docs = [
+    "mike>=2.1.0",
     "mkdocs>=1.6.1",
     "mkdocs-material[imaging]>=9.5.45",
     "mkdocs-glightbox>=0.4.0",

@@ -43,3 +43,6 @@ for p in products:
     # > Widget: $19.99 (Stock: 100)
     # > Gadget: $29.99 (Stock: 50)
     # > Tool: $9.99 (Stock: 200)
+    # > Widget: $19.99 (Stock: 100)
+    # > Gadget: $29.99 (Stock: 50)
+    # > Tool: $9.99 (Stock: 200)

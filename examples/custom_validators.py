@@ -59,6 +59,8 @@ product = Product(
 print(product.sku)  # type: ignore[attr-defined]
 # > WDG-1234-PRO
 # > WDG-1234-PRO
+# > WDG-1234-PRO
 print(product.price)  # type: ignore[attr-defined]
+# > 19.99
 # > 19.99
 # > 19.99
