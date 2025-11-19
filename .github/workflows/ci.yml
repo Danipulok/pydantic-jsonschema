@@ -28,17 +28,14 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Install just
+        uses: extractions/setup-just@v2
+
       - name: Install dependencies
-        run: uv sync --frozen --all-extras --all-packages
+        run: just install
 
-      - name: Run Ruff format check
-        run: uv run ruff format --check
-
-      - name: Run Ruff lint
-        run: uv run ruff check
-
-      - name: Run mypy
-        run: uv run mypy .
+      - name: Run linting
+        run: just lint
 
   test:
     name: Test Python ${{ matrix.python-version }}
@@ -62,15 +59,14 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Install just
+        uses: extractions/setup-just@v2
+
       - name: Install dependencies
-        run: uv sync --frozen --all-extras --all-packages
+        run: just install
 
       - name: Run tests with coverage
-        run: |
-          uv run coverage run -m pytest
-          uv run coverage combine
-          uv run coverage report
-          uv run coverage xml
+        run: just test && uv run coverage xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -99,11 +95,14 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Install just
+        uses: extractions/setup-just@v2
+
       - name: Install dependencies
-        run: uv sync --frozen --all-extras --all-packages
+        run: just install
 
       - name: Build documentation
-        run: uv run mkdocs build
+        run: just docs-build
 
   build-package:
     name: Build package

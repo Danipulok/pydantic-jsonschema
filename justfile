@@ -31,6 +31,8 @@ lint:
     uv run ruff format --check
     uv run ruff check
     uv run mypy .
+    uv run codespell
+    uv run markdownlint-cli2 "**/*.md" "#node_modules"
 
 # Run tests and show coverage report
 test:
