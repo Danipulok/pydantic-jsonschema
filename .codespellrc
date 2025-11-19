@@ -1,0 +1,3 @@
+[codespell]
+skip = .git,.venv*,.mypy_cache,.pytest_cache,.ruff_cache,htmlcov,site,dist,build,*.egg-info,uv.lock
+ignore-words-list = crate
