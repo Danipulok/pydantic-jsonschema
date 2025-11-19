@@ -32,6 +32,7 @@ lint:
     uv run ruff check
     uv run mypy .
     uv run codespell
+    npx --yes markdownlint-cli2
 
 # Run tests and show coverage report
 test:

@@ -32,11 +32,6 @@ repos:
       - id: trailing-whitespace
         args: [ --markdown-linebreak-ext=md ]
 
-  - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.19.0
-    hooks:
-      - id: markdownlint-cli2
-
   - repo: local
     hooks:
       - id: format

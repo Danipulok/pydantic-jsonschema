@@ -1,0 +1,26 @@
+# Markdownlint-cli2 configuration
+# See: https://github.com/DavidAnson/markdownlint-cli2
+
+# Globs to include (only project markdown files)
+globs:
+  - "**/*.md"
+
+# Globs to ignore
+ignores:
+  - "node_modules/**"
+  - ".venv*/**"
+  - ".git/**"
+  - ".github/**"
+  - ".claude/**"
+  - ".mypy_cache/**"
+  - ".pytest_cache/**"
+  - ".ruff_cache/**"
+  - "htmlcov/**"
+  - "site/**"
+  - "dist/**"
+  - "build/**"
+  - "*.egg-info/**"
+  - "uv.lock"
+
+# Markdownlint configuration (can also be in .markdownlint.yaml)
+# We use the existing .markdownlint.yaml for rules
