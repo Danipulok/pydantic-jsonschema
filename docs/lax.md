@@ -84,9 +84,9 @@ Analysis = to_lax_model(schema, model_name="Analysis")
 # LLM returns everything as strings
 llm_response = {
     "sentiment": "positive",
-    "confidence": "0.87",              # Should be float
-    "keywords": "innovation, growth",  # Should be array
-    "word_count": "342"                # Should be int
+    "confidence": "0.87",                  # Should be float
+    "keywords": '["innovation", "growth"]',  # Should be array
+    "word_count": "342"                    # Should be int
 }
 
 # Lax validation handles it gracefully

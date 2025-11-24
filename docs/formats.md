@@ -80,7 +80,7 @@ This provides validators for formats defined in the JSON Schema specification:
 
 ```python
 from pydantic_jsonschema import Schema, to_model
-from pydantic_jsonschema.formats import DateTime, Email, IPv4, Uri, UUID
+from pydantic_jsonschema.formats import UUID, DateTime, Email, IPv4, Uri
 
 schema = Schema.model_validate({
     "type": "object",
