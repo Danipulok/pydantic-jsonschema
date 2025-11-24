@@ -16,8 +16,8 @@ from pydantic_jsonschema import (
     to_model,
 )
 from pydantic_jsonschema.exceptions import SchemaConvertionError, SchemaReferenceError
-from pydantic_jsonschema.formats import DateTime, Email, IPv4, Uri
 from pydantic_jsonschema.formats import UUID as UUID_FORMAT
+from pydantic_jsonschema.formats import DateTime, Email, IPv4, Uri
 from pydantic_jsonschema.formats._base import SchemaFormat
 from pydantic_jsonschema.types import JsonType, Schema
 from tests.conftest import SchemaRaw
@@ -1850,7 +1850,7 @@ class TestConverterCaching:
             },
             [
                 (None, []),
-                ("a, b, c", ["a", "b", "c"]),
+                ('["a", "b", "c"]', ["a", "b", "c"]),
                 (["x", "y"], ["x", "y"]),
             ],
         ),
@@ -2014,7 +2014,7 @@ class TestLaxSchemaConverter:
             name=123,  # int -> str
             age="25",  # str -> int
             balance="99.99",  # str -> float
-            tags="python, coding",  # CSV -> list
+            tags='["python", "coding"]',  # JSON -> list
         )
 
         assert instance.model_dump() == {

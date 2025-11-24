@@ -76,12 +76,7 @@ def coerce_to_list(value: Any) -> Any:  # noqa: ANN401
     if value is None:
         return []
 
-    # str -> list
-    # "a, b, c" -> ["a", "b", "c"]
-    if isinstance(value, str) and "," in value:
-        return [item.strip() for item in value.split(",")]
-
-    # JSON -> list
+    # JSON array -> list
     # '["a", "b", "c"]' -> ["a", "b", "c"]
     if isinstance(value, str) and value.startswith("[") and value.endswith("]"):
         loaded_json = load_json_simple(value)

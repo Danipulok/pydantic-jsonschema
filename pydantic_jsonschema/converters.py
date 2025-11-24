@@ -697,8 +697,24 @@ class LaxSchemaConverter(SchemaConverter):
 
     Provides lax validation that:
     - Adds before validators to coerce values to expected types
-    - Uses coerce functions from _lax module
+    - Uses user-provided coerce functions or defaults from _lax module
     """
+
+    def __init__(
+        self,
+        *,
+        default_model_name: str = _DEFAULT_MODEL_NAME,
+        refs: dict[Ref, type[BaseModel]] | None = None,
+        format_validators: dict[FormatName, FormatValidatorType] | None = None,
+        coerce_functions: dict[type, BeforeValidatorFunc] | None = None,
+    ) -> None:
+        super().__init__(
+            default_model_name=default_model_name,
+            refs=refs,
+            format_validators=format_validators,
+        )
+        # Use user-provided coerce functions or defaults
+        self._coerce_functions = coerce_functions if coerce_functions is not None else COERCE_FUNCTIONS
 
     def _apply_validators(
         self,
@@ -721,10 +737,10 @@ class LaxSchemaConverter(SchemaConverter):
         annotation_with_format = super()._apply_validators(annotation, schema)
 
         # If no coercion needed, return early
-        if base_type not in COERCE_FUNCTIONS:
+        if base_type not in self._coerce_functions:
             return annotation_with_format
 
-        coerce_func = COERCE_FUNCTIONS[base_type]
+        coerce_func = self._coerce_functions[base_type]
         coerce_validator = BeforeValidator(coerce_func)
 
         # If already Annotated (from format validator), add coerce validator
@@ -802,6 +818,7 @@ def to_lax_model(
     model_name: str | None = None,
     refs: dict[Ref, type[BaseModel]] | None = None,
     format_validators: dict[FormatName, FormatValidatorType] | None = None,
+    coerce_functions: dict[type, BeforeValidatorFunc] | None = None,
 ) -> type[BaseModel]:
     """Convert schema to Pydantic model with lax validation.
 
@@ -811,10 +828,14 @@ def to_lax_model(
     :param model_name: Name for the generated model.
     :param refs: Pre-built reference models.
     :param format_validators: Custom format validators (callables, types, or Annotated).
+    :param coerce_functions: Custom type coercion functions. Maps Python types to
+        coercion callables that transform values before validation.
+        If None, uses default coercions (str, int, float, list).
     :returns: Pydantic model class with lax validation.
     """
     converter = LaxSchemaConverter(
         refs=refs,
         format_validators=format_validators,
+        coerce_functions=coerce_functions,
     )
     return converter.convert_schema(schema, model_name=model_name)

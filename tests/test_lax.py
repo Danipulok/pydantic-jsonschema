@@ -104,15 +104,11 @@ class TestCoerceFunctions:
             (coerce_to_float, False, 0.0),
             # List coercion
             (coerce_to_list, None, []),
-            (coerce_to_list, "a, b, c", ["a", "b", "c"]),
-            (coerce_to_list, "item1, item2", ["item1", "item2"]),
-            (coerce_to_list, "a,b,c", ["a", "b", "c"]),
-            (coerce_to_list, "a  ,  b  ,  c", ["a", "b", "c"]),
             (coerce_to_list, "[]", []),
+            (coerce_to_list, '["a", "b", "c"]', ["a", "b", "c"]),
             (coerce_to_list, "single", "single"),
             (coerce_to_list, "just a string", "just a string"),
             (coerce_to_list, "", ""),
-            (coerce_to_list, "a,,c", ["a", "", "c"]),
         ],
     )
     def test_coerce_functions(
@@ -198,10 +194,10 @@ class TestCoerceFunctions:
         result = load_json_simple(data)
         assert result == expected_result
 
-    def test_csv_with_empty_values(self) -> None:
-        """Test CSV parsing with empty values."""
-        result = coerce_to_list("a,,c")
-        assert result == ["a", "", "c"]
+    def test_json_list_coercion(self) -> None:
+        """Test JSON list coercion."""
+        result = coerce_to_list('["a", "b", "c"]')
+        assert result == ["a", "b", "c"]
 
     @pytest.mark.parametrize(
         ("value", "expected"),
@@ -244,7 +240,7 @@ class TestCoerceFunctionsMapping:
             (float, "3.14", 3.14),
             (float, 123, 123.0),
             (list, None, []),
-            (list, "a, b", ["a", "b"]),
+            (list, '["a", "b"]', ["a", "b"]),
         ],
     )
     def test_coerce_function_from_dict(
