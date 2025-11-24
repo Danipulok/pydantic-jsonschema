@@ -707,6 +707,7 @@ class LaxSchemaConverter(SchemaConverter):
         refs: dict[Ref, type[BaseModel]] | None = None,
         format_validators: dict[FormatName, FormatValidatorType] | None = None,
         coerce_functions: dict[type, BeforeValidatorFunc] | None = None,
+        model_validators: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(
             default_model_name=default_model_name,
@@ -715,6 +716,8 @@ class LaxSchemaConverter(SchemaConverter):
         )
         # Use user-provided coerce functions or defaults
         self._coerce_functions = coerce_functions if coerce_functions is not None else COERCE_FUNCTIONS
+        # Store model validators for passing to create_model
+        self._model_validators = model_validators or {}
 
     def _apply_validators(
         self,
@@ -759,6 +762,77 @@ class LaxSchemaConverter(SchemaConverter):
 
         # Wrap with coerce validator
         return Annotated[annotation_with_format, coerce_validator]
+
+    def _build_model(
+        self,
+        schema: Schema,
+        /,
+        *,
+        model_name: str | None = None,
+    ) -> type[BaseModel]:
+        """Build Pydantic model from schema with model validators support.
+
+        Overrides parent to add model validators support.
+
+        :param schema: Schema to convert.
+        :param model_name: Name for the generated model.
+        :returns: Pydantic model class.
+        """
+        # Check if model already cached
+        cache_key = self._hash_schema(schema)
+        if cache_key in self._models_cache:
+            return self._models_cache[cache_key]
+
+        # Determine model name
+        name: str = (
+            model_name or sanitize_identifier(schema.title or "") or self._default_model_name
+        )
+
+        # Handle `allOf` composition -> base classes
+        base_classes = self._get_base_classes(schema)
+
+        # Handle non-object types -> RootModel
+        if schema.type != DataType.OBJECT:
+            model = self._create_root_model(
+                schema,
+                model_name=name,
+                base_classes=base_classes,
+            )
+            self._models_cache[cache_key] = model
+            return model
+
+        # Handle `allOf` without properties -> combined base class
+        if schema.allOf and not schema.properties:
+            # Single base class
+            if len(base_classes) == 1:
+                self._models_cache[cache_key] = base_classes[0]
+                return base_classes[0]
+
+            # Create combined base class
+            created_model = type(name, base_classes, {"__module__": __name__})
+            model = cast("type[BaseModel]", created_model)
+            self._models_cache[cache_key] = model
+            return model
+
+        # Build fields from properties
+        fields = self._build_fields(schema)
+
+        # Configure model (extra fields, etc)
+        model_config = self._build_model_config(schema)
+
+        # Create model with model validators support
+        created_model = create_model(  # type: ignore[call-overload]
+            name,
+            __config__=model_config,
+            __doc__=schema.description,
+            __base__=base_classes,
+            __module__=__name__,
+            __validators__=self._model_validators,
+            **fields,
+        )
+        model = cast("type[BaseModel]", created_model)
+        self._models_cache[cache_key] = model
+        return model
 
     @staticmethod
     def _extract_base_type(annotation: AnnotationType) -> type | None:
@@ -819,6 +893,7 @@ def to_lax_model(
     refs: dict[Ref, type[BaseModel]] | None = None,
     format_validators: dict[FormatName, FormatValidatorType] | None = None,
     coerce_functions: dict[type, BeforeValidatorFunc] | None = None,
+    model_validators: dict[str, Any] | None = None,
 ) -> type[BaseModel]:
     """Convert schema to Pydantic model with lax validation.
 
@@ -831,11 +906,14 @@ def to_lax_model(
     :param coerce_functions: Custom type coercion functions. Maps Python types to
         coercion callables that transform values before validation.
         If None, uses default coercions (str, int, float, list).
+    :param model_validators: Custom model validators (dict of validator_name -> validator callable).
+        Validators will be added to the generated model using Pydantic's __validators__ parameter.
     :returns: Pydantic model class with lax validation.
     """
     converter = LaxSchemaConverter(
         refs=refs,
         format_validators=format_validators,
         coerce_functions=coerce_functions,
+        model_validators=model_validators,
     )
     return converter.convert_schema(schema, model_name=model_name)
