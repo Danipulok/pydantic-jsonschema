@@ -88,7 +88,7 @@ Analysis = to_lax_model(schema, model_name="Analysis")
 llm_output = {
     "sentiment": "positive",
     "confidence": "0.87",  # String instead of number
-    "keywords": "happy, great",  # String instead of array
+    "keywords": '["happy", "great"]',  # JSON string instead of array
 }
 
 analysis = Analysis.model_validate(llm_output)

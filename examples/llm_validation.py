@@ -25,7 +25,7 @@ SentimentAnalysis = to_lax_model(schema, model_name="SentimentAnalysis")
 llm_response = {
     "sentiment": "positive",
     "confidence": "0.92",  # String instead of number
-    "entities": "Apple, iPhone",  # Comma-separated instead of array
+    "entities": '["Apple", "iPhone"]',  # JSON string instead of array
     "summary": "Product review is positive",
 }
 

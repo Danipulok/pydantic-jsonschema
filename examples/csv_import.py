@@ -2,8 +2,18 @@
 
 import csv
 from io import StringIO
+from typing import Any
 
 from pydantic_jsonschema import Schema, to_lax_model
+
+
+# Custom coerce function for CSV lists
+def coerce_csv_to_list(value: Any) -> Any:  # noqa: ANN401
+    """Convert comma-separated string to list."""
+    if isinstance(value, str) and "," in value:
+        return [item.strip() for item in value.split(",")]
+    return value
+
 
 # Define the schema for CSV rows
 product_schema = Schema.model_validate(
@@ -21,7 +31,12 @@ product_schema = Schema.model_validate(
     },
 )
 
-Product = to_lax_model(product_schema, model_name="Product")
+# Use custom coerce function for list type to handle CSV format
+Product = to_lax_model(
+    product_schema,
+    model_name="Product",
+    coerce_functions={list: coerce_csv_to_list},
+)
 
 # Sample CSV data (everything is strings)
 csv_data = """id,name,price,quantity,in_stock,tags
