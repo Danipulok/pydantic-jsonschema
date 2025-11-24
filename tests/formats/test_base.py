@@ -4,7 +4,7 @@ import pytest
 from pydantic import GetCoreSchemaHandler
 from pydantic_core import CoreSchema, core_schema
 
-from pydantic_jsonschema.formats import SchemaFormat
+from pydantic_jsonschema.formats._base import SchemaFormat
 from pydantic_jsonschema.types import DataType, JsonType
 
 

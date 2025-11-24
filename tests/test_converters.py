@@ -16,8 +16,9 @@ from pydantic_jsonschema import (
     to_model,
 )
 from pydantic_jsonschema.exceptions import SchemaConvertionError, SchemaReferenceError
-from pydantic_jsonschema.formats import DATE_TIME, EMAIL, IPV4, URI, SchemaFormat
+from pydantic_jsonschema.formats import DateTime, Email, IPv4, Uri
 from pydantic_jsonschema.formats import UUID as UUID_FORMAT
+from pydantic_jsonschema.formats._base import SchemaFormat
 from pydantic_jsonschema.types import JsonType, Schema
 from tests.conftest import SchemaRaw
 
@@ -1234,7 +1235,7 @@ class TestAnnotatedValidators:
             format_validators={
                 "date-time": datetime,
                 "email": EmailStr,
-                "uuid": UUID,
+                "uuid": UUID_FORMAT,
                 "ipv4": IPv4Address,
             },
         )
@@ -2092,7 +2093,7 @@ class TestSchemaFormatValidators:
             "required": ["email"],
         }
         schema = Schema.model_validate(schema_raw)
-        model = to_model(schema, format_validators={"email": EMAIL})
+        model = to_model(schema, format_validators={"email": Email})
 
         # Valid email
         instance = model(email="alice@example.com")
@@ -2114,7 +2115,7 @@ class TestSchemaFormatValidators:
             "required": ["created_at"],
         }
         schema = Schema.model_validate(schema_raw)
-        model = to_model(schema, format_validators={"date-time": DATE_TIME})
+        model = to_model(schema, format_validators={"date-time": DateTime})
 
         # Valid datetime
         instance = model(created_at="2024-01-15T10:30:00Z")
@@ -2166,7 +2167,7 @@ class TestSchemaFormatValidators:
             "required": ["ip"],
         }
         schema = Schema.model_validate(schema_raw)
-        model = to_model(schema, format_validators={"ipv4": IPV4})
+        model = to_model(schema, format_validators={"ipv4": IPv4})
 
         # Valid IPv4
         instance = model(ip="192.168.1.1")
@@ -2188,7 +2189,7 @@ class TestSchemaFormatValidators:
             "required": ["website"],
         }
         schema = Schema.model_validate(schema_raw)
-        model = to_model(schema, format_validators={"uri": URI})
+        model = to_model(schema, format_validators={"uri": Uri})
 
         # Valid URI
         instance = model(website="https://example.com")
@@ -2216,11 +2217,11 @@ class TestSchemaFormatValidators:
         model = to_model(
             schema,
             format_validators={
-                "email": EMAIL,
-                "uri": URI,
-                "date-time": DATE_TIME,
+                "email": Email,
+                "uri": Uri,
+                "date-time": DateTime,
                 "uuid": UUID_FORMAT,
-                "ipv4": IPV4,
+                "ipv4": IPv4,
             },
         )
 
@@ -2257,7 +2258,7 @@ class TestSchemaFormatValidators:
             },
         }
         schema = Schema.model_validate(schema_raw)
-        model = to_lax_model(schema, format_validators={"date-time": DATE_TIME})
+        model = to_lax_model(schema, format_validators={"date-time": DateTime})
 
         # Valid datetime
         instance = model(created_at="2024-01-15T10:30:00Z")

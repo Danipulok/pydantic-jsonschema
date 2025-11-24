@@ -1,33 +1,38 @@
-from ._base import SchemaFormat
+"""Built-in format types for JSON Schema validation.
+
+This module exports Pydantic-compatible types for common JSON Schema formats.
+All types can be used directly in Pydantic models or passed as format_validators
+to SchemaConverter.
+"""
+
 from ._builtin import (
-    DATE,
-    DATE_TIME,
-    DURATION,
-    EMAIL,
-    HOSTNAME,
-    IPV4,
-    IPV6,
-    IRI,
-    IRI_REFERENCE,
-    TIME,
-    URI,
-    URI_REFERENCE,
     UUID,
+    Date,
+    DateTime,
+    Duration,
+    Email,
+    Hostname,
+    IPv4,
+    IPv6,
+    Iri,
+    IriReference,
+    Time,
+    Uri,
+    UriReference,
 )
 
 __all__ = [
-    "DATE",
-    "DATE_TIME",
-    "DURATION",
-    "EMAIL",
-    "HOSTNAME",
-    "IPV4",
-    "IPV6",
-    "IRI",
-    "IRI_REFERENCE",
-    "TIME",
-    "URI",
-    "URI_REFERENCE",
     "UUID",
-    "SchemaFormat",
+    "Date",
+    "DateTime",
+    "Duration",
+    "Email",
+    "Hostname",
+    "IPv4",
+    "IPv6",
+    "Iri",
+    "IriReference",
+    "Time",
+    "Uri",
+    "UriReference",
 ]
