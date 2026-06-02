@@ -36,7 +36,7 @@ name = "pydantic-jsonschema"
 dynamic = ["version"]
 description = "JSON Schema to Pydantic model conversion library"
 authors = [
-    {name = "Danipulok", email = "danipulok@users.noreply.github.com"}
+    {name = "Danipulok", email = "danipulok@gmail.com"}
 ]
 readme = "README.md"
 license = {text = "MIT"}
@@ -80,7 +80,7 @@ formats-base = [
     "rfc3986>=2.0.0",
 ]
 formats-extra = [
-    "pydantic-extra-types[all] @ git+https://github.com/Danipulok/pydantic-extra-types.git@refactor/s3",
+    "pydantic-extra-types[all]",
 ]
 formats-all = [
     # `formats-base`
@@ -88,7 +88,7 @@ formats-all = [
     "fqdn",
     "rfc3986>=2.0.0",
     # `formats-extra`
-    "pydantic-extra-types[all] @ git+https://github.com/Danipulok/pydantic-extra-types.git@refactor/s3",
+    "pydantic-extra-types[all]",
 ]
 
 [dependency-groups]
