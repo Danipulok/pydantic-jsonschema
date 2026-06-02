@@ -18,20 +18,16 @@ from typing import (
 from pydantic import BaseModel, BeforeValidator, ConfigDict, RootModel, create_model
 from pydantic.fields import FieldInfo
 
-from ._lax import COERCE_FUNCTIONS
 from ._utils import sanitize_identifier
 from .exceptions import SchemaConvertionError, SchemaReferenceError
-from .types import DataType, JsonType, Reference, Schema
+from .types import DataType, Reference, Schema
 
 __all__ = [
-    "BeforeValidatorFunc",
     "FormatName",
     "FormatValidator",
-    "LaxSchemaConverter",
     "Ref",
     "SchemaConverter",
     "SchemaHash",
-    "to_lax_model",
     "to_model",
 ]
 
@@ -89,26 +85,6 @@ class FormatValidator(Protocol):
         value: PythonType,
     ) -> PythonType:
         """Process the value after Pydantic's standard validation."""
-        ...
-
-
-class BeforeValidatorFunc(Protocol):
-    """Protocol for before validator callables.
-
-    Called before Pydantic's standard validation.
-    Should either accept any value and return processed value of the desired type,
-    or raise a ValueError.
-
-    For Pydantic validation details, see:
-    https://docs.pydantic.dev/latest/concepts/validators/#annotated-validators
-    https://docs.pydantic.dev/latest/concepts/validators/#before-validators
-    """
-
-    def __call__(
-        self,
-        value: JsonType,
-    ) -> PythonType:
-        """Process the value before Pydantic's standard validation."""
         ...
 
 
@@ -694,178 +670,6 @@ class SchemaConverter:
         return schema.maxLength
 
 
-class LaxSchemaConverter(SchemaConverter):
-    """Lax schema conversion with type coercion.
-
-    Provides lax validation that:
-    - Adds before validators to coerce values to expected types
-    - Uses user-provided coerce functions or defaults from _lax module
-    """
-
-    def __init__(
-        self,
-        *,
-        default_model_name: str = _DEFAULT_MODEL_NAME,
-        refs: dict[Ref, type[BaseModel]] | None = None,
-        format_validators: dict[FormatName, FormatValidatorType] | None = None,
-        coerce_functions: dict[type, BeforeValidatorFunc] | None = None,
-        model_validators: dict[str, Any] | None = None,
-    ) -> None:
-        super().__init__(
-            default_model_name=default_model_name,
-            refs=refs,
-            format_validators=format_validators,
-        )
-        # Use user-provided coerce functions or defaults
-        self._coerce_functions = (
-            coerce_functions if coerce_functions is not None else COERCE_FUNCTIONS
-        )
-        # Store model validators for passing to create_model
-        self._model_validators = model_validators or {}
-
-    def _apply_validators(
-        self,
-        annotation: AnnotationType,
-        schema: Schema,
-        /,
-    ) -> AnnotationType:
-        """Apply validators to annotation with lax coercion.
-
-        Adds BeforeValidators for type coercion before format validators.
-
-        :param annotation: Original annotation.
-        :param schema: Schema to check for format.
-        :returns: Annotation with validators applied.
-        """
-        # Extract base type for coercion (before format validators)
-        base_type = self._extract_base_type(annotation)
-
-        # Apply format validators from parent
-        annotation_with_format = super()._apply_validators(annotation, schema)
-
-        # If no coercion needed, return early
-        if base_type not in self._coerce_functions:
-            return annotation_with_format
-
-        coerce_func = self._coerce_functions[base_type]
-        coerce_validator = BeforeValidator(coerce_func)
-
-        # If already Annotated (from format validator), add coerce validator
-        # mypy doesn't understand that `AnnotationType` can be `Annotated` special form
-        if get_origin(annotation_with_format) is Annotated:  # type: ignore[comparison-overlap]
-            # `annotation_with_format` is `Annotated`, so it has `__args__` and `__metadata__`
-            assert hasattr(annotation_with_format, "__args__")  # noqa: S101
-            assert hasattr(annotation_with_format, "__metadata__")  # noqa: S101
-
-            # Extract the base type and existing metadata
-            base_annotation = annotation_with_format.__args__[0]
-            existing_metadata = annotation_with_format.__metadata__
-            # Add coerce validator AFTER existing metadata
-            # (BeforeValidators run in reverse order - last one runs first)
-            return Annotated[base_annotation, *existing_metadata, coerce_validator]
-
-        # Wrap with coerce validator
-        return Annotated[annotation_with_format, coerce_validator]
-
-    def _build_model(
-        self,
-        schema: Schema,
-        /,
-        *,
-        model_name: str | None = None,
-    ) -> type[BaseModel]:
-        """Build Pydantic model from schema with model validators support.
-
-        Overrides parent to add model validators support.
-
-        :param schema: Schema to convert.
-        :param model_name: Name for the generated model.
-        :returns: Pydantic model class.
-        """
-        # Check if model already cached
-        cache_key = self._hash_schema(schema)
-        if cache_key in self._models_cache:
-            return self._models_cache[cache_key]
-
-        # Determine model name
-        name: str = (
-            model_name or sanitize_identifier(schema.title or "") or self._default_model_name
-        )
-
-        # Handle `allOf` composition -> base classes
-        base_classes = self._get_base_classes(schema)
-
-        # Handle non-object types -> RootModel
-        if schema.type != DataType.OBJECT:
-            model = self._create_root_model(
-                schema,
-                model_name=name,
-                base_classes=base_classes,
-            )
-            self._models_cache[cache_key] = model
-            return model
-
-        # Handle `allOf` without properties -> combined base class
-        if schema.allOf and not schema.properties:
-            # Single base class
-            if len(base_classes) == 1:
-                self._models_cache[cache_key] = base_classes[0]
-                return base_classes[0]
-
-            # Create combined base class
-            created_model = type(name, base_classes, {"__module__": __name__})
-            model = cast("type[BaseModel]", created_model)
-            self._models_cache[cache_key] = model
-            return model
-
-        # Build fields from properties
-        fields = self._build_fields(schema)
-
-        # Configure model (extra fields, etc)
-        model_config = self._build_model_config(schema)
-
-        # Create model with model validators support
-        created_model = create_model(  # type: ignore[call-overload]
-            name,
-            __config__=model_config,
-            __doc__=schema.description,
-            __base__=base_classes,
-            __module__=__name__,
-            __validators__=self._model_validators,
-            **fields,
-        )
-        model = cast("type[BaseModel]", created_model)
-        self._models_cache[cache_key] = model
-        return model
-
-    @staticmethod
-    def _extract_base_type(annotation: AnnotationType) -> type | None:
-        """Extract base type from annotation for coercion.
-
-        :param annotation: Type annotation to extract from.
-        :returns: Base type if coercible, None otherwise.
-        """
-        # Handle Annotated types (shouldn't happen at this stage, but just in case)
-        # mypy doesn't understand that `AnnotationType` can be `Annotated` special form
-        if get_origin(annotation) is Annotated:  # type: ignore[comparison-overlap]
-            # `annotation` is `Annotated`, so it has __args__
-            assert hasattr(annotation, "__args__")  # noqa: S101
-            annotation = annotation.__args__[0]
-
-        # Handle direct types
-        if annotation in (str, int, float):
-            return cast("type", annotation)
-
-        # Handle list types (list[...])
-        origin = get_origin(annotation)
-        # mypy doesn't understand that `get_origin` can return `list` type
-        if origin is list:  # type: ignore[comparison-overlap]
-            return list
-
-        return None
-
-
-# Convenience functions
 def to_model(
     schema: Schema,
     /,
@@ -885,39 +689,5 @@ def to_model(
     converter = SchemaConverter(
         refs=refs,
         format_validators=format_validators,
-    )
-    return converter.convert_schema(schema, model_name=model_name)
-
-
-def to_lax_model(  # noqa: PLR0913
-    schema: Schema,
-    /,
-    *,
-    model_name: str | None = None,
-    refs: dict[Ref, type[BaseModel]] | None = None,
-    format_validators: dict[FormatName, FormatValidatorType] | None = None,
-    coerce_functions: dict[type, BeforeValidatorFunc] | None = None,
-    model_validators: dict[str, Any] | None = None,
-) -> type[BaseModel]:
-    """Convert schema to Pydantic model with lax validation.
-
-    All fields are optional and have sensible defaults.
-
-    :param schema: Schema to convert.
-    :param model_name: Name for the generated model.
-    :param refs: Pre-built reference models.
-    :param format_validators: Custom format validators (callables, types, or Annotated).
-    :param coerce_functions: Custom type coercion functions. Maps Python types to
-        coercion callables that transform values before validation.
-        If None, uses default coercions (str, int, float, list).
-    :param model_validators: Custom model validators (dict of validator_name -> validator callable).
-        Validators will be added to the generated model using Pydantic's __validators__ parameter.
-    :returns: Pydantic model class with lax validation.
-    """
-    converter = LaxSchemaConverter(
-        refs=refs,
-        format_validators=format_validators,
-        coerce_functions=coerce_functions,
-        model_validators=model_validators,
     )
     return converter.convert_schema(schema, model_name=model_name)

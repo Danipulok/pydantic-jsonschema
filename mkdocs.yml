@@ -75,7 +75,6 @@ nav:
   - Home: index.md
   - Installation: install.md
   - Converters: converters.md
-  - Lax Validation: lax.md
   - Format Validators: formats.md
   - Examples: examples.md
   - API Reference:

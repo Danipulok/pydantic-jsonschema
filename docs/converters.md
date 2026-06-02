@@ -421,6 +421,5 @@ Model = converter.convert_schema(schema, model_name="SpecificName")
 
 ## Next Steps
 
-- [Lax vs Strict](converters.md) — Choose validation mode for your use case
 - [Format Validators](formats.md) — Add custom validation for special formats
 - [Examples](examples.md) — See real-world applications

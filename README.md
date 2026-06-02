@@ -21,7 +21,6 @@ or validating LLM-generated data against predefined structures.
 
 - **Type-Safe Conversion** — JSON Schema becomes a proper Pydantic model
 - **Automatic References** — Handles `$ref` and `$defs` seamlessly
-- **Lax Mode** — Type coercion for flexible validation of AI-generated outputs
 - **Custom Formats** — Extend with specific validators (email, UUID, etc.)
 - **Schema Composition** — Supports `allOf`, `anyOf`, `oneOf` constructs
 - **Standards Compliant** — Follows JSON Schema Draft 2020-12
@@ -62,40 +61,6 @@ User = to_model(schema, model_name="User")
 user = User(name="Alice", age=30, email="alice@example.com")
 print(user.model_dump_json())
 #> {"name":"Alice","age":30,"email":"alice@example.com"}
-```
-
-## LLM-Friendly Validation
-
-When working with LLM outputs that might return incorrect types,
-use lax validation for automatic coercion:
-
-```python
-from pydantic_jsonschema import Schema, to_lax_model
-
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "sentiment": {"type": "string", "enum": ["positive", "negative", "neutral"]},
-        "confidence": {"type": "number"},
-        "keywords": {"type": "array", "items": {"type": "string"}}
-    },
-    "required": ["sentiment", "confidence"]
-})
-
-Analysis = to_lax_model(schema, model_name="Analysis")
-
-# LLM returns strings everywhere
-llm_output = {
-    "sentiment": "positive",
-    "confidence": "0.87",  # String instead of number
-    "keywords": '["happy", "great"]',  # JSON string instead of array
-}
-
-analysis = Analysis.model_validate(llm_output)
-print(analysis.confidence)
-#> 0.87
-print(analysis.keywords)
-#> ['happy', 'great']
 ```
 
 ## Learn More

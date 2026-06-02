@@ -50,44 +50,6 @@ print(user.model_dump_json())
 
 *This example is complete and can be run as-is.*
 
-## Working with LLM Outputs
-
-LLMs often return data with incorrect types (strings instead of numbers, etc.). Use lax validation for automatic type coercion:
-
-```python
-from pydantic_jsonschema import Schema, to_lax_model
-
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "sentiment": {"type": "string", "enum": ["positive", "negative", "neutral"]},
-        "confidence": {"type": "number"},
-        "keywords": {"type": "array", "items": {"type": "string"}}
-    },
-    "required": ["sentiment", "confidence"]
-})
-
-Analysis = to_lax_model(schema, model_name="Analysis")
-
-# LLM returns everything as strings
-llm_output = {
-    "sentiment": "positive",
-    "confidence": "0.87",  # String, not number
-    "keywords": '["happy", "great"]',  # String, not array
-}
-
-# Lax validation coerces to correct types
-analysis = Analysis.model_validate(llm_output)
-print(analysis.confidence)
-#> 0.87
-print(analysis.keywords)
-#> ['happy', 'great']
-```
-
-*This example is complete and can be run as-is.*
-
-[Learn more about lax validation](lax.md)
-
 ## Schema References
 
 Handle complex schemas with `$ref` and `$defs`:
@@ -124,8 +86,6 @@ References are resolved automatically, creating nested Pydantic models.
 ## Key Features
 
 **Model Conversion** — JSON Schema becomes a proper Pydantic model with all restrictions enforced
-
-**Lax Mode** — Type coercion for flexible validation of external data sources (LLMs, CSVs, APIs)
 
 **Custom Formats** — Extend with validators for email, UUID, dates, or custom formats
 

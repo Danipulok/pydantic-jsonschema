@@ -451,30 +451,6 @@ CustomStr = Annotated[
 3. AfterValidator (additional checks)
 4. Format validator (if specified)
 
-## Working with Lax Validation
-
-Format validators work with both strict and lax converters:
-
-```python
-from pydantic import EmailStr
-
-from pydantic_jsonschema import Schema, to_lax_model
-
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "email": {"type": "string", "format": "email"}
-    }
-})
-
-User = to_lax_model(schema, format_validators={"email": EmailStr})
-
-# Value is coerced to string first, then validated as email
-user = User(email="alice@example.com")  # ✓
-```
-
-*This example is complete and can be run as-is.*
-
 ## Common Patterns
 
 ### Range Validation
