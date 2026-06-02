@@ -1,4 +1,7 @@
+"""Optional format validators with runtime dependency checks."""
+
 import importlib.util
+from typing import TYPE_CHECKING
 
 try:
     importlib.util.find_spec("fqdn")
@@ -20,7 +23,9 @@ from rfc3986 import (  # type: ignore[import-untyped]
 )
 
 from pydantic_jsonschema.exceptions import FormatValidationError
-from pydantic_jsonschema.types import JsonType
+
+if TYPE_CHECKING:
+    from pydantic_jsonschema.types import JsonType
 
 __all__ = [
     "validate_hostname",
