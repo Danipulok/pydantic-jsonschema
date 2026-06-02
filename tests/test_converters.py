@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from ipaddress import IPv4Address
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 from uuid import UUID
 
 import pytest
@@ -18,7 +18,9 @@ from pydantic_jsonschema.formats import UUID as UUID_FORMAT
 from pydantic_jsonschema.formats import DateTime, Email, IPv4, Uri
 from pydantic_jsonschema.formats._base import SchemaFormat
 from pydantic_jsonschema.types import JsonType, Schema
-from tests.conftest import SchemaRaw
+
+if TYPE_CHECKING:
+    from tests.conftest import SchemaRaw
 
 
 class TestBasicConversion:
@@ -665,6 +667,24 @@ class TestComposition:
 
         instance = model(multi_value=True)
         assert instance.model_dump() == {"multi_value": True}
+
+
+class TestExplicitDefaults:
+    """Tests for explicit default values in schemas."""
+
+    def test_explicit_default_preserved(self) -> None:
+        """Test that explicit default value is used when field is omitted."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string", "default": "pending"},
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model()
+        assert instance.model_dump() == {"status": "pending"}
 
 
 class TestConverterErrorHandling:
@@ -1735,6 +1755,32 @@ class TestSchemaFormatValidators:
             "id": UUID("550e8400-e29b-41d4-a716-446655440000"),
             "ip": IPv4Address("192.168.1.1"),
         }
+
+    def test_schema_format_with_callable_validator(self) -> None:
+        """Test SchemaFormat with a callable validator wraps it as BeforeValidator."""
+        uppercase_format = SchemaFormat(
+            key="upper",
+            title="Uppercase",
+            examples=["HELLO"],
+            types=[DataType.STRING],
+            validator=lambda v: v.upper(),
+        )
+
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "format": "upper"},
+            },
+            "required": ["name"],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(
+            schema,
+            format_validators={"upper": uppercase_format},
+        )
+
+        instance = model(name="hello")
+        assert instance.model_dump() == {"name": "HELLO"}
 
     def test_schema_format_without_validator(self) -> None:
         """Test SchemaFormat with validator=None in to_model."""

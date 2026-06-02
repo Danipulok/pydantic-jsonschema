@@ -123,10 +123,17 @@ plugins = [
 strict = true
 warn_return_any = true
 warn_unused_configs = true
+exclude = ["check_.*\\.py$", "mre_.*\\.py$", "pydantic_mre\\.py$"]
 
 [tool.ruff]
 target-version = "py313"
 line-length = 100
+extend-exclude = ["mre_*.py", "pydantic_mre.py"]
+
+[tool.ruff.format]
+# `pytest-examples` requires `#>` (no space) for print output assertions.
+# `ruff format` rewrites `#>` to `# >`, breaking those tests.
+exclude = ["examples/*"]
 
 [tool.ruff.lint]
 select = ["ALL"]

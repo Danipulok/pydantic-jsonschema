@@ -44,7 +44,7 @@ class Schema(_OpenAPISchema):
         handler: SerializerFunctionWrapHandler,
     ) -> dict[str, Any]:
         """Drop `None` leaves (recursively) inherited from parent fields."""
-        return _strip_none(handler(self))
+        return _strip_none(handler(self))  # type: ignore[no-any-return]
 
 
 class Reference(_OpenAPIReference):
@@ -60,7 +60,7 @@ class Reference(_OpenAPIReference):
         handler: SerializerFunctionWrapHandler,
     ) -> dict[str, Any]:
         """Drop `None` leaves (recursively) inherited from parent fields."""
-        return _strip_none(handler(self))
+        return _strip_none(handler(self))  # type: ignore[no-any-return]
 
 
 def _strip_none(value: Any) -> Any:  # noqa: ANN401
@@ -106,7 +106,7 @@ def _rebind_nested_schema() -> None:
             new_annotation = _swap_type(new_annotation, from_type, to_type)
 
         Schema.__annotations__[name] = new_annotation
-        if name in Schema.model_fields:
+        if name in Schema.model_fields:  # pragma: no branch
             Schema.model_fields[name].annotation = new_annotation
 
     Schema.model_rebuild(force=True)

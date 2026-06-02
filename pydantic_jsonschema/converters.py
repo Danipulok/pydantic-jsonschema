@@ -371,7 +371,7 @@ class SchemaConverter:
                 if isinstance(sub_schema, Reference):
                     model = self._get_model(sub_schema.ref)
                 else:
-                    model = self._convert_nested_schema(sub_schema)
+                    model = self._convert_nested_schema(sub_schema)  # type: ignore[arg-type]
                 base_models.append(model)
 
         return tuple(base_models)
@@ -421,7 +421,7 @@ class SchemaConverter:
                     # Use schema from defs for field metadata, or empty schema
                     schema_for_field = self._defs_cache.get(field_schema.ref, Schema())
                 else:
-                    schema_for_field = field_schema
+                    schema_for_field = field_schema  # type: ignore[assignment]
 
                 # Convert to Pydantic field
                 field = self._schema_to_field(
@@ -572,7 +572,7 @@ class SchemaConverter:
             union_args: list[type | ForwardRef] = []
             for idx, sub_schema in enumerate(union_schemas):
                 with self._track_path(f"{union_type}[{idx}]"):
-                    sub_schema_annotation = self._schema_to_annotation(sub_schema)
+                    sub_schema_annotation = self._schema_to_annotation(sub_schema)  # type: ignore[arg-type]
                     union_args.append(sub_schema_annotation)
             union_annotation = Union[tuple(union_args)]  # type: ignore[valid-type]  # noqa: UP007
             return cast("type", union_annotation)
@@ -586,7 +586,7 @@ class SchemaConverter:
             item_type: type | ForwardRef = Any
             if schema.items:
                 with self._track_path("items"):
-                    item_type = self._schema_to_annotation(schema.items)
+                    item_type = self._schema_to_annotation(schema.items)  # type: ignore[arg-type]
             list_annotation = list[item_type]  # type: ignore[valid-type]
             return cast("type", list_annotation)
 
