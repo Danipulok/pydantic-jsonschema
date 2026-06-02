@@ -82,7 +82,7 @@ When releasing a new version:
    git add pydantic_jsonschema/_version.py CHANGELOG.md
    git commit -m "chore: bump version to 0.2.0"
    git tag v0.2.0
-   git push origin master --tags
+   git push origin main --tags
    ```
 
 4. **Deploy documentation:**
@@ -118,7 +118,7 @@ For development versions:
 Mike supports aliases for documentation versions:
 
 - `latest`: Latest stable release (e.g., 0.2.0)
-- `dev`: Development version from master branch
+- `dev`: Development version from main branch
 
 Example deployment:
 

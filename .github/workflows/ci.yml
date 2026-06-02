@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   pull_request:
-    branches: [main, master]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -16,26 +16,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+        uses: actions/setup-python@ # v6
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
-        with:
-          enable-cache: true
 
       - name: Install just
         uses: extractions/setup-just@v2
 
       - name: Install dependencies
-        run: just install
+        run: just ci-install
 
       - name: Run linting
-        run: just lint
+        run: just ci-lint
 
   test:
     name: Test Python ${{ matrix.python-version }}

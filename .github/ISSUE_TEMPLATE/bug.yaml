@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thank you for contributing to Pydantic JSON Schema! ✊
+        Thank you for contributing to Pydantic JSON Schema! 👺
 
   - type: checkboxes
     id: initial-checks
@@ -23,36 +23,53 @@ body:
     attributes:
       label: Description
       description: |
-        Please explain the bug and what you expected to happen.
-
-        Provide as much detail as possible to help us understand and reproduce the issue.
+        Please explain the bug and possible context.
+        Please note that below you also have fields for minimal reproducible example, actual result and expected result.
+        Provide as much context as possible to help us understand the issue.
     validations:
       required: true
 
   - type: textarea
-    id: example
+    id: mre
     attributes:
-      label: Example Code
+      label: Minimal Reproducible Example
       description: |
-        If possible, please provide a minimal, reproducible example demonstrating the bug.
-      render: python
+        Please provide a minimal, reproducible example demonstrating the bug.
     validations:
-      required: false
+      required: true
+
+  - type: textarea
+    id: mre_actual_result
+    attributes:
+      label: Actual Result
+      description: |
+        Please provide a result of the MRE above.
+    validations:
+      required: true
+
+  - type: textarea
+    id: mre_expected_result
+    attributes:
+      label: Expected Result
+      description: |
+        Please provide an expected result of the MRE above.
+    validations:
+      required: true
 
   - type: textarea
     id: versions
     attributes:
-      label: Version Information
+      label: Affected Versions Information
       description: |
-        Please run the following command and copy the output below:
+        Please run the following command and copy the output below if applicable:
 
         ```bash
-        python -c "import sys, importlib.metadata as im; print(f'Python: {sys.version}\nPydantic: {im.version(\"pydantic\")}\nPydantic JSON Schema: {im.version(\"pydantic-jsonschema\")}\nopenapi-pydantic: {im.version(\"openapi-pydantic\")}')"
+        uv run python -c "import sys, importlib.metadata as im; print(f'Python: {sys.version}\nPydantic: {im.version(\"pydantic\")}\nPydantic JSON Schema: {im.version(\"pydantic-jsonschema\")}\nopenapi-pydantic: {im.version(\"openapi-pydantic\")}')"
         ```
       placeholder: |
-        Python: 3.13.0
-        Pydantic: 2.10.0
+        Python: 3.14.0
+        Pydantic: 2.13.0
         Pydantic JSON Schema: 1.0.0
         openapi-pydantic: 0.5.1
     validations:
-      required: true
+      required: false

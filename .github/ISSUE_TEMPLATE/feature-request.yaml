@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thank you for contributing to Pydantic JSON Schema! ✊
+        Thank you for contributing to Pydantic JSON Schema! 👺
 
   - type: textarea
     id: description
@@ -35,17 +35,17 @@ body:
   - type: textarea
     id: versions
     attributes:
-      label: Version Information
+      label: Affected Versions Information
       description: |
-        Please run the following command and copy the output below:
+        Please run the following command and copy the output below if applicable:
 
         ```bash
-        python -c "import sys, importlib.metadata as im; print(f'Python: {sys.version}\nPydantic: {im.version(\"pydantic\")}\nPydantic JSON Schema: {im.version(\"pydantic-jsonschema\")}\nopenapi-pydantic: {im.version(\"openapi-pydantic\")}')"
+        uv run python -c "import sys, importlib.metadata as im; print(f'Python: {sys.version}\nPydantic: {im.version(\"pydantic\")}\nPydantic JSON Schema: {im.version(\"pydantic-jsonschema\")}\nopenapi-pydantic: {im.version(\"openapi-pydantic\")}')"
         ```
       placeholder: |
-        Python: 3.13.0
-        Pydantic: 2.10.0
+        Python: 3.14.0
+        Pydantic: 2.13.0
         Pydantic JSON Schema: 1.0.0
         openapi-pydantic: 0.5.1
     validations:
-      required: true
+      required: false

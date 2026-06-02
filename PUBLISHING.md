@@ -21,7 +21,7 @@ The package is configured to automatically publish to PyPI when you create a Git
 1. **Push all commits to GitHub:**
 
    ```bash
-   git push origin master
+   git push origin main
    ```
 
 2. **Create a new release on GitHub:**
