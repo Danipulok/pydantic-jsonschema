@@ -717,7 +717,9 @@ class LaxSchemaConverter(SchemaConverter):
             format_validators=format_validators,
         )
         # Use user-provided coerce functions or defaults
-        self._coerce_functions = coerce_functions if coerce_functions is not None else COERCE_FUNCTIONS
+        self._coerce_functions = (
+            coerce_functions if coerce_functions is not None else COERCE_FUNCTIONS
+        )
         # Store model validators for passing to create_model
         self._model_validators = model_validators or {}
 

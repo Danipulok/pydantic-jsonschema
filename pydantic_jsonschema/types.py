@@ -63,7 +63,7 @@ class Reference(_OpenAPIReference):
         return _strip_none(handler(self))
 
 
-def _strip_none(value: Any) -> Any:
+def _strip_none(value: Any) -> Any:  # noqa: ANN401
     if isinstance(value, dict):
         return {k: _strip_none(v) for k, v in value.items() if v is not None}
     if isinstance(value, list):
@@ -71,7 +71,7 @@ def _strip_none(value: Any) -> Any:
     return value
 
 
-def _swap_type(annotation: Any, from_type: type, to_type: type) -> Any:
+def _swap_type(annotation: Any, from_type: type, to_type: type) -> Any:  # noqa: ANN401
     if annotation is from_type:
         return to_type
 

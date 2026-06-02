@@ -1064,10 +1064,14 @@ wheels = [
 [[package]]
 name = "pydantic-extra-types"
 version = "2.10.6"
-source = { git = "https://github.com/Danipulok/pydantic-extra-types.git?rev=refactor%2Fs3#da206498cc48525ac532341ab4c58b12feea2be8" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3a/10/fb64987804cde41bcc39d9cd757cd5f2bb5d97b389d81aa70238b14b8a7e/pydantic_extra_types-2.10.6.tar.gz", hash = "sha256:c63d70bf684366e6bbe1f4ee3957952ebe6973d41e7802aea0b770d06b116aeb", size = 141858, upload-time = "2025-10-08T13:47:49.483Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/93/04/5c918669096da8d1c9ec7bb716bd72e755526103a61bc5e76a3e4fb23b53/pydantic_extra_types-2.10.6-py3-none-any.whl", hash = "sha256:6106c448316d30abf721b5b9fecc65e983ef2614399a24142d689c7546cc246a", size = 40949, upload-time = "2025-10-08T13:47:48.268Z" },
 ]
 
 [package.optional-dependencies]
@@ -1149,8 +1153,8 @@ requires-dist = [
     { name = "fqdn", marker = "extra == 'formats-base'" },
     { name = "openapi-pydantic", specifier = ">=0.5.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
-    { name = "pydantic-extra-types", extras = ["all"], marker = "extra == 'formats-all'", git = "https://github.com/Danipulok/pydantic-extra-types.git?rev=refactor%2Fs3" },
-    { name = "pydantic-extra-types", extras = ["all"], marker = "extra == 'formats-extra'", git = "https://github.com/Danipulok/pydantic-extra-types.git?rev=refactor%2Fs3" },
+    { name = "pydantic-extra-types", extras = ["all"], marker = "extra == 'formats-all'" },
+    { name = "pydantic-extra-types", extras = ["all"], marker = "extra == 'formats-extra'" },
     { name = "rfc3986", marker = "extra == 'formats-all'", specifier = ">=2.0.0" },
     { name = "rfc3986", marker = "extra == 'formats-base'", specifier = ">=2.0.0" },
 ]
