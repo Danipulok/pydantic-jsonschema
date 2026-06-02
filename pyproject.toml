@@ -62,8 +62,10 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
+    "fqdn>=1.5.1",
     "openapi-pydantic>=0.5.0",
     "pydantic>=2.0.0",
+    "rfc3986>=2.0.0",
 ]
 
 [project.urls]
