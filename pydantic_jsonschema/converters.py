@@ -1,3 +1,5 @@
+"""JSON Schema to Pydantic model converter."""
+
 from collections.abc import Iterator
 from contextlib import contextmanager
 from types import NoneType
@@ -885,7 +887,7 @@ def to_model(
     return converter.convert_schema(schema, model_name=model_name)
 
 
-def to_lax_model(
+def to_lax_model(  # noqa: PLR0913
     schema: Schema,
     /,
     *,

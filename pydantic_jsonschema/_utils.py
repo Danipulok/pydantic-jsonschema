@@ -1,3 +1,5 @@
+"""Internal utilities for identifier sanitization and type validation."""
+
 from collections.abc import Iterator
 from typing import Any
 

@@ -1,3 +1,5 @@
+"""Base classes and protocol for JSON Schema format validators."""
+
 import inspect
 from collections.abc import Callable, Iterable
 from datetime import date, datetime, time, timedelta
