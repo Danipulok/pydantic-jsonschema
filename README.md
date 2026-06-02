@@ -33,8 +33,8 @@ with examples and API reference.
 
 ```bash
 uv add pydantic-jsonschema
-# Or with extra format validators
-uv add pydantic-jsonschema[formats]
+# Or with format validators
+uv add pydantic-jsonschema[formats-all]
 ```
 
 Requires Python 3.12+

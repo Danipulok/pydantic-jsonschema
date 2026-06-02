@@ -23,7 +23,7 @@ pip install pydantic-jsonschema
 This installs the core library with required dependencies:
 
 - [`pydantic`](https://docs.pydantic.dev/) >= 2.0.0 — Model creation and validation
-- [`openapi-pydantic`](https://github.com/kuimono/openapi-pydantic) >= 0.5.0 — JSON Schema types
+- [`openapi-pydantic`](https://github.com/kuimono/openapi-pydantic) >= 0.5.0 — JSON Schema types (`Schema`, `Reference`, `DataType`)
 
 ## Optional: Format Validators
 
