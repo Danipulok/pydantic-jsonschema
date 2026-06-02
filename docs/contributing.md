@@ -10,11 +10,11 @@ You'll need:
 
 - **Python 3.12+**
 - **[uv](https://docs.astral.sh/uv/)** - Fast Python package installer
-- **[just](https://github.com/casey/just)** - Command runner (optional but recommended)
+- **[just](https://github.com/casey/just)** - Command runner (optional, but recommended)
 
 ### Setup Steps
 
-1. **Fork the repository** on GitHub
+1. **[Fork the repository](https://github.com/Danipulok/pydantic-jsonschema/fork)** on GitHub
 
 1. **Clone your fork:**
 
@@ -209,8 +209,8 @@ We follow a style similar to [Pydantic AI](https://ai.pydantic.dev/):
 
 If you have questions or need help:
 
-- Open a discussion on GitHub
-- Check existing issues and PRs
-- Review the documentation
+- [Open a discussion](https://github.com/Danipulok/pydantic-jsonschema/discussions) on GitHub
+- Check [existing issues](https://github.com/Danipulok/pydantic-jsonschema/issues) and PRs
+- Review the [documentation](https://danipulok.github.io/pydantic-jsonschema/)
 
-Thank you for contributing! 🎉
+Thank you for contributing!

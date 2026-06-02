@@ -6,7 +6,7 @@ Add validation for schema formats like email, UUID, dates, and custom domain-spe
 
 JSON Schema's `format` keyword lets you specify semantic validation beyond basic types:
 
-```python
+```python title="format_validators.py"
 from uuid import UUID
 
 from pydantic import EmailStr, ValidationError
@@ -167,7 +167,7 @@ Create your own validators for domain-specific formats.
 
 ### Simple Function Validator
 
-```python
+```python title="custom_sku_validator.py"
 from pydantic_jsonschema import Schema, to_model
 
 
@@ -207,8 +207,6 @@ product = Product(sku="abc-1234-xyz")
 print(product.sku)
 #> ABC-1234-XYZ
 ```
-
-*This example is complete and can be run as-is.*
 
 ### Using Annotated Types
 
@@ -250,13 +248,11 @@ print(product.price)
 #> 20.0
 ```
 
-*This example is complete and can be run as-is.*
-
 ## Real-World Example: Semantic Version
 
 Validate semantic versioning format:
 
-```python
+```python title="semver_validator.py"
 import re
 
 from pydantic import ValidationError
@@ -298,13 +294,11 @@ except ValidationError as e:
     """
 ```
 
-*This example is complete and can be run as-is.*
-
 ## Real-World Example: Hex Color
 
 Validate and normalize hex color codes:
 
-```python
+```python title="hex_color_validator.py"
 from pydantic_jsonschema import Schema, to_model
 
 
@@ -349,8 +343,6 @@ theme = Theme(color="#1a2b3c")
 print(theme.color)
 #> #1A2B3C
 ```
-
-*This example is complete and can be run as-is.*
 
 ## Validator Types
 
@@ -536,13 +528,13 @@ Pydantic will convert this to a `ValidationError` with location information.
 
 ## Best Practices
 
-1. **Keep validators focused** — Each validator should check one thing
-2. **Return the value** — Always return (possibly transformed) value
-3. **Clear error messages** — Help users understand what's wrong
-4. **Handle edge cases** — Test with None, empty strings, etc.
-5. **Document format** — Include examples in error messages
+1. **Keep validators focused** - Each validator should check one thing
+2. **Return the value** - Always return (possibly transformed) value
+3. **Clear error messages** - Help users understand what's wrong
+4. **Handle edge cases** - Test with None, empty strings, etc.
+5. **Document format** - Include examples in error messages
 
 ## Next Steps
 
-- [Examples](examples.md) — See format validators in real applications
-- [Converters](converters.md) — Learn about model creation and validation modes
+- [Examples](examples.md) - See format validators in real applications
+- [Converters](converters.md) - Learn about model creation

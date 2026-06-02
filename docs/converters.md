@@ -6,7 +6,7 @@ This guide shows how to convert JSON Schema into Pydantic models for type-safe v
 
 Convert a simple schema to a Pydantic model:
 
-```python
+```python title="basic_conversion.py"
 from pydantic_jsonschema import Schema, to_model
 
 schema = Schema.model_validate({
@@ -25,8 +25,6 @@ user = User(username="alice", email="alice@example.com")
 print(user.username)
 #> alice
 ```
-
-*This example is complete and can be run as-is.*
 
 The `to_model()` function is a convenience wrapper that creates a model with strict validation.
 
@@ -66,7 +64,7 @@ schema = Schema.model_validate(
 )
 ```
 
-Both approaches are equivalent. Use whichever suits your workflow.
+Both approaches are equivalent.
 
 ## Schema Types
 
@@ -152,8 +150,6 @@ except ValidationError as e:
         For further information visit https://errors.pydantic.dev/2.12/v/literal_error
     """
 ```
-
-*This example is complete and can be run as-is.*
 
 ### Unions (anyOf/oneOf)
 
@@ -417,9 +413,9 @@ Model = converter.convert_schema(schema, model_name="SpecificName")
 ```
 
 !!! warning "Caching Behavior"
-    Caching is used for all refs and models, so be careful when using `SchemaConverter` directly. The converter maintains state for caching and reference resolution across multiple schema conversions.
+    Be careful using `SchemaConverter` directly. The converter maintains state for caching and reference resolution across multiple schema conversions.
 
 ## Next Steps
 
-- [Format Validators](formats.md) — Add custom validation for special formats
-- [Examples](examples.md) — See real-world applications
+- [Format Validators](formats.md) - Add custom validation for special formats
+- [Examples](examples.md) - See real-world applications

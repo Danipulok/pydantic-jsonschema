@@ -22,8 +22,8 @@ pip install pydantic-jsonschema
 
 This installs the core library with required dependencies:
 
-- [`pydantic`](https://docs.pydantic.dev/) >= 2.0.0 — Model creation and validation
-- [`openapi-pydantic`](https://github.com/kuimono/openapi-pydantic) >= 0.5.0 — JSON Schema types (`Schema`, `Reference`, `DataType`)
+- [`pydantic`](https://docs.pydantic.dev/) >= 2.0.0 - Model creation and validation
+- [`openapi-pydantic`](https://github.com/kuimono/openapi-pydantic) >= 0.5.0 - JSON Schema types (`Schema`, `Reference`, `DataType`)
 
 ## Optional: Format Validators
 
@@ -39,9 +39,9 @@ pip install pydantic-jsonschema[formats-base]
 
 This adds validators for standard JSON Schema formats:
 
-- **Email**: `email-validator` — RFC 5322 email validation
-- **Hostname**: `fqdn` — RFC 1123 hostname validation
-- **URI/IRI**: `rfc3986` — RFC 3986/3987 URI and IRI validation
+- **Email**: `email-validator` - RFC 5322 email validation
+- **Hostname**: `fqdn` - RFC 1123 hostname validation
+- **URI/IRI**: `rfc3986` - RFC 3986/3987 URI and IRI validation
 - Date, time, datetime, UUID, IPv4, IPv6 (via Pydantic)
 
 ### Extended Format Validators
@@ -85,5 +85,5 @@ just install  # Install with development dependencies
 
 ## Next Steps
 
-- [Examples](examples.md) — See real-world usage
-- [Contributing](contributing.md) — Help improve the library
+- [Examples](examples.md) - See real-world usage
+- [Contributing](contributing.md) - Help improve the library

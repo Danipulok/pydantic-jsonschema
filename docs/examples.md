@@ -27,6 +27,6 @@ Add domain-specific validation for special formats.
 
 ## Next Steps
 
-- [Converters](converters.md) — Learn about creating models
-- [Format Validators](formats.md) — Add custom validation
-- [Contributing](contributing.md) — Help improve the library
+- [Converters](converters.md) - Learn about creating models
+- [Format Validators](formats.md) - Add custom validation
+- [Contributing](contributing.md) - Help improve the library
