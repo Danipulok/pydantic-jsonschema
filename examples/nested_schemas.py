@@ -51,11 +51,8 @@ post = BlogPost(
 )
 
 print(post.title)  # type: ignore[attr-defined]
-# > Getting Started with Pydantic JSON Schema
-# > Getting Started with Pydantic JSON Schema
+#> Getting Started with Pydantic JSON Schema
 print(len(post.comments))  # type: ignore[attr-defined]
-# > 1
-# > 1
+#> 1
 print(post.comments[0].text)  # type: ignore[attr-defined]
-# > Great article!
-# > Great article!
+#> Great article!
