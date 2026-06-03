@@ -14,7 +14,7 @@ from pydantic_jsonschema import (
     SchemaConverter,
     to_model,
 )
-from pydantic_jsonschema.exceptions import SchemaConvertionError, SchemaReferenceError
+from pydantic_jsonschema.exceptions import SchemaConversionError, SchemaReferenceError
 from pydantic_jsonschema.formats import UUID as UUID_FORMAT
 from pydantic_jsonschema.formats import DateTime, Email, IPv4, Uri
 from pydantic_jsonschema.types import JsonType, Schema
@@ -1071,7 +1071,7 @@ class TestSchemaEdgeCases:
     """Tests for edge cases in schema conversion."""
 
     def test_defs_in_nested_schema_raises_error(self) -> None:
-        """Test that $defs in nested schemas raises SchemaConvertionError."""
+        """Test that $defs in nested schemas raises SchemaConversionError."""
         schema_raw: SchemaRaw = {
             "type": "object",
             "properties": {
@@ -1088,7 +1088,7 @@ class TestSchemaEdgeCases:
         }
         schema = Schema.model_validate(schema_raw)
 
-        with pytest.raises(SchemaConvertionError, match=r"\$defs is only allowed in root schema"):
+        with pytest.raises(SchemaConversionError, match=r"\$defs is only allowed in root schema"):
             to_model(schema)
 
     def test_root_model_for_array_type(self) -> None:

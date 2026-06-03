@@ -4,7 +4,7 @@ import pytest
 
 from pydantic_jsonschema.exceptions import (
     FormatValidationError,
-    SchemaConvertionError,
+    SchemaConversionError,
     SchemaReferenceError,
 )
 
@@ -12,13 +12,13 @@ from pydantic_jsonschema.exceptions import (
 class TestExceptions:
     """Tests for schema exceptions."""
 
-    def test_schema_convertion_error(self) -> None:
-        """Test `SchemaConvertionError` stores message and renders in `repr()`."""
-        error = SchemaConvertionError(message="Invalid schema format")
+    def test_schema_conversion_error(self) -> None:
+        """Test `SchemaConversionError` stores message and renders in `repr()`."""
+        error = SchemaConversionError(message="Invalid schema format")
         assert str(error)
         assert "Invalid schema format" in repr(error)
 
-        with pytest.raises(SchemaConvertionError) as exc_info:
+        with pytest.raises(SchemaConversionError) as exc_info:
             raise error
         assert exc_info.value.message == "Invalid schema format"
 
@@ -36,7 +36,7 @@ class TestExceptions:
 
     def test_exception_args_base(self) -> None:
         """Test that `args` contains message for base exception."""
-        error = SchemaConvertionError(message="Test error")
+        error = SchemaConversionError(message="Test error")
         assert error.args == ("Test error",)
 
     def test_exception_args_with_path(self) -> None:

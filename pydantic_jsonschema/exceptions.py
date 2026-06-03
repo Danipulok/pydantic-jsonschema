@@ -21,7 +21,7 @@ class BasePydanticJsonSchemaError(Exception):
 
 
 @dataclass
-class SchemaConvertionError(BasePydanticJsonSchemaError):
+class SchemaConversionError(BasePydanticJsonSchemaError):
     """Schema conversion failed."""
 
 

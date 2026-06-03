@@ -19,7 +19,7 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict, RootModel, create_m
 from pydantic.fields import FieldInfo
 
 from ._utils import sanitize_identifier
-from .exceptions import SchemaConvertionError, SchemaReferenceError
+from .exceptions import SchemaConversionError, SchemaReferenceError
 from .types import DataType, Reference, Schema
 
 __all__ = [
@@ -153,7 +153,7 @@ class SchemaConverter:
         :param schema: Schema to convert.
         :param model_name: Name for the generated model.
         :returns: Pydantic model class.
-        :raises SchemaConvertionError: If schema cannot be converted.
+        :raises SchemaConversionError: If schema cannot be converted.
         """
         # Build defs cache from `$defs`
         self._build_defs_cache(schema)
@@ -173,12 +173,12 @@ class SchemaConverter:
         :param schema: Schema to convert.
         :param model_name: Name for the generated model.
         :returns: Pydantic model class.
-        :raises SchemaConvertionError: If schema contains $defs (only allowed in root).
+        :raises SchemaConversionError: If schema contains $defs (only allowed in root).
         """
         # Validate that `$defs` is not present in nested schemas
         if schema.model_extra and _DEFS_KEY in schema.model_extra:
             msg = f"{_DEFS_KEY} is only allowed in root schema, not in nested schemas"
-            raise SchemaConvertionError(msg)
+            raise SchemaConversionError(msg)
 
         # Build model using common logic
         return self._build_model(schema, model_name=model_name)
