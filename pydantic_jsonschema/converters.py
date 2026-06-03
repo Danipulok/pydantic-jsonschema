@@ -595,9 +595,8 @@ class SchemaConverter:
             if schema.properties:
                 return self._convert_nested_schema(schema)
 
-            # Handle additionalProperties
             if schema.additionalProperties is False:
-                return dict[str, Any]
+                return self._convert_nested_schema(schema)
 
             if isinstance(schema.additionalProperties, (Schema, Reference)):
                 with self._track_path("additionalProperties"):

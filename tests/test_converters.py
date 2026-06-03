@@ -759,7 +759,7 @@ class TestDictTypes:
         }
 
     def test_dict_with_false_additional_properties(self) -> None:
-        """Test dict creation with additionalProperties: false."""
+        """Test object creation with additionalProperties: false."""
         schema_raw: SchemaRaw = {
             "type": "object",
             "properties": {
@@ -771,6 +771,9 @@ class TestDictTypes:
 
         instance = model(data={})
         assert instance.model_dump() == {"data": {}}
+
+        with pytest.raises(ValidationError):
+            model(data={"extra": "field"})
 
     def test_additional_properties_true(self) -> None:
         """Test additionalProperties: true allows any values."""

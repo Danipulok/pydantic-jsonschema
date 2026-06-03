@@ -79,33 +79,34 @@ schema = Schema.model_validate(
 
 Use this table as the quick reference for what each JSON Schema feature becomes.
 
-| JSON Schema input                           | Pydantic result                             | Example result                      |
-|---------------------------------------------|---------------------------------------------|-------------------------------------|
-| root `{"type": "object"}`                   | generated `BaseModel` subclass              | empty model with extra handling     |
-| object property without `properties`        | untyped dictionary field                    | `metadata: dict[str, Any]`          |
-| `{"type": "string"}`                        | `str`                                       | `name: str`                         |
-| `{"type": "integer"}`                       | `int`                                       | `age: int`                          |
-| `{"type": "number"}`                        | `float`                                     | `score: float`                      |
-| `{"type": "boolean"}`                       | `bool`                                      | `is_active: bool`                   |
-| `{"type": "null"}`                          | `None` type                                 | `value: None`                       |
-| `{"type": ["string", "integer"]}`           | union annotation                            | `str` or `int`                      |
-| `{"type": "array", "items": {...}}`         | typed `list[...]`                           | `tags: list[str]`                   |
-| `{"enum": [...]}`                           | `Literal[...]`                              | `Literal["draft", "published"]`     |
-| `{"const": "active"}`                       | single-value `Literal[...]`                 | `Literal["active"]`                 |
-| `anyOf` or `oneOf`                          | union annotation                            | `str` or `int`                      |
-| `allOf`                                     | generated model inheritance or nested model | combined Pydantic model             |
-| nested object property                      | nested generated model                      | `post.author.name`                  |
-| property with `$ref: "#/$defs/Person"`      | model generated from `$defs.Person`         | shared `Person` field type          |
-| `$ref` passed through `refs`                | existing Pydantic model                     | existing `Address` class            |
-| root `additionalProperties: false`          | generated model forbids extra fields        | `extra_forbidden` validation        |
-| field `additionalProperties: {...}`         | typed mapping values                        | `dict[str, int]`                    |
-| `required` entry                            | required Pydantic field                     | `Field required` validation         |
-| `default`                                   | field default                               | omitted input uses default value    |
-| `minimum`, `maximum`, `multipleOf`          | numeric constraints                         | `ge`, `le`, `multiple_of`           |
-| `minLength`, `maxLength`                    | string length constraints                   | `min_length`, `max_length`          |
-| `minItems`, `maxItems`                      | list length constraints                     | `min_length`, `max_length`          |
-| `format` with validators                    | configured format validation                | see [Format Validators](formats.md) |
-| `title`, `model_name`, `default_model_name` | generated class name                        | `User`, `CustomUser`, `Model`       |
+| JSON Schema input                            | Pydantic result                             | Example result                      |
+|----------------------------------------------|---------------------------------------------|-------------------------------------|
+| root `{"type": "object"}`                    | generated `BaseModel` subclass              | empty model with extra handling     |
+| object property without `properties`         | untyped dictionary field                    | `metadata: dict[str, Any]`          |
+| `{"type": "string"}`                         | `str`                                       | `name: str`                         |
+| `{"type": "integer"}`                        | `int`                                       | `age: int`                          |
+| `{"type": "number"}`                         | `float`                                     | `score: float`                      |
+| `{"type": "boolean"}`                        | `bool`                                      | `is_active: bool`                   |
+| `{"type": "null"}`                           | `None` type                                 | `value: None`                       |
+| `{"type": ["string", "integer"]}`            | union annotation                            | `str` or `int`                      |
+| `{"type": "array", "items": {...}}`          | typed `list[...]`                           | `tags: list[str]`                   |
+| `{"enum": [...]}`                            | `Literal[...]`                              | `Literal["draft", "published"]`     |
+| `{"const": "active"}`                        | single-value `Literal[...]`                 | `Literal["active"]`                 |
+| `anyOf` or `oneOf`                           | union annotation                            | `str` or `int`                      |
+| `allOf`                                      | generated model inheritance or nested model | combined Pydantic model             |
+| nested object property                       | nested generated model                      | `post.author.name`                  |
+| property with `$ref: "#/$defs/Person"`       | model generated from `$defs.Person`         | shared `Person` field type          |
+| `$ref` passed through `refs`                 | existing Pydantic model                     | existing `Address` class            |
+| root object + `additionalProperties: false`  | generated model with `extra="forbid"`       | unknown fields rejected             |
+| field object + `additionalProperties: false` | generated empty model field                 | only `{}` is valid                  |
+| field object + `additionalProperties: {...}` | typed dictionary field                      | `dict[str, int]`                    |
+| `required` entry                             | required Pydantic field                     | `Field required` validation         |
+| `default`                                    | field default                               | omitted input uses default value    |
+| `minimum`, `maximum`, `multipleOf`           | numeric constraints                         | `ge`, `le`, `multiple_of`           |
+| `minLength`, `maxLength`                     | string length constraints                   | `min_length`, `max_length`          |
+| `minItems`, `maxItems`                       | list length constraints                     | `min_length`, `max_length`          |
+| `format` with validators                     | configured format validation                | see [Format Validators](formats.md) |
+| `title`, `model_name`, `default_model_name`  | generated class name                        | `User`, `CustomUser`, `Model`       |
 
 ## Common Conversions
 
@@ -122,15 +123,11 @@ Object conversion depends on where the schema appears.
 | root schema     | `{"type": "object", "additionalProperties": false}` | generated model with `extra="forbid"` |
 | property schema | `{"type": "object"}`                                | `dict[str, Any]` field                |
 | property schema | `{"type": "object", "properties": ...}`             | nested generated model                |
+| property schema | `{"type": "object", "additionalProperties": false}` | only an empty object is valid         |
 
 For a property schema, plain `{"type": "object"}` means the value must be a JSON object, so the
 field becomes `dict[str, Any]`. It is not `Any`, because non-object values like strings, numbers,
 arrays, and `null` are rejected.
-
-!!! warning "Current behavior"
-    A property schema with `{"type": "object", "additionalProperties": false}` currently also
-    becomes `dict[str, Any]`. It validates that the value is a dictionary, but it does not enforce
-    an empty dictionary.
 
 ### Objects
 
