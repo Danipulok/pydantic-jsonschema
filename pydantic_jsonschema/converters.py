@@ -173,7 +173,7 @@ class SchemaConverter:
         :param schema: Schema to convert.
         :param model_name: Name for the generated model.
         :returns: Pydantic model class.
-        :raises SchemaConversionError: If schema contains $defs (only allowed in root).
+        :raises SchemaConversionError: If schema contains `$defs` (only allowed in root).
         """
         # Validate that `$defs` is not present in nested schemas
         if schema.model_extra and _DEFS_KEY in schema.model_extra:

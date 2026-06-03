@@ -147,7 +147,7 @@ class TestBasicConversion:
 
 
 class TestReferences:
-    """Tests for $defs and $ref support."""
+    """Tests for `$defs` and `$ref` support."""
 
     def test_nested_definition(self) -> None:
         """Test nested schema definitions."""
@@ -175,7 +175,7 @@ class TestReferences:
         }
 
     def test_defs_with_single_reference(self) -> None:
-        """Test schema with $defs containing one definition."""
+        """Test schema with `$defs` containing one definition."""
         schema_raw: SchemaRaw = {
             "$defs": {
                 "Address": {
@@ -204,7 +204,7 @@ class TestReferences:
         }
 
     def test_defs_with_multiple_references(self) -> None:
-        """Test schema with multiple $defs."""
+        """Test schema with multiple `$defs`."""
         schema_raw: SchemaRaw = {
             "$defs": {
                 "Person": {
@@ -299,7 +299,7 @@ class TestReferences:
             to_model(schema)
 
     def test_property_with_reference(self) -> None:
-        """Test property using $ref."""
+        """Test property using `$ref`."""
         schema_raw: SchemaRaw = {
             "$defs": {
                 "ContactInfo": {
@@ -568,7 +568,7 @@ class TestComposition:
         assert instance.model_dump() == {"value": True}
 
     def test_allof_with_reference(self) -> None:
-        """Test allOf with $ref."""
+        """Test `allOf` with `$ref`."""
         schema_raw: SchemaRaw = {
             "$defs": {
                 "BaseMixin": {
@@ -1071,7 +1071,7 @@ class TestSchemaEdgeCases:
     """Tests for edge cases in schema conversion."""
 
     def test_defs_in_nested_schema_raises_error(self) -> None:
-        """Test that $defs in nested schemas raises SchemaConversionError."""
+        """Test that `$defs` in nested schemas raises `SchemaConversionError`."""
         schema_raw: SchemaRaw = {
             "type": "object",
             "properties": {
@@ -1333,7 +1333,7 @@ class TestSchemaEdgeCases:
         assert instance.model_dump() == {"value": "test"}
 
     def test_schema_with_prebuilt_refs_no_defs(self) -> None:
-        """Test converter with pre-built refs but no $defs in schema.
+        """Test converter with pre-built refs but no `$defs` in schema.
 
         This ensures the forward reference namespace building works correctly
         when there are no schema definitions to process (empty defs cache).
@@ -1343,7 +1343,7 @@ class TestSchemaEdgeCases:
             street: str
             city: str
 
-        # Schema without $defs, but will use pre-built ref
+        # Schema without `$defs`, but will use pre-built ref.
         schema_raw: SchemaRaw = {
             "type": "object",
             "properties": {
@@ -1362,7 +1362,7 @@ class TestSchemaEdgeCases:
         }
 
     def test_array_items_with_ref_generation(self) -> None:
-        """Test array with $ref in items triggers model generation."""
+        """Test array with `$ref` in items triggers model generation."""
         schema_raw: SchemaRaw = {
             "$defs": {
                 "Item": {
