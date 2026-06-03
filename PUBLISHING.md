@@ -7,7 +7,7 @@ This guide explains how to publish `pydantic-jsonschema` to PyPI.
 Before publishing, ensure you have:
 
 1. Completed and tested all changes
-2. Updated version in `pyproject.toml` and `pydantic_jsonschema/__init__.py`
+2. Updated version in `pydantic_jsonschema/_version.py`
 3. Updated `CHANGELOG.md` with the new version
 4. All tests pass locally: `just test`
 5. All linting checks pass: `just lint`
@@ -48,8 +48,7 @@ If you prefer to publish manually:
 2. **Check the build:**
 
    ```bash
-   uv pip install --system twine
-   twine check dist/*
+   uvx twine check dist/*
    ```
 
 3. **Upload to Test PyPI (optional):**
@@ -84,8 +83,7 @@ To test the package on TestPyPI before publishing to PyPI:
 
 ## Pre-Release Checklist
 
-- [ ] Version bumped in `pyproject.toml`
-- [ ] Version bumped in `pydantic_jsonschema/__init__.py`
+- [ ] Version bumped in `pydantic_jsonschema/_version.py`
 - [ ] `CHANGELOG.md` updated with new version
 - [ ] All tests passing (`just test`)
 - [ ] All linting passing (`just lint`)
@@ -103,23 +101,6 @@ After publishing a new version:
 3. Announce the release (if applicable)
 
 ## Important Notes
-
-### Git Dependencies
-
-**Important:** The current `pyproject.toml` includes git dependencies in the `formats-extra` optional dependency group:
-
-```toml
-formats-extra = [
-    "pydantic-extra-types[all] @ git+https://github.com/Danipulok/pydantic-extra-types.git@refactor/s3",
-]
-```
-
-**Before publishing to PyPI**, you have two options:
-
-1. **Wait for upstream packages to be published** to PyPI and update dependencies
-2. **Remove the `formats-extra` group** temporarily if those features aren't ready
-
-PyPI does not accept packages with direct git dependencies, even though we have `allow-direct-references = true` set for local development.
 
 ### Trusted Publishing Setup
 

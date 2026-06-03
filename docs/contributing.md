@@ -175,7 +175,7 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 
 - `feat(converters): add support for custom format validators`
 - `fix(schema): resolve nested schema references correctly`
-- `docs(examples): update LLM validation examples`
+- `docs(examples): add nested schema conversion example`
 - `chore(deps): update pydantic to 2.10.0`
 
 ## Documentation Guidelines
