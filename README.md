@@ -4,70 +4,44 @@
 [![Coverage](https://img.shields.io/codecov/c/github/danipulok/pydantic-jsonschema)](https://codecov.io/gh/danipulok/pydantic-jsonschema)
 [![PyPI](https://img.shields.io/pypi/v/pydantic-jsonschema.svg)](https://pypi.org/project/pydantic-jsonschema/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/pydantic-jsonschema.svg)](https://pypi.org/project/pydantic-jsonschema/)
-[![License](https://img.shields.io/github/license/danipulok/pydantic-jsonschema)](https://github.com/danipulok/pydantic-jsonschema/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/danipulok/pydantic-jsonschema/blob/main/LICENSE)
+[![Docs](https://img.shields.io/badge/docs-latest-blue.svg)](https://danipulok.github.io/pydantic-jsonschema/)
 
-*Convert JSON Schema to Pydantic models, bringing type safety to schema-based validation.*
-
----
-
-While Pydantic generates JSON Schema from models,
-**Pydantic JSON Schema does the reverse** —
-it converts JSON Schema definitions into fully typed Pydantic models.
-
-Perfect for working with API specifications, configuration schemas,
-or validating LLM-generated data against predefined structures.
-
-## Why use Pydantic JSON Schema?
-
-- **Type-Safe Conversion** — JSON Schema becomes a proper Pydantic model
-- **Automatic References** — Handles `$ref` and `$defs` seamlessly
-- **Custom Formats** — Extend with specific validators (email, UUID, etc.)
-- **Schema Composition** — Supports `allOf`, `anyOf`, `oneOf` constructs
-- **Standards Compliant** — Follows JSON Schema Draft 2020-12
-
-[Full documentation](https://danipulok.github.io/pydantic-jsonschema/)
-with examples and API reference.
+Convert JSON Schema definitions into Pydantic models with runtime validation.
 
 ## Installation
 
 ```bash
 uv add pydantic-jsonschema
-# Or with format validators
-uv add pydantic-jsonschema[formats-all]
 ```
 
-Requires Python 3.12+
+Requires Python 3.12+.
+See the [installation guide](https://danipulok.github.io/pydantic-jsonschema/install/) for optional format validator extras.
 
 ## Quick Start
 
 ```python
 from pydantic_jsonschema import Schema, to_model
 
-# Define your JSON Schema
 schema = Schema.model_validate({
     "type": "object",
     "properties": {
         "name": {"type": "string"},
         "age": {"type": "integer", "minimum": 0},
-        "email": {"type": "string", "format": "email"}
     },
-    "required": ["name", "age"]
+    "required": ["name"],
 })
 
-# Convert to Pydantic model
 User = to_model(schema, model_name="User")
 
-# Use it like any Pydantic model
-user = User(name="Alice", age=30, email="alice@example.com")
-print(user.model_dump_json())
-#> {"name":"Alice","age":30,"email":"alice@example.com"}
+user = User(name="Alice", age=30)
+print(user.model_dump())
+#> {'name': 'Alice', 'age': 30}
 ```
 
-## Learn More
+## Documentation
 
-- [Documentation](https://danipulok.github.io/pydantic-jsonschema/)
-- [Examples](https://danipulok.github.io/pydantic-jsonschema/examples/)
-- [Contributing](https://danipulok.github.io/pydantic-jsonschema/contributing/)
+[https://danipulok.github.io/pydantic-jsonschema/](https://danipulok.github.io/pydantic-jsonschema/)
 
 ## License
 
