@@ -9,23 +9,11 @@ source = "vcs"
 version-file = "pydantic_jsonschema/_version.py"
 
 [tool.hatch.build.targets.sdist]
-exclude = [
-    ".venv*",
-    ".github",
-    ".idea",
-    ".pytest_cache",
-    ".mypy_cache",
-    ".ruff_cache",
-    ".coverage",
-    "htmlcov",
-    "site",
-    "*.pyc",
-    "__pycache__",
-    "check_*.py",
-    "NOTES.md",
-    ".pre-commit-config.yaml",
-    ".markdownlint.yaml",
-    ".claude",
+include = [
+    "pydantic_jsonschema/",
+    "LICENSE",
+    "README.md",
+    "pyproject.toml",
 ]
 
 [tool.hatch.build.targets.wheel]
