@@ -121,11 +121,6 @@ exclude = ["check_.*\\.py$", "mre_.*\\.py$", "pydantic_mre\\.py$"]
 target-version = "py313"
 line-length = 100
 
-[tool.ruff.format]
-# NOTE: `pytest-examples` uses `#>` as print-output markers.
-#       `ruff format` rewrites `#>` to `# >`, breaking those tests.
-exclude = ["examples/*"]
-
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
