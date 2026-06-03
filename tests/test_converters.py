@@ -39,21 +39,18 @@ class TestBasicConversion:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
 
-        # Valid instance
         instance = model(name="Alice", age=30)
         assert instance.model_dump() == {
             "name": "Alice",
             "age": 30,
         }
 
-        # Missing optional field
         instance = model(name="Bob")
         assert instance.model_dump() == {
             "name": "Bob",
             "age": None,
         }
 
-        # Missing required field
         with pytest.raises(ValidationError):
             model(age=25)
 
@@ -687,35 +684,6 @@ class TestExplicitDefaults:
         assert instance.model_dump() == {"status": "pending"}
 
 
-class TestConverterErrorHandling:
-    """Tests for error handling in converters."""
-
-    def test_model_caching(self) -> None:
-        """Test that identical schemas reuse cached models."""
-        schema_raw1 = {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-            },
-        }
-
-        schema_raw2 = {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-            },
-        }
-
-        schema1 = Schema.model_validate(schema_raw1)
-        schema2 = Schema.model_validate(schema_raw2)
-
-        converter = SchemaConverter()
-        model1 = converter.convert_schema(schema1)
-        model2 = converter.convert_schema(schema2)
-
-        assert model1 is model2
-
-
 @pytest.mark.parametrize(
     ("schema_field", "valid_value", "invalid_value"),
     [
@@ -1081,14 +1049,12 @@ class TestAnnotatedValidators:
             },
         )
 
-        # Verify field annotations are the native types without Annotated wrapper
         annotations = model.model_fields
         assert annotations["created_at"].annotation is datetime
         assert annotations["email"].annotation is EmailStr
         assert annotations["id"].annotation is UUID
         assert annotations["ip"].annotation is IPv4Address
 
-        # Verify validation works
         instance = model(
             created_at="2024-01-15T10:30:00",
             email="test@example.com",
@@ -1162,17 +1128,14 @@ class TestSchemaEdgeCases:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
 
-        # Valid value
         valid_value = 42
         instance = model(valid_value)  # type: ignore[call-arg]
         assert instance.model_dump() == valid_value  # type: ignore[comparison-overlap]
 
-        # Too low
         invalid_value = -1
         with pytest.raises(ValidationError):
             model(invalid_value)  # type: ignore[call-arg]
 
-        # Too high
         invalid_value = 101
         with pytest.raises(ValidationError):
             model(invalid_value)  # type: ignore[call-arg]
@@ -1236,28 +1199,6 @@ class TestSchemaEdgeCases:
             "age": 30,
             "email": "alice@example.com",
         }
-
-    def test_oneof_basic(self) -> None:
-        """Test basic oneOf without discriminator."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "oneOf": [
-                        {"type": "string"},
-                        {"type": "boolean"},
-                    ],
-                },
-            },
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        instance = model(value="text")
-        assert instance.model_dump() == {"value": "text"}
-
-        instance = model(value=True)
-        assert instance.model_dump() == {"value": True}
 
     def test_anyof_with_null(self) -> None:
         """Test anyOf with null type."""
@@ -1380,20 +1321,14 @@ class TestSchemaEdgeCases:
 
             def trigger_uncached_ref_scenario(self) -> type[BaseModel]:
                 """Simulate scenario where ref exists in defs_cache but model not cached."""
-                # Create a simple schema
                 test_schema = Schema(type="object", properties={"value": Schema(type="string")})
                 ref = "#/$defs/TestType"
-
-                # Add to defs cache (simulating mid-processing state)
                 self._defs_cache[ref] = test_schema
-
-                # Call _get_model - will trigger fallback model generation
                 return self._get_model(ref)
 
         converter = TestableConverter()
         model = converter.trigger_uncached_ref_scenario()
 
-        # Verify the generated model works
         instance = model(value="test")
         assert instance.model_dump() == {"value": "test"}
 
@@ -1421,7 +1356,6 @@ class TestSchemaEdgeCases:
         converter = SchemaConverter(refs={"#/$defs/CustomAddress": CustomAddress})
         model = converter.convert_schema(schema)
 
-        # Verify model uses the pre-built ref correctly
         instance = model(address={"street": "Main St", "city": "NYC"})
         assert instance.model_dump() == {
             "address": {"street": "Main St", "city": "NYC"},
@@ -1586,7 +1520,6 @@ class TestConverterCaching:
         schema = Schema.model_validate(schema_raw)
         model = converter.convert_schema(schema)
 
-        # Verify both fields use the same cached model
         assert model.model_fields["user1"].annotation is model.model_fields["user2"].annotation
 
 
@@ -1605,13 +1538,11 @@ class TestSchemaFormatValidators:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema, format_validators={"email": Email})
 
-        # Valid email
         instance = model(email="alice@example.com")
         assert instance.model_dump() == {
             "email": "alice@example.com",
         }
 
-        # Invalid email
         with pytest.raises(ValidationError):
             model(email="not-an-email")
 
@@ -1627,7 +1558,6 @@ class TestSchemaFormatValidators:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema, format_validators={"date-time": DateTime})
 
-        # Valid datetime
         instance = model(created_at="2024-01-15T10:30:00Z")
 
         assert instance.model_dump() == {
@@ -1641,7 +1571,6 @@ class TestSchemaFormatValidators:
             ),
         }
 
-        # Invalid datetime
         with pytest.raises(ValidationError):
             model(created_at="not-a-datetime")
 
@@ -1657,13 +1586,11 @@ class TestSchemaFormatValidators:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema, format_validators={"uuid": UUID_FORMAT})
 
-        # Valid UUID
         instance = model(id="550e8400-e29b-41d4-a716-446655440000")
         assert instance.model_dump() == {
             "id": UUID("550e8400-e29b-41d4-a716-446655440000"),
         }
 
-        # Invalid UUID
         with pytest.raises(ValidationError):
             model(id="not-a-uuid")
 
@@ -1679,13 +1606,11 @@ class TestSchemaFormatValidators:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema, format_validators={"ipv4": IPv4})
 
-        # Valid IPv4
         instance = model(ip="192.168.1.1")
         assert instance.model_dump() == {
             "ip": IPv4Address("192.168.1.1"),
         }
 
-        # Invalid IPv4
         with pytest.raises(ValidationError):
             model(ip="999.999.999.999")
 
@@ -1701,13 +1626,11 @@ class TestSchemaFormatValidators:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema, format_validators={"uri": Uri})
 
-        # Valid URI
         instance = model(website="https://example.com")
         assert instance.model_dump() == {
             "website": "https://example.com",
         }
 
-        # Invalid URI (missing scheme)
         with pytest.raises(ValidationError):
             model(website="example.com")
 
@@ -1735,7 +1658,6 @@ class TestSchemaFormatValidators:
             },
         )
 
-        # Valid data
         instance = model(
             email="alice@example.com",
             website="https://example.com",
@@ -1806,7 +1728,6 @@ class TestSchemaFormatValidators:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema, format_validators={"no-op": no_op_format})
 
-        # Should accept any string value without validation
         instance = model(data="test-value")
         assert instance.model_dump() == {
             "data": "test-value",

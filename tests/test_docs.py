@@ -27,15 +27,12 @@ def get_examples() -> Iterable[CodeExample]:
 
     :returns: A list of Python code examples.
     """
-    # Find examples in docs directory and README
     docs_dir = Path(__file__).parent.parent.joinpath("docs")
     readme = Path(__file__).parent.parent.joinpath("README.md")
 
-    # Collect all markdown files, excluding `examples.md`
-    # (uses --8<-- syntax for file inclusion)
+    # NOTE: `examples.md` uses `--8<--` file inclusion, so its code blocks are not standalone.
     paths = [readme, *(path for path in docs_dir.glob("*.md") if path.name != "examples.md")]
 
-    # Find examples in all paths
     return find_examples(*paths)
 
 
@@ -57,15 +54,11 @@ def test_docs_examples(example: CodeExample, eval_example: EvalExample) -> None:
         quotes=QUOTES,
     )
 
-    # Check if we should update examples
     if eval_example.update_examples:
-        # Format and update the example with print output
         eval_example.format_ruff(example)
         eval_example.run_print_update(example)
     else:
-        # Lint the example with ruff
         eval_example.lint_ruff(example)
-        # Run and check print output matches expected
         eval_example.run_print_check(example)
 
 
@@ -86,23 +79,16 @@ def test_example_files(example_file: Path, eval_example: EvalExample) -> None:
         quotes=QUOTES,
     )
 
-    # Read the file content
     code = example_file.read_text(encoding="utf-8")
-
-    # Create a CodeExample from the file
     example = CodeExample.create(
         source=code,
         path=example_file,
         start_line=1,
     )
 
-    # Check if we should update examples
     if eval_example.update_examples:
-        # Format and update the example with print output
         eval_example.format_ruff(example)
         eval_example.run_print_update(example)
     else:
-        # Lint the example with ruff
         eval_example.lint_ruff(example)
-        # Run and check print output matches expected
         eval_example.run_print_check(example)

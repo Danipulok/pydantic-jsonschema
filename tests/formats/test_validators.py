@@ -110,7 +110,6 @@ class TestURIValidators:
         assert validate_iri_reference(value) == value
 
 
-# Unified wrong type tests for all validators
 @pytest.mark.parametrize(
     "validator",
     [

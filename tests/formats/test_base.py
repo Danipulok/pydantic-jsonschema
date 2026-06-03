@@ -67,7 +67,6 @@ class TestSchemaFormat:
 
     def test_format_auto_generate_title(self) -> None:
         """Test SchemaFormat auto-generates title from key when title is None."""
-        # When title is explicitly None, auto-generate from key
         fmt = SchemaFormat(
             key="date-time",
             title=None,
@@ -76,7 +75,6 @@ class TestSchemaFormat:
         )
         assert fmt.title == "Date Time"
 
-        # Empty key generates empty title
         fmt = SchemaFormat(
             key="",
             title=None,
@@ -95,7 +93,6 @@ class TestSchemaFormat:
             validator=None,
         )
 
-        # Should return value as-is when validator is None
         values: list[JsonType] = ["test", 123, 45.6, True, None, {"key": "value"}, [1, 2, 3]]
         for val in values:
             assert fmt(val) == val
@@ -118,11 +115,9 @@ class TestSchemaFormat:
             validator=string_validator,
         )
 
-        # Validator runs for validation, but original value is returned
         assert fmt("test") == "test"
         assert fmt("hello") == "hello"
 
-        # Validator rejects invalid input
         with pytest.raises(ValueError, match="Must be string"):
             fmt(123)
 
@@ -136,7 +131,6 @@ class TestSchemaFormat:
                 raise ValueError(msg)  # noqa: TRY004
             return int(value) if isinstance(value, str) else value
 
-        # This should raise during creation because example is invalid
         with pytest.raises(ValueError, match="Invalid example"):
             SchemaFormat(
                 key="int-only",
@@ -156,7 +150,6 @@ class TestSchemaFormat:
             validator=MockLanguageCode,
         )
 
-        # Validator returns instance of MockLanguageCode
         result = fmt("en")
         assert isinstance(result, MockLanguageCode)
         assert str(result) == "en"
@@ -175,7 +168,6 @@ class TestSchemaFormat:
             validator=MockLanguageCode,
         )
 
-        # Should raise on invalid input
         with pytest.raises(ValueError, match="Invalid language code"):
             fmt("invalid")
 
@@ -187,7 +179,6 @@ class TestSchemaFormat:
 
     def test_format_with_pydantic_type_invalid_example(self) -> None:
         """Test SchemaFormat with Pydantic type validator and invalid example."""
-        # Should raise during creation because example is invalid
         with pytest.raises(ValueError, match="Invalid example"):
             SchemaFormat(
                 key="language-code",
@@ -207,7 +198,6 @@ class TestSchemaFormat:
             validator=MockCurrencyCode,
         )
 
-        # Validator returns instance of MockCurrencyCode
         result = fmt("USD")
         assert isinstance(result, MockCurrencyCode)
         assert str(result) == "USD"
@@ -216,7 +206,6 @@ class TestSchemaFormat:
         assert isinstance(result, MockCurrencyCode)
         assert str(result) == "EUR"  # MockCurrencyCode uppercases the value
 
-        # Should raise on invalid input
         with pytest.raises(ValueError, match="Invalid currency code"):
             fmt("US")  # Too short
 
@@ -249,11 +238,9 @@ class TestSchemaFormat:
             validator=validate_positive,
         )
 
-        # Valid value
         for value in [1, 42, 999]:
             assert fmt(value) == value
 
-        # Invalid value
         with pytest.raises(ValueError, match="Must be positive"):
             fmt(-1)
 
@@ -324,10 +311,8 @@ class TestSchemaFormat:
             validator=validate_email,
         )
 
-        # Valid email
         assert fmt("test@example.com") == "test@example.com"
 
-        # Invalid email
         with pytest.raises(ValueError, match="Invalid email"):
             fmt("invalid")
 
@@ -337,7 +322,6 @@ class TestSchemaFormat:
         def uppercase(v: str) -> str:
             return v.upper()
 
-        # Valid examples (can be uppercased)
         fmt = SchemaFormat(
             key="uppercase",
             examples=["hello", "world"],
@@ -346,7 +330,6 @@ class TestSchemaFormat:
         )
         assert fmt.examples == ["hello", "world"]
 
-        # Invalid example (can't uppercase an int)
         with pytest.raises(ValueError, match="Invalid example"):
             SchemaFormat(
                 key="uppercase",
@@ -374,32 +357,25 @@ class TestSchemaFormat:
 
     def test_default_factory_for_examples_and_types(self) -> None:
         """Test that examples and types have default_factory (empty lists)."""
-        # Create format without providing examples and types
         fmt = SchemaFormat(key="test-format")
 
-        # Should have empty lists as defaults
         assert fmt.examples == []
         assert fmt.types == []
         assert isinstance(fmt.examples, list)
         assert isinstance(fmt.types, list)
 
-        # Should auto-generate title
         assert fmt.title == "Test Format"
 
     def test_default_factory_creates_independent_lists(self) -> None:
         """Test that default_factory creates independent list instances."""
-        # Create two formats without providing examples and types
         fmt1 = SchemaFormat(key="format1")
         fmt2 = SchemaFormat(key="format2")
 
-        # Modify one format's lists
         fmt1.examples.append("example1")
         fmt1.types.append(DataType.STRING)
 
-        # Other format should not be affected
         assert fmt2.examples == []
         assert fmt2.types == []
 
-        # First format should have modifications
         assert fmt1.examples == ["example1"]
         assert fmt1.types == [DataType.STRING]
