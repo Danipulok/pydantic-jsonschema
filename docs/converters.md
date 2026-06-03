@@ -270,6 +270,8 @@ person = Person(
     name="Alice",
     address=Address(street="123 Main St", city="NYC", country="USA")
 )
+print(type(person.address))
+#> <class '__main__.Address'>
 ```
 
 ## Validation Constraints
@@ -375,12 +377,62 @@ data = Flexible(name="Alice", age=30)  # ✓
 
 ## Model Names
 
-Models are named based on the schema's `title`, or you can provide a custom name:
+Every generated model needs a class name. The name is resolved in this order:
+
+1. **`model_name` argument** — explicit name passed to `to_model()` or `convert_schema()`
+2. **Schema `title`** — the `"title"` field from the JSON Schema
+3. **`default_model_name`** — fallback set on `SchemaConverter` (defaults to `"Model"`)
+
+This matters because the model name appears in validation errors, `repr()`, and debugging output.
+Without `model_name`, a schema without `title` produces a generic `Model` — unhelpful when you have several of them.
+
+```python
+from pydantic import ValidationError
+
+from pydantic_jsonschema import Schema, to_model
+
+schema = Schema.model_validate({
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"}
+    },
+    "required": ["name"]
+})
+
+# Without model_name — generic "Model" in errors
+Generic = to_model(schema)
+
+try:
+    Generic()
+except ValidationError as e:
+    print(e)
+    """
+    1 validation error for Model
+    name
+      Field required [type=missing, input_value={}, input_type=dict]
+        For further information visit https://errors.pydantic.dev/2.12/v/missing
+    """
+
+# With model_name — clear "User" in errors
+User = to_model(schema, model_name="User")
+
+try:
+    User()
+except ValidationError as e:
+    print(e)
+    """
+    1 validation error for User
+    name
+      Field required [type=missing, input_value={}, input_type=dict]
+        For further information visit https://errors.pydantic.dev/2.12/v/missing
+    """
+```
+
+Schema `title` works the same way — if present, it becomes the model name automatically:
 
 ```python
 from pydantic_jsonschema import Schema, to_model
 
-# Using schema title
 schema = Schema.model_validate({
     "title": "User",
     "type": "object",
@@ -390,9 +442,13 @@ schema = Schema.model_validate({
 })
 
 UserModel = to_model(schema)  # Named "User" from title
+print(UserModel.__name__)
+#> User
 
-# Custom name
+# model_name overrides title
 CustomModel = to_model(schema, model_name="CustomUser")
+print(CustomModel.__name__)
+#> CustomUser
 ```
 
 ## Using SchemaConverter
@@ -410,6 +466,8 @@ converter = SchemaConverter(
 schema = Schema.model_validate({})
 
 Model = converter.convert_schema(schema, model_name="SpecificName")
+print(Model.__name__)
+#> SpecificName
 ```
 
 !!! warning "Caching Behavior"
