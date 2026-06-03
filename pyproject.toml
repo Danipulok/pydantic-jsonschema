@@ -1,9 +1,12 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [tool.hatch.version]
-path = "pydantic_jsonschema/_version.py"
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "pydantic_jsonschema/_version.py"
 
 [tool.hatch.build.targets.sdist]
 exclude = [
@@ -68,7 +71,7 @@ Homepage = "https://github.com/Danipulok/pydantic-jsonschema"
 Documentation = "https://danipulok.github.io/pydantic-jsonschema/"
 Repository = "https://github.com/Danipulok/pydantic-jsonschema"
 Issues = "https://github.com/Danipulok/pydantic-jsonschema/issues"
-Changelog = "https://github.com/Danipulok/pydantic-jsonschema/blob/main/CHANGELOG.md"
+Changelog = "https://github.com/Danipulok/pydantic-jsonschema/blob/main/docs/changelog.md"
 
 [project.optional-dependencies]
 formats-base = [
@@ -93,6 +96,10 @@ dev = [
     {include-group = "lint"},
     {include-group = "test"},
     {include-group = "docs"},
+    {include-group = "release"},
+]
+release = [
+    "git-cliff>=2.0.0",
 ]
 lint = [
     "codespell>=2.4.0",
