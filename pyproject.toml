@@ -124,6 +124,7 @@ line-length = 100
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
+    "COM812",   # Conflicts with `ruff format`
     "D203",     # Conflicts with D211 (no blank line before class docstring)
     "D213",     # Conflicts with D212 (summary on first line)
 
