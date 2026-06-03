@@ -87,6 +87,12 @@ docs = [
     "mkdocstrings-python>=1.12.2",
 ]
 
+# NOTE: Supply-chain safety net — only resolve packages published at least
+# 7 days ago so a compromised or typo-squatted release has time to be caught
+# and yanked before it lands in our lockfile.
+[tool.uv]
+exclude-newer = "7 days"
+
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
