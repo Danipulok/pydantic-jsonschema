@@ -1,24 +1,3 @@
-[build-system]
-requires = ["hatchling", "hatch-vcs"]
-build-backend = "hatchling.build"
-
-[tool.hatch.version]
-source = "vcs"
-
-[tool.hatch.build.hooks.vcs]
-version-file = "pydantic_jsonschema/_version.py"
-
-[tool.hatch.build.targets.sdist]
-include = [
-    "pydantic_jsonschema/",
-    "LICENSE",
-    "README.md",
-    "pyproject.toml",
-]
-
-[tool.hatch.build.targets.wheel]
-packages = ["pydantic_jsonschema"]
-
 [project]
 name = "pydantic-jsonschema"
 dynamic = ["version"]
@@ -108,6 +87,27 @@ docs = [
     "mkdocstrings-python>=1.12.2",
 ]
 
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "pydantic_jsonschema/_version.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "pydantic_jsonschema/",
+    "LICENSE",
+    "README.md",
+    "pyproject.toml",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["pydantic_jsonschema"]
+
 [tool.mypy]
 plugins = [
     "pydantic.mypy",
@@ -120,11 +120,10 @@ exclude = ["check_.*\\.py$", "mre_.*\\.py$", "pydantic_mre\\.py$"]
 [tool.ruff]
 target-version = "py313"
 line-length = 100
-extend-exclude = ["mre_*.py", "pydantic_mre.py"]
 
 [tool.ruff.format]
-# `pytest-examples` requires `#>` (no space) for print output assertions.
-# `ruff format` rewrites `#>` to `# >`, breaking those tests.
+# NOTE: `pytest-examples` uses `#>` as print-output markers.
+#       `ruff format` rewrites `#>` to `# >`, breaking those tests.
 exclude = ["examples/*"]
 
 [tool.ruff.lint]
