@@ -16,14 +16,14 @@ You'll need:
 
 1. **[Fork the repository](https://github.com/Danipulok/pydantic-jsonschema/fork)** on GitHub
 
-1. **Clone your fork:**
+2. **Clone your fork:**
 
     ```bash
-    git clone <https://github.com/YOUR-USERNAME/pydantic-jsonschema.git>
+    git clone <your_repository>
     cd pydantic-jsonschema
     ```
 
-1. **Install dependencies:**
+3. **Install dependencies:**
 
     ```bash
     just install
@@ -105,7 +105,7 @@ Then visit <http://127.0.0.1:8000>
 
 - We use **Ruff** for linting and formatting
 - Type hints are required for all public APIs
-- Docstrings are required for all public APIs
+- Docstrings are required for all public APIs (Sphinx style: `:param:`, `:returns:`, `:raises:`)
 - All code must pass `mypy` strict mode
 
 ## Testing Requirements
@@ -120,28 +120,28 @@ Then visit <http://127.0.0.1:8000>
 1. Create a new branch for your changes:
 
     ```bash
-    git checkout -b feature/your-feature-name
+    git checkout -b feat/your-feature-name
     ```
 
-1. Make your changes and ensure all checks pass:
+2. Make your changes and ensure all checks pass:
 
     ```bash
     just all
     ```
 
-1. Commit your changes with a clear message:
+3. Commit your changes with a clear message:
 
     ```bash
     git commit -m "feat(scope): brief description of changes"
     ```
 
-1. Push to your fork and create a pull request:
+4. Push to your fork and create a pull request:
 
     ```bash
-    git push origin feature/your-feature-name
+    git push origin feat/your-feature-name
     ```
 
-1. In your PR description:
+5. In your PR description:
    - Describe what your changes do
    - Link to any related issues
    - Include examples if adding new features
@@ -180,7 +180,8 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 
 ## Documentation Guidelines
 
-Documentation is crucial! When adding features or making changes:
+Documentation is crucial.
+When adding features or making changes:
 
 ### Update Documentation Files
 
@@ -188,6 +189,7 @@ Documentation is crucial! When adding features or making changes:
 - Focus on use cases and practical applications
 - Keep examples concise and self-contained
 - Use real-world scenarios when possible
+- Please note that ALL ```python``` code blocks are run and verified
 
 ### Documentation Style
 
@@ -209,7 +211,6 @@ We follow a style similar to [Pydantic AI](https://ai.pydantic.dev/):
 
 If you have questions or need help:
 
-- [Open a discussion](https://github.com/Danipulok/pydantic-jsonschema/discussions) on GitHub
 - Check [existing issues](https://github.com/Danipulok/pydantic-jsonschema/issues) and PRs
 - Review the [documentation](https://danipulok.github.io/pydantic-jsonschema/)
 
