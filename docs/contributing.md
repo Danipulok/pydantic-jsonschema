@@ -18,7 +18,7 @@ Thank you for helping improve Pydantic JSON Schema.
 2. Clone your fork:
 
     ```bash
-    git clone https://github.com/Danipulok/pydantic-jsonschema.git
+    git clone <your-fork-url>
     cd pydantic-jsonschema
     ```
 
