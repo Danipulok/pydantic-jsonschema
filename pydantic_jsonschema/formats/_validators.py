@@ -2,16 +2,13 @@
 
 import importlib.util
 
-try:
-    importlib.util.find_spec("fqdn")
-    importlib.util.find_spec("rfc3986")
-except ImportError as _import_error:
+if importlib.util.find_spec("fqdn") is None or importlib.util.find_spec("rfc3986") is None:
     msg = (
-        "`fqdn` and `rfc3986` are required to use JsonSchema formats. "
-        "Install them with: `pip install pydantic-jsonschema[formats-base]` or "
-        "`pip install pydantic-jsonschema[formats-all]`."
+        "`fqdn` and `rfc3986` are required to use JSON Schema formats. "
+        "Install them with: `uv add 'pydantic-jsonschema[formats-base]'` or "
+        "`uv add 'pydantic-jsonschema[formats-all]'`."
     )
-    raise ImportError(msg) from _import_error
+    raise ImportError(msg)
 
 from fqdn import FQDN  # type: ignore[import-untyped]
 from rfc3986 import (  # type: ignore[import-untyped]

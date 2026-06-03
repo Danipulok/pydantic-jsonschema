@@ -1,6 +1,8 @@
 """Tests for hostname, URI, and IRI format validators."""
 
+import importlib
 from collections.abc import Callable
+from unittest.mock import patch
 
 import pytest
 
@@ -12,6 +14,40 @@ from pydantic_jsonschema.formats._validators import (
     validate_uri_reference,
 )
 from pydantic_jsonschema.types import JsonType
+
+
+class TestMissingDependencies:
+    """Tests for missing optional dependency detection."""
+
+    def test_missing_fqdn_raises_import_error(self) -> None:
+        """Test that missing `fqdn` raises `ImportError` with install instructions."""
+        original_find_spec = importlib.util.find_spec
+
+        def fake_find_spec(name: str) -> object | None:
+            if name == "fqdn":
+                return None
+            return original_find_spec(name)
+
+        with (
+            patch("importlib.util.find_spec", side_effect=fake_find_spec),
+            pytest.raises(ImportError, match=r"fqdn.*rfc3986.*required"),
+        ):
+            importlib.reload(importlib.import_module("pydantic_jsonschema.formats._validators"))
+
+    def test_missing_rfc3986_raises_import_error(self) -> None:
+        """Test that missing `rfc3986` raises `ImportError` with install instructions."""
+        original_find_spec = importlib.util.find_spec
+
+        def fake_find_spec(name: str) -> object | None:
+            if name == "rfc3986":
+                return None
+            return original_find_spec(name)
+
+        with (
+            patch("importlib.util.find_spec", side_effect=fake_find_spec),
+            pytest.raises(ImportError, match=r"fqdn.*rfc3986.*required"),
+        ):
+            importlib.reload(importlib.import_module("pydantic_jsonschema.formats._validators"))
 
 
 class TestHostnameValidator:
