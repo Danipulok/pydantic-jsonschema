@@ -443,10 +443,9 @@ class SchemaConverter:
         """Apply validator to annotation.
 
         Handles three types of validators:
-        - Annotated types: used directly as annotation (replaces original)
-        - type classes: used directly as annotation (replaces original)
-        - Callables: wrapped with BeforeValidator
-        - SchemaFormat: use its validator attribute
+        - Annotated types: used directly as annotation (replaces original).
+        - Type classes: used directly as annotation (replaces original).
+        - Callables: wrapped with `BeforeValidator`.
 
         :param annotation: Original annotation.
         :param schema: Schema to check for format.
@@ -457,25 +456,12 @@ class SchemaConverter:
 
         validator = self._format_validators[schema.schema_format]
 
-        # Handle SchemaFormat objects (without importing to avoid circular dependency)
-        # TODO: rewrite
-        if hasattr(validator, "validator"):
-            nested_validator = validator.validator
-            if nested_validator is None:
-                return annotation
-            validator = nested_validator
-
-        # If validator is an Annotated type, use it directly as the annotation
         if get_origin(validator) is Annotated:
             return validator
 
-        # If validator is a type/class
-        # (custom Pydantic type or a python native type, supported by Pydantic) —
-        # use it directly as the annotation
         if isinstance(validator, type):
             return validator
 
-        # Otherwise, it's a callable function - wrap it with `BeforeValidator`
         return Annotated[annotation, BeforeValidator(validator)]
 
     @staticmethod

@@ -9,14 +9,12 @@ from pydantic.functional_validators import AfterValidator
 from pydantic_core import CoreSchema, core_schema
 
 from pydantic_jsonschema import (
-    DataType,
     SchemaConverter,
     to_model,
 )
 from pydantic_jsonschema.exceptions import SchemaConvertionError, SchemaReferenceError
 from pydantic_jsonschema.formats import UUID as UUID_FORMAT
 from pydantic_jsonschema.formats import DateTime, Email, IPv4, Uri
-from pydantic_jsonschema.formats._base import SchemaFormat
 from pydantic_jsonschema.types import JsonType, Schema
 
 if TYPE_CHECKING:
@@ -1679,56 +1677,4 @@ class TestSchemaFormatValidators:
             ),
             "id": UUID("550e8400-e29b-41d4-a716-446655440000"),
             "ip": IPv4Address("192.168.1.1"),
-        }
-
-    def test_schema_format_with_callable_validator(self) -> None:
-        """Test SchemaFormat with a callable validator wraps it as BeforeValidator."""
-        uppercase_format = SchemaFormat(
-            key="upper",
-            title="Uppercase",
-            examples=["HELLO"],
-            types=[DataType.STRING],
-            validator=lambda v: v.upper(),
-        )
-
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string", "format": "upper"},
-            },
-            "required": ["name"],
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(
-            schema,
-            format_validators={"upper": uppercase_format},
-        )
-
-        instance = model(name="hello")
-        assert instance.model_dump() == {"name": "HELLO"}
-
-    def test_schema_format_without_validator(self) -> None:
-        """Test SchemaFormat with validator=None in to_model."""
-        # Create a SchemaFormat with validator=None (no validation, just pass-through)
-        no_op_format = SchemaFormat(
-            key="no-op",
-            title="No Operation",
-            examples=["example"],
-            types=[DataType.STRING],
-            validator=None,
-        )
-
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "data": {"type": "string", "format": "no-op"},
-            },
-            "required": ["data"],
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema, format_validators={"no-op": no_op_format})
-
-        instance = model(data="test-value")
-        assert instance.model_dump() == {
-            "data": "test-value",
         }
