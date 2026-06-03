@@ -101,3 +101,29 @@ clean:
     rm -rf site
     find . -type d -name __pycache__ -exec rm -rf {} +
     find . -type f -name "*.pyc" -delete
+
+# --- CI recipes (no `pre-commit`, no interactive tools) ---
+
+# Install dependencies for CI
+ci-install: _check-uv
+    uv sync --frozen --all-extras --all-packages
+
+# Run linting in CI
+ci-lint:
+    uv run ruff format --check
+    uv run ruff check
+    uv run mypy .
+    uv run codespell
+    npx --yes markdownlint-cli2
+
+# Run tests with coverage XML output for CI
+ci-test:
+    uv run coverage run -m pytest
+    uv run coverage combine
+    uv run coverage report
+    uv run coverage xml
+
+# Build package and check metadata in CI
+ci-build:
+    uv build
+    uvx twine check dist/*
