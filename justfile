@@ -102,6 +102,23 @@ clean:
     find . -type d -name __pycache__ -exec rm -rf {} +
     find . -type f -name "*.pyc" -delete
 
+# Tag a release and push (triggers `release.yml` workflow)
+release version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just changelog
+    git add docs/changelog.md
+    git commit -m "chore: update changelog for v{{version}}"
+    git tag "v{{version}}"
+    git push origin main "v{{version}}"
+
+# Generate `docs/changelog.md` from git history via `git-cliff`
+changelog:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    uv run git-cliff -o docs/changelog.md
+    printf '%s\n' "$(< docs/changelog.md)" > docs/changelog.md
+
 # --- CI recipes (no `pre-commit`, no interactive tools) ---
 
 # Install dependencies for CI

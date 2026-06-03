@@ -84,6 +84,7 @@ nav:
     - api/formats.md
   - Development:
     - Contributing: contributing.md
+    - Changelog: changelog.md
 
 markdown_extensions:
   # Python Markdown
