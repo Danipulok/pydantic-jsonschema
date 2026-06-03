@@ -140,9 +140,7 @@ plugins:
         python:
           paths: [.]
           options:
-            docstring_style: google
-            docstring_options:
-              ignore_init_summary: true
+            docstring_style: sphinx
             merge_init_into_class: true
             show_signature_annotations: true
             show_symbol_type_heading: true

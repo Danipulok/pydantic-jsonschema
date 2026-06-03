@@ -3,13 +3,40 @@
 Real-world examples showing how to use Pydantic JSON Schema in practice.
 
 !!! tip "Runnable Examples"
-    All examples in the [`examples/`](https://github.com/danipulok/pydantic-jsonschema/tree/main/examples) folder are complete and can be run as-is. Try them out!
+    Files in `examples/` are complete scripts. They are also executed by the test suite, so the
+    commands and output below stay in sync with the project.
+
+## Overview
+
+| Example                         | Shows                                                     | Run command                                   |
+|---------------------------------|-----------------------------------------------------------|-----------------------------------------------|
+| `examples/nested_schemas.py`    | Nested objects, arrays, `$defs`, and `$ref` reuse         | `uv run python examples/nested_schemas.py`    |
+| `examples/custom_validators.py` | Custom `format_validators`, normalization, and validation | `uv run python examples/custom_validators.py` |
 
 ## Complex Nested Schemas
 
-Handle schemas with multiple levels of nesting and references.
+Use this example when your schema contains reusable definitions and multiple nesting levels.
 
-[:material-file-code: examples/nested_schemas.py](https://github.com/danipulok/pydantic-jsonschema/blob/main/examples/nested_schemas.py){ .md-button }
+It demonstrates:
+
+- Defining reusable schemas in `$defs`.
+- Referencing shared schemas with `$ref`.
+- Creating nested generated models from object properties.
+- Validating arrays of referenced objects.
+
+Run it with:
+
+```bash
+uv run python examples/nested_schemas.py
+```
+
+Expected output:
+
+```text
+Getting Started with Pydantic JSON Schema
+1
+Great article!
+```
 
 ```python
 --8<-- "examples/nested_schemas.py"
@@ -17,9 +44,27 @@ Handle schemas with multiple levels of nesting and references.
 
 ## Custom Format Validators
 
-Add domain-specific validation for special formats.
+Use this example when JSON Schema `format` values need project-specific validation.
 
-[:material-file-code: examples/custom_validators.py](https://github.com/danipulok/pydantic-jsonschema/blob/main/examples/custom_validators.py){ .md-button }
+It demonstrates:
+
+- Registering `format_validators` with `to_model()`.
+- Normalizing input values before storing them.
+- Raising `ValueError` from custom validators.
+- Combining built-in schema types with domain-specific checks.
+
+Run it with:
+
+```bash
+uv run python examples/custom_validators.py
+```
+
+Expected output:
+
+```text
+WDG-1234-PRO
+19.99
+```
 
 ```python
 --8<-- "examples/custom_validators.py"

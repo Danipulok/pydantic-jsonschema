@@ -1,6 +1,6 @@
 ## Description
 
-<!-- Summary of changes and motivation. -->
+<!-- What changed, why it changed, and how it was tested. -->
 
 Closes #<issue>
 
@@ -15,7 +15,4 @@ Closes #<issue>
 
 ## Checklist
 
-- [ ] `just lint` passes
-- [ ] `just test` passes (100% coverage maintained)
-- [ ] Docstrings follow Sphinx style (`:param:`, `:returns:`, `:raises:`)
-- [ ] Documentation updated (if applicable)
+- [ ] I followed the contribution guide in [`docs/contributing.md`](../docs/contributing.md)
