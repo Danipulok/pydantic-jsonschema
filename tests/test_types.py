@@ -1,3 +1,5 @@
+"""Tests for `Schema` and `Reference` serialization."""
+
 from typing import TYPE_CHECKING
 
 from pydantic_jsonschema.types import DataType, Reference, Schema

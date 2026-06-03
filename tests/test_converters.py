@@ -1,3 +1,5 @@
+"""Tests for JSON Schema to Pydantic model conversion."""
+
 from datetime import UTC, datetime
 from ipaddress import IPv4Address
 from typing import TYPE_CHECKING, Annotated, Any

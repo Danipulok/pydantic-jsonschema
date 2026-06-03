@@ -96,9 +96,14 @@ class SchemaConverter:
         *,
         default_model_name: str = _DEFAULT_MODEL_NAME,
         refs: dict[Ref, type[BaseModel]] | None = None,
-        # FormatValidator can be a callable, type class, or Annotated type
         format_validators: dict[FormatName, FormatValidatorType] | None = None,
     ) -> None:
+        """Initialize converter with optional pre-built refs and format validators.
+
+        :param default_model_name: Fallback name for models without `title`.
+        :param refs: Pre-built Pydantic models for `$ref` resolution.
+        :param format_validators: Validators keyed by JSON Schema `format` value.
+        """
         self._default_model_name: str = default_model_name
         self._refs: dict[Ref, type[BaseModel]] = refs or {}
         self._format_validators: dict[FormatName, FormatValidatorType] = format_validators or {}

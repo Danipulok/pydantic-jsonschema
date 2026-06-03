@@ -1,3 +1,5 @@
+"""Custom exceptions for schema conversion, reference resolution, and format validation."""
+
 from dataclasses import dataclass, fields
 from typing import Any
 
@@ -9,11 +11,12 @@ class BasePydanticJsonSchemaError(Exception):
     message: str
 
     def __post_init__(self) -> None:
-        # Dynamically collect all field values and pass to Exception.__init__
+        """Pass all dataclass field values to `Exception.__init__` for `args`."""
         field_values = tuple(getattr(self, field.name) for field in fields(self))
         super().__init__(*field_values)
 
     def __str__(self) -> str:
+        """Delegate to `repr` for consistent error display."""
         return repr(self)
 
 

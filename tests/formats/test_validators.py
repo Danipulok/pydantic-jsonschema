@@ -1,3 +1,5 @@
+"""Tests for hostname, URI, and IRI format validators."""
+
 from collections.abc import Callable
 
 import pytest
