@@ -2,9 +2,6 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch.metadata]
-allow-direct-references = true
-
 [tool.hatch.version]
 path = "pydantic_jsonschema/_version.py"
 
@@ -106,7 +103,7 @@ lint = [
 test = [
     "pytest>=8.0.0",
     "pytest-cov>=6.0.0",
-    "pytest-examples @ git+https://github.com/Danipulok/pytest-examples.git@feat/windows-compatible",
+    "pytest-examples>=0.0.18",
 ]
 docs = [
     "mike>=2.1.0",

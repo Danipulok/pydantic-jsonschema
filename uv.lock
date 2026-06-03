@@ -1172,7 +1172,7 @@ dev = [
     { name = "pre-commit", specifier = ">=4.0.0" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
-    { name = "pytest-examples", git = "https://github.com/Danipulok/pytest-examples.git?rev=feat%2Fwindows-compatible" },
+    { name = "pytest-examples", specifier = ">=0.0.18" },
     { name = "ruff", specifier = ">=0.12.10" },
 ]
 docs = [
@@ -1191,7 +1191,7 @@ lint = [
 test = [
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
-    { name = "pytest-examples", git = "https://github.com/Danipulok/pytest-examples.git?rev=feat%2Fwindows-compatible" },
+    { name = "pytest-examples", specifier = ">=0.0.18" },
 ]
 
 [[package]]
@@ -1309,11 +1309,15 @@ wheels = [
 [[package]]
 name = "pytest-examples"
 version = "0.0.18"
-source = { git = "https://github.com/Danipulok/pytest-examples.git?rev=feat%2Fwindows-compatible#29a6e703e95e53bb581f1b08f43dceaba61a215f" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "black" },
     { name = "pytest" },
     { name = "ruff" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/af/71/4ae972fd95f474454aa450108ee1037830e7ba11840363e981b8d48fd16a/pytest_examples-0.0.18.tar.gz", hash = "sha256:9a464f007f805b113677a15e2f8942ebb92d7d3eb5312e9a405d018478ec9801", size = 21237, upload-time = "2025-05-06T07:46:10.705Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/09/52/7bbfb6e987d9a8a945f22941a8da63e3529465f1b106ef0e26f5df7c780d/pytest_examples-0.0.18-py3-none-any.whl", hash = "sha256:86c195b98c4e55049a0df3a0a990ca89123b7280473ab57608eecc6c47bcfe9c", size = 18169, upload-time = "2025-05-06T07:46:09.349Z" },
 ]
 
 [[package]]
