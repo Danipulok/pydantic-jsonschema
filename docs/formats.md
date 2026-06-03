@@ -1,17 +1,33 @@
 # Format Validators
 
-Add validation for schema formats like email, UUID, dates, and custom domain-specific formats.
+JSON Schema `format` values describe semantic constraints such as email addresses, UUIDs, URIs, or
+domain-specific identifiers. Pydantic JSON Schema only enforces those constraints when you pass a
+matching entry in `format_validators`.
 
-## What are Formats?
+Without a matching validator, `format` is treated as metadata and the normal JSON Schema type still
+applies.
 
-JSON Schema's `format` keyword lets you specify semantic validation beyond basic types:
+## Install Optional Dependencies
+
+Format validator dependencies are optional. Install the group you need:
+
+| Extra           | Use for                                      |
+|-----------------|----------------------------------------------|
+| `formats-base`  | Standard JSON Schema formats                 |
+| `formats-extra` | Domain-specific `pydantic-extra-types` types |
+| `formats-all`   | Both groups                                  |
+
+See [Installation](install.md#optional-dependencies) for the install commands.
+
+## Basic Usage
+
+The key in `format_validators` must match the schema's `format` value.
 
 ```python title="format_validators.py"
-from uuid import UUID
-
-from pydantic import EmailStr, ValidationError
+from pydantic import ValidationError
 
 from pydantic_jsonschema import Schema, to_model
+from pydantic_jsonschema.formats import UUID, Email
 
 schema = Schema.model_validate(
     {
@@ -23,75 +39,69 @@ schema = Schema.model_validate(
     }
 )
 
-# Without format validators, these are just strings
-User = to_model(schema)
-user = User(email="not-an-email", id="not-a-uuid")  # ✓ No validation
+LooseUser = to_model(schema)
+loose_user = LooseUser(email="not-an-email", id="not-a-uuid")
+print(loose_user.email)
+#> not-an-email
 
-User = to_model(
+StrictUser = to_model(
     schema,
     format_validators={
-        "email": EmailStr,
-        "uuid": UUID
-    }
+        "email": Email,
+        "uuid": UUID,
+    },
 )
 
+strict_user = StrictUser(
+    email="alice@example.com",
+    id="550e8400-e29b-41d4-a716-446655440000",
+)
+print(type(strict_user.id).__name__)
+#> UUID
+
 try:
-    User(email="invalid")
-except ValidationError as e:
-    print(e)
-    """
-    1 validation error for Model
-    email
-      value is not a valid email address: An email address must have an @-sign. [type=value_error, input_value='invalid', input_type=str]
-    """
+    StrictUser(email="invalid", id="550e8400-e29b-41d4-a716-446655440000")
+except ValidationError as er:
+    print(type(er).__name__)
+    #> ValidationError
 ```
 
-## Built-in Format Validators
+## Provided Format Aliases
 
-Pydantic JSON Schema provides two levels of format validators:
+The `pydantic_jsonschema.formats` module exports aliases that can be passed to
+`format_validators`.
 
-### Base Format Validators
+| JSON Schema `format` | Alias          | Validates                                                    |
+|----------------------|----------------|--------------------------------------------------------------|
+| `email`              | `Email`        | Email addresses                                              |
+| `hostname`           | `Hostname`     | RFC 1123 hostnames, including single labels like `localhost` |
+| `uri`                | `Uri`          | Absolute URIs with a scheme                                  |
+| `uri-reference`      | `UriReference` | Absolute or relative URI references                          |
+| `iri`                | `Iri`          | Absolute internationalized URIs                              |
+| `iri-reference`      | `IriReference` | Absolute or relative internationalized URI references        |
+| `date`               | `Date`         | Dates                                                        |
+| `time`               | `Time`         | Times                                                        |
+| `date-time`          | `DateTime`     | Date-time values                                             |
+| `duration`           | `Duration`     | Durations                                                    |
+| `uuid`               | `UUID`         | UUID values                                                  |
+| `ipv4`               | `IPv4`         | IPv4 addresses                                               |
+| `ipv6`               | `IPv6`         | IPv6 addresses                                               |
 
-Install standard JSON Schema format validators:
-
-```bash
-uv add pydantic-jsonschema[formats-base]
-```
-
-This provides validators for formats defined in the JSON Schema specification:
-
-| Format          | Validator     | RFC Standard | Description                                                   |
-|-----------------|---------------|--------------|---------------------------------------------------------------|
-| `email`         | `EmailStr`    | RFC 5322     | Email addresses                                               |
-| `hostname`      | Custom        | RFC 1123     | Internet hostnames (including single labels like `localhost`) |
-| `uri`           | Custom        | RFC 3986     | Absolute URIs with required scheme                            |
-| `uri-reference` | Custom        | RFC 3986     | URI references (absolute or relative)                         |
-| `iri`           | Custom        | RFC 3987     | Internationalized URIs                                        |
-| `iri-reference` | Custom        | RFC 3987     | Internationalized URI references                              |
-| `date`          | `date`        | RFC 3339     | Date (via Pydantic)                                           |
-| `time`          | `time`        | RFC 3339     | Time (via Pydantic)                                           |
-| `date-time`     | `datetime`    | RFC 3339     | Date and time (via Pydantic)                                  |
-| `duration`      | `timedelta`   | ISO 8601     | Duration (via Pydantic)                                       |
-| `uuid`          | `UUID`        | RFC 4122     | UUID (via Pydantic)                                           |
-| `ipv4`          | `IPv4Address` | RFC 2673     | IPv4 address (via Pydantic)                                   |
-| `ipv6`          | `IPv6Address` | RFC 4291     | IPv6 address (via Pydantic)                                   |
-
-**Example using base formats:**
-
-```python
+```python title="provided_formats.py"
 from pydantic_jsonschema import Schema, to_model
-from pydantic_jsonschema.formats import UUID, DateTime, Email, IPv4, Uri
+from pydantic_jsonschema.formats import DateTime, Email, IPv4, Uri
 
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "email": {"type": "string", "format": "email"},
-        "website": {"type": "string", "format": "uri"},
-        "created_at": {"type": "string", "format": "date-time"},
-        "id": {"type": "string", "format": "uuid"},
-        "ip": {"type": "string", "format": "ipv4"},
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "email": {"type": "string", "format": "email"},
+            "website": {"type": "string", "format": "uri"},
+            "created_at": {"type": "string", "format": "date-time"},
+            "ip": {"type": "string", "format": "ipv4"},
+        },
     }
-})
+)
 
 User = to_model(
     schema,
@@ -99,7 +109,6 @@ User = to_model(
         "email": Email,
         "uri": Uri,
         "date-time": DateTime,
-        "uuid": UUID,
         "ipv4": IPv4,
     },
 )
@@ -108,71 +117,66 @@ user = User(
     email="alice@example.com",
     website="https://example.com/profile",
     created_at="2024-01-15T10:30:00Z",
-    id="550e8400-e29b-41d4-a716-446655440000",
     ip="192.168.1.1",
 )
+
+print(type(user.created_at).__name__)
+#> datetime
 ```
 
-### Extended Format Validators
+## Third-Party Pydantic Types
 
-Install domain-specific validators:
+The `formats-extra` extra installs `pydantic-extra-types`, but it does not automatically map schema
+formats. Import the type you want and pass it through `format_validators`.
 
-```bash
-uv add pydantic-jsonschema[formats-extra]
-```
-
-This adds validators from [`pydantic-extra-types`](https://github.com/pydantic/pydantic-extra-types):
-
-```python
+```python title="extra_types.py"
+from pydantic_extra_types.color import Color
 from pydantic_extra_types.payment import PaymentCardNumber
-from pydantic_extra_types.phone_numbers import PhoneNumber
 
 from pydantic_jsonschema import Schema, to_model
 
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "card": {"type": "string", "format": "payment-card"},
-        "phone": {"type": "string", "format": "phone"}
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "card": {"type": "string", "format": "payment-card"},
+            "color": {"type": "string", "format": "color"},
+        },
     }
-})
+)
 
-User = to_model(
+Checkout = to_model(
     schema,
     format_validators={
         "payment-card": PaymentCardNumber,
-        "phone": PhoneNumber
-    }
+        "color": Color,
+    },
 )
 
-user = User(
-    card="4111111111111111",
-    phone="+1-202-555-0173"
-)
+checkout = Checkout(card="4111111111111111", color="#ff5733")
+print(type(checkout.color).__name__)
+#> Color
 ```
 
-**Available validators in `pydantic-extra-types`:**
+Common `pydantic-extra-types` validators include payment cards, colors, countries, coordinates,
+MAC addresses, and phone numbers. See the
+[pydantic-extra-types documentation](https://github.com/pydantic/pydantic-extra-types) for the full
+list.
 
-- **Payment**: `PaymentCardNumber`
-- **Phone**: `PhoneNumber`
-- **Colors**: `Color` (hex, RGB, HSL, etc.)
-- **Countries**: `CountryAlpha2`, `CountryAlpha3`
-- **Coordinates**: `Latitude`, `Longitude`
-- **MAC Address**: `MacAddress`
-- **And many more**: See [pydantic-extra-types docs](https://github.com/pydantic/pydantic-extra-types)
+## Custom Validators
 
-## Custom Format Validators
+Use a callable when you want to validate or normalize a project-specific format.
 
-Create your own validators for domain-specific formats.
-
-### Simple Function Validator
+Callable validators receive the raw input before Pydantic type coercion. They should return the
+validated value and raise `ValueError` when validation fails.
 
 ```python title="custom_sku_validator.py"
+from pydantic import ValidationError
+
 from pydantic_jsonschema import Schema, to_model
 
 
 def validate_sku(value: str) -> str:
-    """Validate SKU format: ABC-1234-XYZ"""
     parts = value.split("-")
 
     if len(parts) != 3:
@@ -191,327 +195,113 @@ def validate_sku(value: str) -> str:
         msg = "Third part must be 3 letters"
         raise ValueError(msg)
 
-    return value.upper()  # Normalize to uppercase
+    return value.upper()
 
 
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "sku": {"type": "string", "format": "sku"}
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "sku": {"type": "string", "format": "sku"},
+        },
     }
-})
+)
 
 Product = to_model(schema, format_validators={"sku": validate_sku})
 
 product = Product(sku="abc-1234-xyz")
 print(product.sku)
 #> ABC-1234-XYZ
-```
-
-### Using Annotated Types
-
-For more complex validation, use Pydantic's `Annotated` types:
-
-```python
-from typing import Annotated
-
-from pydantic import AfterValidator, Field
-
-from pydantic_jsonschema import Schema, to_model
-
-
-def validate_positive(value: float) -> float:
-    if value <= 0:
-        msg = "Must be positive"
-        raise ValueError(msg)
-    return value
-
-
-# Create a custom type
-PositivePrice = Annotated[
-    float,
-    Field(gt=0, description="Product price"),
-    AfterValidator(lambda v: round(v, 2)),  # Round to 2 decimals
-]
-
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "price": {"type": "number", "format": "price"}
-    }
-})
-
-Product = to_model(schema, format_validators={"price": PositivePrice})
-
-product = Product(price=19.999)
-print(product.price)
-#> 20.0
-```
-
-## Real-World Example: Semantic Version
-
-Validate semantic versioning format:
-
-```python title="semver_validator.py"
-import re
-
-from pydantic import ValidationError
-
-from pydantic_jsonschema import Schema, to_model
-
-
-def validate_semver(value: str) -> str:
-    """Validate semantic version (e.g., 1.2.3)"""
-    pattern = r"^\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?$"
-
-    if not re.match(pattern, value):
-        msg = "Must be semantic version format (e.g., 1.2.3 or 1.2.3-beta)"
-        raise ValueError(msg)
-    return value
-
-
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "version": {"type": "string", "format": "semver"}
-    }
-})
-
-Package = to_model(schema, format_validators={"semver": validate_semver})
-
-Package(version="1.2.3")  # ✓
-Package(version="2.0.0-beta")  # ✓
 
 try:
-    Package(version="1.2")
-except ValidationError as e:
-    print(e)
-    """
-    1 validation error for Model
-    version
-      Value error, Must be semantic version format (e.g., 1.2.3 or 1.2.3-beta) [type=value_error, input_value='1.2', input_type=str]
-        For further information visit https://errors.pydantic.dev/2.12/v/value_error
-    """
-```
-
-## Real-World Example: Hex Color
-
-Validate and normalize hex color codes:
-
-```python title="hex_color_validator.py"
-from pydantic_jsonschema import Schema, to_model
-
-
-def validate_hex_color(value: str) -> str:
-    """Validate and normalize hex color (#RRGGBB)"""
-    value = value.strip()
-
-    # Add # if missing
-    if not value.startswith("#"):
-        value = f"#{value}"
-
-    # Check format
-    if len(value) != 7:
-        msg = "Must be 6 hex digits"
-        raise ValueError(msg)
-
-    # Validate hex digits
-    try:
-        int(value[1:], 16)
-    except ValueError:
-        msg = "Invalid hex digits"
-        raise ValueError(msg) from None
-
-    return value.upper()
-
-
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "color": {"type": "string", "format": "hex-color"}
-    }
-})
-
-
-Theme = to_model(schema, format_validators={"hex-color": validate_hex_color})
-
-theme = Theme(color="ff5733")
-print(theme.color)
-#> #FF5733
-
-theme = Theme(color="#1a2b3c")
-print(theme.color)
-#> #1A2B3C
+    Product(sku="abc-12")
+except ValidationError as er:
+    print(type(er).__name__)
+    #> ValidationError
 ```
 
 ## Validator Types
 
-Format validators can be:
+`format_validators` accepts these validator forms:
 
-### 1. Functions
+| Validator form   | Example                    | Behavior                                                       |
+|------------------|----------------------------|----------------------------------------------------------------|
+| Callable         | `{"sku": validate_sku}`    | Called before Pydantic type validation                         |
+| Pydantic type    | `{"email": EmailStr}`      | Replaces the generated annotation                              |
+| `Annotated` type | `{"price": PositivePrice}` | Replaces the generated annotation and preserves its validators |
 
-Simple callables that validate and return the value:
+### Callable Validators
 
-```python
+```python title="callable_validator.py"
 from pydantic_jsonschema import JsonType
 
 
-def is_valid(_value: JsonType) -> bool:
-    # Your validation logic here
-    return True
-
-
-def transform(value: JsonType) -> JsonType:
-    # Your transformation logic here
-    return value
-
-
-def my_validator(value: JsonType) -> JsonType:
-    if not is_valid(value):
-        msg = "Invalid"
-        raise ValueError(msg)
-    return transform(value)
-```
-
-### 2. Pydantic Types
-
-Use Pydantic's built-in or extra types:
-
-```python
-from pydantic import EmailStr, HttpUrl
-from pydantic_extra_types.color import Color
-
-format_validators={
-    "email": EmailStr,
-    "url": HttpUrl,
-    "color": Color
-}
-```
-
-### 3. Annotated Types
-
-Types with validators attached:
-
-```python
-from typing import Annotated
-
-from pydantic import AfterValidator
-
-
-def uppercase(v: str) -> str:
-    return v.upper()
-
-
-UpperStr = Annotated[str, AfterValidator(uppercase)]
-
-format_validators = {"upper": UpperStr}
-```
-
-## Validator Execution Order
-
-Validators run at different stages:
-
-```python
-from typing import Annotated
-
-from pydantic import AfterValidator, BeforeValidator
-
-from pydantic_jsonschema import JsonType
-
-
-def before_validation(v: JsonType) -> str:
-    """Runs before type validation - for coercion"""
-    return str(v)
-
-
-def after_validation(v: str) -> str:
-    """Runs after type validation - for additional checks"""
-    return v.strip().upper()
-
-
-CustomStr = Annotated[
-    str,
-    BeforeValidator(before_validation),
-    AfterValidator(after_validation)
-]
-```
-
-**Order:**
-
-1. BeforeValidator (coercion)
-2. Type validation (Pydantic)
-3. AfterValidator (additional checks)
-4. Format validator (if specified)
-
-## Common Patterns
-
-### Range Validation
-
-```python
-from typing import Annotated
-
-from pydantic import Field
-
-
-def validate_port(value: int) -> int:
-    if not 1 <= value <= 65535:
-        msg = "Port must be 1-65535"
-        raise ValueError(msg)
-    return value
-
-
-Port = Annotated[int, Field(ge=1, le=65535)]
-
-format_validators = {"port": Port}
-```
-
-### Multiple Constraints
-
-```python
-from typing import Annotated
-
-from pydantic import AfterValidator, Field
-
-
-def validate_username(value: str) -> str:
-    if not value.isalnum():
-        msg = "Must be alphanumeric"
-        raise ValueError(msg)
-    return value.lower()
-
-
-Username = Annotated[
-    str,
-    Field(min_length=3, max_length=20),
-    AfterValidator(validate_username)
-]
-
-format_validators = {"username": Username}
-```
-
-### Normalization
-
-```python
-def normalize_phone(value: str) -> str:
-    """Remove all non-digits"""
-    digits = "".join(c for c in value if c.isdigit())
+def normalize_phone(value: JsonType) -> str:
+    digits = "".join(character for character in str(value) if character.isdigit())
 
     if len(digits) != 10:
-        msg = "Must be 10 digits"
+        msg = "Phone number must contain 10 digits"
         raise ValueError(msg)
 
-    # Format as (XXX) XXX-XXXX
     return f"({digits[:3]}) {digits[3:6]}-{digits[6:]}"
 
 
 format_validators = {"phone": normalize_phone}
 ```
 
+### Pydantic Types
+
+```python title="pydantic_type_validator.py"
+from pydantic import EmailStr, HttpUrl
+from pydantic_extra_types.color import Color
+
+format_validators = {
+    "color": Color,
+    "email": EmailStr,
+    "url": HttpUrl,
+}
+```
+
+### Annotated Types
+
+```python title="annotated_validator.py"
+from typing import Annotated
+
+from pydantic import AfterValidator, Field
+
+
+def round_price(value: float) -> float:
+    return round(value, 2)
+
+
+PositivePrice = Annotated[
+    float,
+    Field(gt=0),
+    AfterValidator(round_price),
+]
+
+format_validators = {"price": PositivePrice}
+```
+
+## Execution Order
+
+Execution order depends on the validator form:
+
+| Validator form   | Order                                           |
+|------------------|-------------------------------------------------|
+| Callable         | format callable, then generated type validation |
+| Pydantic type    | Pydantic type validation                        |
+| `Annotated` type | validators defined inside the `Annotated` type  |
+
+For callable validators, the value passed to the function is the raw input value. For Pydantic
+types and `Annotated` types, the validator replaces the generated annotation, so Pydantic runs that
+type's own validation pipeline.
+
 ## Error Handling
 
-Validators should raise `ValueError` with a clear message:
+Raise `ValueError` with a clear message when a value is invalid:
 
-```python
+```python title="error_handling.py"
 def validate_age(value: int) -> int:
     if value < 0:
         msg = "Age cannot be negative"
@@ -524,17 +314,18 @@ def validate_age(value: int) -> int:
     return value
 ```
 
-Pydantic will convert this to a `ValidationError` with location information.
+Pydantic converts the error into a `ValidationError` with field location information.
 
 ## Best Practices
 
-1. **Keep validators focused** - Each validator should check one thing
-2. **Return the value** - Always return (possibly transformed) value
-3. **Clear error messages** - Help users understand what's wrong
-4. **Handle edge cases** - Test with None, empty strings, etc.
-5. **Document format** - Include examples in error messages
+- Keep validators focused on one format.
+- Return the original or normalized value.
+- Raise `ValueError` for invalid values.
+- Include valid and invalid cases in tests.
+- Document the expected input format in examples and error messages.
 
 ## Next Steps
 
-- [Examples](examples.md) - See format validators in real applications
-- [Converters](converters.md) - Learn about model creation
+- [Installation](install.md) - Install optional format validator dependencies
+- [Converters](converters.md) - Learn how schema conversion works
+- [Examples](examples.md) - Run complete examples
