@@ -140,11 +140,9 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [
     "S101",     # Use of `assert` detected
-    "D104",     # Missing docstring in public package
 ]
 "examples/*" = [
     "T201",     # Remove `print`
-    "D104",     # Missing docstring in public package
 ]
 
 [tool.pytest.ini_options]
