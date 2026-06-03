@@ -204,7 +204,7 @@ We follow a style similar to [Pydantic AI](https://ai.pydantic.dev/):
 ### Where to Add Documentation
 
 - **New features**: Add to relevant section in `docs/`
-- **Examples**: Add complete examples to `examples/` if suitable and link them in docs 
+- **Examples**: Add complete examples to `examples/` if suitable and link them in docs
 - **Breaking changes**: Note in relevant docs + update migration guide
 - **API changes**: Update inline docstrings
 

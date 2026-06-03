@@ -9,18 +9,19 @@ Convert a simple schema to a Pydantic model:
 ```python title="basic_conversion.py"
 from pydantic_jsonschema import Schema, to_model
 
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "username": {"type": "string"},
-        "email": {"type": "string"}
-    },
-    "required": ["username"]
-})
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "username": {"type": "string"},
+            "email": {"type": "string"},
+        },
+        "required": ["username"],
+    }
+)
 
 User = to_model(schema, model_name="User")
 
-# Use it like any Pydantic model
 user = User(username="alice", email="alice@example.com")
 print(user.username)
 #> alice
@@ -30,26 +31,36 @@ The `to_model()` function is a convenience wrapper that creates a model with str
 
 ## Defining Schemas
 
-There are two ways to define schemas:
+You can define schemas with the `Schema` class or validate a plain `dict` into `Schema`.
 
-### Using Schema class
+| Input style                  | Best for                                     | Example                                     |
+|------------------------------|----------------------------------------------|---------------------------------------------|
+| `Schema(...)`                | Python code that builds schemas directly     | `Schema(type=DataType.OBJECT)`              |
+| `Schema.model_validate(...)` | JSON-like data from files, APIs, or literals | `Schema.model_validate({"type": "object"})` |
 
-```python
+Both approaches are equivalent after validation.
+
+### Using `Schema`
+
+```python title="schema_class.py"
 from pydantic_jsonschema import DataType, Schema
 
 schema = Schema(
     type=DataType.OBJECT,
     properties={
         "name": Schema(type=DataType.STRING),
-        "age": Schema(type=DataType.INTEGER, minimum=0),
+        "age": Schema(
+            type=DataType.INTEGER,
+            minimum=0,
+        ),
     },
     required=["name"],
 )
 ```
 
-### From dict with `model_validate`
+### Using `model_validate()`
 
-```python
+```python title="schema_dict.py"
 from pydantic_jsonschema import Schema
 
 schema = Schema.model_validate(
@@ -64,15 +75,68 @@ schema = Schema.model_validate(
 )
 ```
 
-Both approaches are equivalent.
+## Conversion Map
 
-## Schema Types
+Use this table as the quick reference for what each JSON Schema feature becomes.
+
+| JSON Schema input                           | Pydantic result                             | Example result                      |
+|---------------------------------------------|---------------------------------------------|-------------------------------------|
+| root `{"type": "object"}`                   | generated `BaseModel` subclass              | empty model with extra handling     |
+| object property without `properties`        | untyped dictionary field                    | `metadata: dict[str, Any]`          |
+| `{"type": "string"}`                        | `str`                                       | `name: str`                         |
+| `{"type": "integer"}`                       | `int`                                       | `age: int`                          |
+| `{"type": "number"}`                        | `float`                                     | `score: float`                      |
+| `{"type": "boolean"}`                       | `bool`                                      | `is_active: bool`                   |
+| `{"type": "null"}`                          | `None` type                                 | `value: None`                       |
+| `{"type": ["string", "integer"]}`           | union annotation                            | `str` or `int`                      |
+| `{"type": "array", "items": {...}}`         | typed `list[...]`                           | `tags: list[str]`                   |
+| `{"enum": [...]}`                           | `Literal[...]`                              | `Literal["draft", "published"]`     |
+| `{"const": "active"}`                       | single-value `Literal[...]`                 | `Literal["active"]`                 |
+| `anyOf` or `oneOf`                          | union annotation                            | `str` or `int`                      |
+| `allOf`                                     | generated model inheritance or nested model | combined Pydantic model             |
+| nested object property                      | nested generated model                      | `post.author.name`                  |
+| property with `$ref: "#/$defs/Person"`      | model generated from `$defs.Person`         | shared `Person` field type          |
+| `$ref` passed through `refs`                | existing Pydantic model                     | existing `Address` class            |
+| root `additionalProperties: false`          | generated model forbids extra fields        | `extra_forbidden` validation        |
+| field `additionalProperties: {...}`         | typed mapping values                        | `dict[str, int]`                    |
+| `required` entry                            | required Pydantic field                     | `Field required` validation         |
+| `default`                                   | field default                               | omitted input uses default value    |
+| `minimum`, `maximum`, `multipleOf`          | numeric constraints                         | `ge`, `le`, `multiple_of`           |
+| `minLength`, `maxLength`                    | string length constraints                   | `min_length`, `max_length`          |
+| `minItems`, `maxItems`                      | list length constraints                     | `min_length`, `max_length`          |
+| `format` with validators                    | configured format validation                | see [Format Validators](formats.md) |
+| `title`, `model_name`, `default_model_name` | generated class name                        | `User`, `CustomUser`, `Model`       |
+
+## Common Conversions
+
+The sections below show the most common conversions in runnable examples.
+
+### Object Schemas
+
+Object conversion depends on where the schema appears.
+
+| Schema position | Input                                               | Result                                |
+|-----------------|-----------------------------------------------------|---------------------------------------|
+| root schema     | `{"type": "object"}`                                | generated model with no fields        |
+| root schema     | `{"type": "object", "properties": ...}`             | generated model with fields           |
+| root schema     | `{"type": "object", "additionalProperties": false}` | generated model with `extra="forbid"` |
+| property schema | `{"type": "object"}`                                | `dict[str, Any]` field                |
+| property schema | `{"type": "object", "properties": ...}`             | nested generated model                |
+
+For a property schema, plain `{"type": "object"}` means the value must be a JSON object, so the
+field becomes `dict[str, Any]`. It is not `Any`, because non-object values like strings, numbers,
+arrays, and `null` are rejected.
+
+!!! warning "Current behavior"
+    A property schema with `{"type": "object", "additionalProperties": false}` currently also
+    becomes `dict[str, Any]`. It validates that the value is a dictionary, but it does not enforce
+    an empty dictionary.
 
 ### Objects
 
-Object schemas become Pydantic models:
+Object schemas with `properties` become Pydantic models:
 
-```python
+```python title="object_schema.py"
 from pydantic_jsonschema import Schema, to_model
 
 schema = Schema.model_validate(
@@ -89,25 +153,29 @@ schema = Schema.model_validate(
 Post = to_model(schema, model_name="Post")
 
 post = Post(title="Hello World", views=100)
+print(post.title)
+#> Hello World
 ```
 
 ### Arrays
 
-Arrays become typed lists:
+Arrays become typed lists when `items` is present:
 
-```python
+```python title="array_schema.py"
 from pydantic_jsonschema import Schema, to_model
 
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "tags": {
-            "type": "array",
-            "items": {"type": "string"},
-            "minItems": 1
-        }
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "tags": {
+                "type": "array",
+                "items": {"type": "string"},
+                "minItems": 1,
+            }
+        },
     }
-})
+)
 
 Model = to_model(schema)
 
@@ -118,84 +186,92 @@ print(data.tags)
 
 ### Enums
 
-Enums become Literal types:
+Enums become `Literal` types:
 
-```python
+```python title="enum_schema.py"
 from pydantic import ValidationError
 
 from pydantic_jsonschema import Schema, to_model
 
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "status": {
-            "type": "string",
-            "enum": ["draft", "published", "archived"]
-        }
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "status": {
+                "type": "string",
+                "enum": ["draft", "published", "archived"],
+            }
+        },
     }
-})
+)
 
 Article = to_model(schema, model_name="Article")
 
 article = Article(status="published")
+print(article.status)
+#> published
 
 try:
     Article(status="invalid")
-except ValidationError as e:
-    print(e)
-    """
-    1 validation error for Article
-    status
-      Input should be 'draft', 'published' or 'archived' [type=literal_error, input_value='invalid', input_type=str]
-        For further information visit https://errors.pydantic.dev/2.12/v/literal_error
-    """
+except ValidationError as er:
+    print(type(er).__name__)
+    #> ValidationError
 ```
 
-### Unions (anyOf/oneOf)
+### Unions
 
-Union schemas become Union types:
+`anyOf`, `oneOf`, and list-valued `type` become union annotations:
 
-```python
+```python title="union_schema.py"
 from pydantic_jsonschema import Schema, to_model
 
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "value": {
-            "anyOf": [
-                {"type": "string"},
-                {"type": "integer"}
-            ]
-        }
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "value": {
+                "anyOf": [
+                    {"type": "string"},
+                    {"type": "integer"},
+                ]
+            }
+        },
     }
-})
+)
 
 Model = to_model(schema)
 
-m1 = Model(value="hello")  # ✓
-m2 = Model(value=42)  # ✓
+text_data = Model(value="hello")
+number_data = Model(value=42)
+
+print(text_data.value)
+#> hello
+print(number_data.value)
+#> 42
 ```
 
 ## Nested Objects
 
 Nested schemas automatically create nested models:
 
-```python
+```python title="nested_objects.py"
 from pydantic_jsonschema import Schema, to_model
 
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "author": {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-                "email": {"type": "string"}
-            },
-            "required": ["name"]
-        }
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "author": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "email": {"type": "string"},
+                },
+                "required": ["name"],
+            }
+        },
     }
-})
+)
 
 BlogPost = to_model(schema, model_name="BlogPost")
 
@@ -208,42 +284,48 @@ print(post.author.name)
 
 Use `$ref` to reuse schema definitions:
 
-```python
+```python title="schema_references.py"
 from pydantic_jsonschema import Schema, to_model
 
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "author": {"$ref": "#/$defs/Person"},
-        "editor": {"$ref": "#/$defs/Person"}
-    },
-    "$defs": {
-        "Person": {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-                "email": {"type": "string"}
-            },
-            "required": ["name"]
-        }
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "author": {"$ref": "#/$defs/Person"},
+            "editor": {"$ref": "#/$defs/Person"},
+        },
+        "$defs": {
+            "Person": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "email": {"type": "string"},
+                },
+                "required": ["name"],
+            }
+        },
     }
-})
+)
 
 Document = to_model(schema, model_name="Document")
 
-doc = Document(
+document = Document(
     author={"name": "Alice", "email": "alice@example.com"},
     editor={"name": "Bob", "email": "bob@example.com"},
 )
+
+print(document.author.name)
+#> Alice
 ```
 
 Both `author` and `editor` reference the same `Person` model definition.
 
 ## Pre-built References
 
-Provide existing Pydantic models for references:
+Pass existing Pydantic models through `refs` when a `$ref` should resolve to a model you already
+have:
 
-```python
+```python title="prebuilt_references.py"
 from pydantic import BaseModel
 
 from pydantic_jsonschema import Schema, to_model
@@ -255,213 +337,158 @@ class Address(BaseModel):
     country: str
 
 
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "name": {"type": "string"},
-        "address": {"$ref": "#/$defs/Address"}
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "address": {"$ref": "#/$defs/Address"},
+        },
     }
-})
+)
 
-# Use the pre-built Address model
 Person = to_model(schema, refs={"#/$defs/Address": Address})
 
 person = Person(
     name="Alice",
-    address=Address(street="123 Main St", city="NYC", country="USA")
+    address=Address(street="123 Main St", city="NYC", country="USA"),
 )
-print(type(person.address))
-#> <class '__main__.Address'>
+print(type(person.address) is Address)
+#> True
 ```
 
 ## Validation Constraints
 
-Schema constraints map to Pydantic validators:
+Schema constraints map to Pydantic field validation:
 
-```python
+```python title="validation_constraints.py"
 from pydantic import ValidationError
 
 from pydantic_jsonschema import Schema, to_model
 
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "username": {
-            "type": "string",
-            "minLength": 3,
-            "maxLength": 20
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "username": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 20,
+            },
+            "age": {
+                "type": "integer",
+                "minimum": 18,
+                "maximum": 120,
+            },
+            "score": {
+                "type": "number",
+                "multipleOf": 0.5,
+            },
         },
-        "age": {
-            "type": "integer",
-            "minimum": 18,
-            "maximum": 120
-        },
-        "score": {
-            "type": "number",
-            "multipleOf": 0.5
-        }
     }
-})
+)
 
 User = to_model(schema, model_name="User")
 
 user = User(username="alice", age=25, score=4.5)
+print(user.score)
+#> 4.5
 
 try:
     User(username="ab")
-except ValidationError as e:
-    print(e)
-    """
-    1 validation error for User
-    username
-      String should have at least 3 characters [type=string_too_short, input_value='ab', input_type=str]
-        For further information visit https://errors.pydantic.dev/2.12/v/string_too_short
-    """
-
-try:
-    User(age=17)
-except ValidationError as e:
-    print(e)
-    """
-    1 validation error for User
-    age
-      Input should be greater than or equal to 18 [type=greater_than_equal, input_value=17, input_type=int]
-        For further information visit https://errors.pydantic.dev/2.12/v/greater_than_equal
-    """
+except ValidationError as er:
+    print(type(er).__name__)
+    #> ValidationError
 ```
 
 ## Additional Properties
 
 Control whether extra fields are allowed:
 
-```python
+```python title="additional_properties.py"
 from pydantic import ValidationError
 
 from pydantic_jsonschema import Schema, to_model
 
-# Forbid extra fields
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "name": {"type": "string"}
-    },
-    "additionalProperties": False
-})
+strict_schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+        },
+        "additionalProperties": False,
+    }
+)
 
-Strict = to_model(schema)
+Strict = to_model(strict_schema)
 
 try:
     Strict(name="Alice", age=30)
-except ValidationError as e:
-    print(e)
-    """
-    1 validation error for Model
-    age
-      Extra inputs are not permitted [type=extra_forbidden, input_value=30, input_type=int]
-        For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden
-    """
+except ValidationError as er:
+    print(type(er).__name__)
+    #> ValidationError
 
+flexible_schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+        },
+        "additionalProperties": True,
+    }
+)
 
-# Allow extra fields
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "name": {"type": "string"}
-    },
-    "additionalProperties": True
-})
-
-Flexible = to_model(schema)
-data = Flexible(name="Alice", age=30)  # ✓
+Flexible = to_model(flexible_schema)
+data = Flexible(name="Alice", age=30)
+print(data.age)
+#> 30
 ```
 
 ## Model Names
 
 Every generated model needs a class name. The name is resolved in this order:
 
-1. **`model_name` argument** — explicit name passed to `to_model()` or `convert_schema()`
-2. **Schema `title`** — the `"title"` field from the JSON Schema
-3. **`default_model_name`** — fallback set on `SchemaConverter` (defaults to `"Model"`)
+| Priority | Source                | Used when                                     | Example                                       |
+|---------:|-----------------------|-----------------------------------------------|-----------------------------------------------|
+|        1 | `model_name` argument | passed to `to_model()` or `convert_schema()`  | `to_model(schema, model_name="User")`         |
+|        2 | schema `title`        | no `model_name` is provided                   | `{"title": "User"}`                           |
+|        3 | `default_model_name`  | neither `model_name` nor `title` is available | `SchemaConverter(default_model_name="Model")` |
 
 This matters because the model name appears in validation errors, `repr()`, and debugging output.
-Without `model_name`, a schema without `title` produces a generic `Model` — unhelpful when you have several of them.
 
-```python
-from pydantic import ValidationError
-
+```python title="model_names.py"
 from pydantic_jsonschema import Schema, to_model
 
-schema = Schema.model_validate({
-    "type": "object",
-    "properties": {
-        "name": {"type": "string"}
-    },
-    "required": ["name"]
-})
-
-# Without model_name — generic "Model" in errors
-Generic = to_model(schema)
-
-try:
-    Generic()
-except ValidationError as e:
-    print(e)
-    """
-    1 validation error for Model
-    name
-      Field required [type=missing, input_value={}, input_type=dict]
-        For further information visit https://errors.pydantic.dev/2.12/v/missing
-    """
-
-# With model_name — clear "User" in errors
-User = to_model(schema, model_name="User")
-
-try:
-    User()
-except ValidationError as e:
-    print(e)
-    """
-    1 validation error for User
-    name
-      Field required [type=missing, input_value={}, input_type=dict]
-        For further information visit https://errors.pydantic.dev/2.12/v/missing
-    """
-```
-
-Schema `title` works the same way — if present, it becomes the model name automatically:
-
-```python
-from pydantic_jsonschema import Schema, to_model
-
-schema = Schema.model_validate({
-    "title": "User",
-    "type": "object",
-    "properties": {
-        "name": {"type": "string"}
+schema = Schema.model_validate(
+    {
+        "title": "User",
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+        },
     }
-})
+)
 
-UserModel = to_model(schema)  # Named "User" from title
+UserModel = to_model(schema)
 print(UserModel.__name__)
 #> User
 
-# model_name overrides title
 CustomModel = to_model(schema, model_name="CustomUser")
 print(CustomModel.__name__)
 #> CustomUser
 ```
 
-## Using SchemaConverter
+## Using `SchemaConverter`
 
 For more control, use the `SchemaConverter` class directly:
 
-```python
+```python title="schema_converter.py"
 from pydantic_jsonschema import Schema, SchemaConverter
 
 converter = SchemaConverter(
-    default_model_name="MyModel",   # Default for models without title
-    refs={},                        # Pre-built reference models
-    format_validators={}            # Custom format validators
+    default_model_name="MyModel",
+    refs={},
+    format_validators={},
 )
 schema = Schema.model_validate({})
 
@@ -471,7 +498,18 @@ print(Model.__name__)
 ```
 
 !!! warning "Caching Behavior"
-    Be careful using `SchemaConverter` directly. The converter maintains state for caching and reference resolution across multiple schema conversions.
+    Be careful using `SchemaConverter` directly. The converter maintains state for caching and
+    reference resolution across multiple schema conversions.
+
+## Common Patterns
+
+| Need                                      | Use                                  | Why                                                          |
+|-------------------------------------------|--------------------------------------|--------------------------------------------------------------|
+| One generated model                       | `to_model(schema, model_name="...")` | Shortest path and clear class name                           |
+| Existing model for a `$ref`               | `refs={"#/$defs/Name": Model}`       | Keeps generated models connected to your own classes         |
+| Repeated conversions with shared settings | `SchemaConverter(...)`               | Reuses `refs`, `format_validators`, and `default_model_name` |
+| Clear validation errors                   | `model_name` or schema `title`       | Avoids generic `Model` in error output                       |
+| Custom `format` handling                  | `format_validators`                  | Adds validation for strings or domain-specific values        |
 
 ## Next Steps
 
