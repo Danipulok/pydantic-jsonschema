@@ -5,8 +5,8 @@ This folder contains runnable examples demonstrating how to use Pydantic JSON Sc
 All examples are complete and can be run as-is:
 
 ```bash
-python examples/custom_validators.py
-python examples/nested_schemas.py
+uv run python examples/custom_validators.py
+uv run python examples/nested_schemas.py
 ```
 
 ## Examples
