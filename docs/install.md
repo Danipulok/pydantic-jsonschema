@@ -1,89 +1,100 @@
 # Installation
 
-Pydantic JSON Schema is available on PyPI as [`pydantic-jsonschema`](https://pypi.org/project/pydantic-jsonschema/).
+Pydantic JSON Schema is available on PyPI as
+[`pydantic-jsonschema`](https://pypi.org/project/pydantic-jsonschema/), so installation is as
+simple as:
 
-## Python Version
+=== "uv"
 
-Requires **Python 3.12+**
+    ```bash
+    uv add pydantic-jsonschema
+    ```
 
-## Install
+=== "pip"
 
-Install with `uv` (recommended):
+    ```bash
+    pip install pydantic-jsonschema
+    ```
 
-```bash
-uv add pydantic-jsonschema
-```
+(Requires Python 3.12+)
 
-Or with `pip`:
+This installs the `pydantic_jsonschema` package, plus the core dependencies required to create and
+validate generated models:
 
-```bash
-pip install pydantic-jsonschema
-```
+- [`pydantic`](https://docs.pydantic.dev/) for model creation and validation.
+- [`openapi-pydantic`](https://github.com/kuimono/openapi-pydantic) for JSON Schema types such as
+  `Schema`, `Reference`, and `DataType`.
 
-This installs the core library with required dependencies:
+## Optional dependencies
 
-- [`pydantic`](https://docs.pydantic.dev/) >= 2.0.0 - Model creation and validation
-- [`openapi-pydantic`](https://github.com/kuimono/openapi-pydantic) >= 0.5.0 - JSON Schema types (`Schema`, `Reference`, `DataType`)
+Pydantic JSON Schema has optional dependencies for `format` validation.
 
-## Optional: Format Validators
+Use `formats-base` for standard JSON Schema formats such as email, hostname, URI, and IRI:
 
-### Base Format Validators
+=== "uv"
 
-For JSON Schema standard format validators (email, hostname, URI, IRI, etc.):
+    ```bash
+    uv add 'pydantic-jsonschema[formats-base]'
+    ```
 
-```bash
-uv add pydantic-jsonschema[formats-base]
-# or
-pip install pydantic-jsonschema[formats-base]
-```
+=== "pip"
 
-This adds validators for standard JSON Schema formats:
+    ```bash
+    pip install 'pydantic-jsonschema[formats-base]'
+    ```
 
-- **Email**: `email-validator` - RFC 5322 email validation
-- **Hostname**: `fqdn` - RFC 1123 hostname validation
-- **URI/IRI**: `rfc3986` - RFC 3986/3987 URI and IRI validation
-- Date, time, datetime, UUID, IPv4, IPv6 (via Pydantic)
+Use `formats-extra` for domain-specific formats such as payment cards, phone numbers, colors,
+country codes, and MAC addresses:
 
-### Extended Format Validators
+=== "uv"
 
-For domain-specific validators (payment cards, phone numbers, colors, etc.):
+    ```bash
+    uv add 'pydantic-jsonschema[formats-extra]'
+    ```
 
-```bash
-uv add pydantic-jsonschema[formats-extra]
-# or
-pip install pydantic-jsonschema[formats-extra]
-```
+=== "pip"
 
-This adds [`pydantic-extra-types[all]`](https://github.com/pydantic/pydantic-extra-types) for extended validators:
+    ```bash
+    pip install 'pydantic-jsonschema[formats-extra]'
+    ```
 
-- Payment cards
-- Phone numbers
-- Colors (hex, RGB)
-- Country codes
-- MAC addresses
-- [And many more](formats.md)
+To install both groups:
 
-### All Format Validators
+=== "uv"
 
-To install both base and extended validators:
+    ```bash
+    uv add 'pydantic-jsonschema[formats-all]'
+    ```
 
-```bash
-uv add pydantic-jsonschema[formats-all]
-# or
-pip install pydantic-jsonschema[formats-all]
-```
+=== "pip"
 
-## Development Installation
+    ```bash
+    pip install 'pydantic-jsonschema[formats-all]'
+    ```
 
-Want to contribute? See the [contributing guide](contributing.md) for setup instructions.
+See [Format Validators](formats.md) for supported formats and usage examples.
 
-```bash
-git clone https://github.com/YOUR-USERNAME/pydantic-jsonschema.git
-cd pydantic-jsonschema
-just install  # Install with development dependencies
-```
+## Install from repository
+
+If you prefer to install directly from a repository checkout:
+
+=== "uv"
+
+    ```bash
+    uv add 'git+https://github.com/your-org/pydantic-jsonschema@main'
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install 'git+https://github.com/your-org/pydantic-jsonschema@main'
+    ```
+
+For local development, use the [contributing guide](contributing.md) instead. It is the source of
+truth for development dependencies, `just` recipes, documentation checks, and PR workflow.
 
 ## Next Steps
 
-- [Examples](examples.md) - See real-world usage
-- [Contributing](contributing.md) - Help improve the library
+- [Converters](converters.md) - Create Pydantic models from JSON Schema
+- [Format Validators](formats.md) - Add validation for JSON Schema `format` values
+- [Examples](examples.md) - Run complete examples
