@@ -81,13 +81,13 @@ If you prefer to install directly from a repository checkout:
 === "uv"
 
     ```bash
-    uv add 'git+https://github.com/your-org/pydantic-jsonschema@main'
+    uv add 'git+https://github.com/Danipulok/pydantic-jsonschema@main'
     ```
 
 === "pip"
 
     ```bash
-    pip install 'git+https://github.com/your-org/pydantic-jsonschema@main'
+    pip install 'git+https://github.com/Danipulok/pydantic-jsonschema@main'
     ```
 
 For local development, use the [contributing guide](contributing.md) instead. It is the source of
