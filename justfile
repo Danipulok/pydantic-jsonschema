@@ -106,11 +106,25 @@ clean:
 release version:
     #!/usr/bin/env bash
     set -euo pipefail
-    just changelog v{{version}}
-    git add docs/changelog.md
-    git commit -m 'chore(release): update changelog for `v{{version}}`'
-    git tag "v{{version}}"
-    git push origin main "v{{version}}"
+    version="{{version}}"
+    if [[ "$version" == v* ]]; then
+        printf 'Release version must not start with `v`: %s\n' "$version" >&2
+        exit 2
+    fi
+    if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+((a|b|rc)[0-9]+)?$ ]]; then
+        printf 'Release version must look like `0.0.1`, `1.0.0b1`, or `1.0.0rc1`: %s\n' "$version" >&2
+        exit 2
+    fi
+    if ! grep -q "^## \[$version\]" docs/changelog.md; then
+        printf 'docs/changelog.md must contain release section `## [%s]`.\n' "$version" >&2
+        exit 2
+    fi
+    if [[ -n "$(git status --porcelain)" ]]; then
+        printf 'Working tree must be clean before release.\n' >&2
+        exit 2
+    fi
+    git tag "v$version"
+    git push origin main "v$version"
 
 # Generate `docs/changelog.md` from git history via `git-cliff`
 changelog tag="":
