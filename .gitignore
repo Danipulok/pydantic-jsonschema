@@ -12,6 +12,7 @@ __pycache__/
 # Testing
 .pytest_cache/
 .coverage*
+coverage.xml
 htmlcov/
 
 # Linting
