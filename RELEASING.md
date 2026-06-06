@@ -55,11 +55,12 @@ Before the first public release:
    Pass the version without the leading `v`. This validates `docs/changelog.md`, creates tag `vX.Y.Z`, and pushes `main` plus the tag.
 
 2. The `release.yml` workflow will automatically:
-   - Build sdist and wheel (version derived from git tag via `hatch-vcs`).
-   - Publish to PyPI.
-   - Publish to TestPyPI (for `v0.*` tags).
-   - Generate release notes via `git-cliff`.
-   - Create a GitHub Release with the generated notes and distribution artifacts.
+    - Build sdist and wheel (version derived from git tag via `hatch-vcs`).
+    - Publish `v0.*` tags to TestPyPI.
+    - Publish non-`v0.*` tags to PyPI.
+    - Generate release notes via `git-cliff`.
+    - Create a GitHub Release with the generated notes and distribution artifacts.
+    - Deploy versioned documentation to GitHub Pages.
 
 ## Versioning
 
@@ -80,7 +81,7 @@ This project follows [Semantic Versioning](https://semver.org/):
 
 Documentation uses [mike](https://github.com/jimporter/mike) for version management.
 
-After creating a release:
+To redeploy documentation manually:
 
 ```bash
 just docs-deploy-version X.Y.Z

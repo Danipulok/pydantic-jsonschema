@@ -34,6 +34,7 @@ jobs:
 
   publish-pypi:
     name: Publish to `PyPI`
+    if: ${{ !startsWith(github.ref_name, 'v0.') }}
     needs: [build]
     runs-on: ubuntu-latest
     environment: pypi
@@ -69,7 +70,8 @@ jobs:
 
   github-release:
     name: Create GitHub Release
-    needs: [build, publish-pypi]
+    if: ${{ always() && needs.build.result == 'success' && (needs.publish-pypi.result == 'success' || needs.publish-testpypi.result == 'success') }}
+    needs: [build, publish-pypi, publish-testpypi]
     runs-on: ubuntu-latest
 
     steps:
@@ -99,3 +101,31 @@ jobs:
           body_path: /tmp/release-notes.md
           prerelease: ${{ startsWith(github.ref_name, 'v0.') }}
           files: dist/*
+
+  deploy-docs:
+    name: Deploy documentation
+    needs: [github-release]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+
+      - name: Install `uv`
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+
+      - name: Install dependencies
+        run: uv sync --group docs
+
+      - name: Configure Git
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Deploy versioned documentation
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          uv run mike deploy --push --update-aliases "$version"
+          uv run mike set-default --push "$version"
