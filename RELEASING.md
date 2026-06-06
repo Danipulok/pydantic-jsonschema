@@ -40,7 +40,12 @@ On [test.pypi.org](https://test.pypi.org):
 Before the first public release:
 
 1. Run `just all` — format, lint, tests, docs build must all pass.
-2. Verify ``docs/changelog.md`` has all changes under `[Unreleased]`.
+2. Verify `docs/changelog.md` will be generated with the target release section, not `[Unreleased]`:
+
+   ```bash
+   uv run git-cliff --tag vX.Y.Z -o /tmp/changelog-preview.md
+   ```
+
 3. Confirm PyPI and TestPyPI trusted publishers are configured (see above).
 4. Confirm GitHub environments `pypi` and `testpypi` exist.
 
@@ -52,7 +57,7 @@ Before the first public release:
    just release X.Y.Z
    ```
 
-   This generates the changelog, commits it, creates tag `vX.Y.Z`, and pushes both.
+   This generates the changelog for tag `vX.Y.Z`, commits it, creates tag `vX.Y.Z`, and pushes both.
 
 2. The `release.yml` workflow will automatically:
    - Build sdist and wheel (version derived from git tag via `hatch-vcs`).

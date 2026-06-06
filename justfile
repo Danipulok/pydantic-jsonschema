@@ -106,17 +106,21 @@ clean:
 release version:
     #!/usr/bin/env bash
     set -euo pipefail
-    just changelog
+    just changelog v{{version}}
     git add docs/changelog.md
-    git commit -m "chore: update changelog for v{{version}}"
+    git commit -m 'chore(release): update changelog for `v{{version}}`'
     git tag "v{{version}}"
     git push origin main "v{{version}}"
 
 # Generate `docs/changelog.md` from git history via `git-cliff`
-changelog:
+changelog tag="":
     #!/usr/bin/env bash
     set -euo pipefail
-    uv run git-cliff -o docs/changelog.md
+    if [[ -n "{{tag}}" ]]; then
+        uv run git-cliff --tag "{{tag}}" -o docs/changelog.md
+    else
+        uv run git-cliff -o docs/changelog.md
+    fi
     printf '%s\n' "$(< docs/changelog.md)" > docs/changelog.md
 
 # --- CI recipes (no `pre-commit`, no interactive tools) ---
