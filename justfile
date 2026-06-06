@@ -9,7 +9,7 @@ _check-uv:
 # Install the package, dependencies, and pre-commit for local development
 install: _check-uv
     uv sync --frozen --all-extras --all-packages
-    pre-commit install --install-hooks
+    uv run pre-commit install --install-hooks
 
 # Install and synchronize an interpreter for every supported python version
 install-all-python:
