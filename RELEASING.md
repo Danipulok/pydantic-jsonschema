@@ -61,6 +61,31 @@ Before the first public release:
     - Create a GitHub Release with the generated notes and distribution artifacts.
     - Deploy versioned documentation to GitHub Pages.
 
+## Manual GitHub Release and docs deploy
+
+The `release.yml` workflow creates the GitHub Release and deploys docs automatically.
+If the workflow fails after PyPI publish (e.g. a broken action SHA), do it manually:
+
+1. Generate release notes:
+
+   ```bash
+   uv run git-cliff vPREVIOUS..vX.Y.Z --strip all -o /tmp/release-notes.md
+   ```
+
+2. Create the GitHub Release:
+
+   ```bash
+   gh release create vX.Y.Z --title "vX.Y.Z" --notes-file /tmp/release-notes.md dist/*
+   ```
+
+3. Deploy documentation:
+
+   ```bash
+   just docs-deploy-version X.Y.Z
+   just docs-alias X.Y.Z latest
+   just docs-set-default latest
+   ```
+
 ## Versioning
 
 Version is determined automatically from git tags by `hatch-vcs`. There is no hardcoded version in
