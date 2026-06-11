@@ -43,6 +43,13 @@ print(user.model_dump())
 
 [https://danipulok.github.io/pydantic-jsonschema/](https://danipulok.github.io/pydantic-jsonschema/)
 
+## Roadmap
+
+- [ ] Custom JSON Schema implementation (remove `openapi-pydantic` dependency)
+- [ ] Zero-dependency format validation (remove `uri-format`, `iri-format` dependencies)
+- [ ] Logic fixes in schema conversion
+- [ ] Configurable loading by type (inspired by [adaptix](https://github.com/reagento/adaptix))
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
