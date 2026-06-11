@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Documentation
 
+- add `0.0.2` release section
 - add `inline_snapshot` item to roadmap
 - add `Ruff`, `uv`, `mypy`, and `pre-commit` badges
 - add acknowledgments section
@@ -182,5 +183,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - add coverage tests and set `cov-fail-under`
 - add comprehensive test suite
 
-[0.0.2]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.1...0.0.2>
+[0.0.2]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.1...v0.0.2>
 [0.0.1]: <https://github.com/Danipulok/pydantic-jsonschema/releases/tag/v0.0.1>

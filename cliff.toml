@@ -3,46 +3,42 @@ header = """# Changelog
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).\n
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 """
-body = """
-{%- macro remote_url() -%}
+body = """{%- macro remote_url() -%}
   https://github.com/Danipulok/pydantic-jsonschema
 {%- endmacro -%}
 
-{% if version -%}
-## [{{ version | trim_start_matches(pat="v") }}] — {{ timestamp | date(format="%Y-%m-%d") }}
-{% else -%}
-## [Unreleased]
-{% endif -%}
-
+## [{% if version %}{{ version | trim_start_matches(pat="v") }}] — {{ timestamp | date(format="%Y-%m-%d") }}{% else %}Unreleased]{% endif %}
 {% for group, commits in commits | group_by(attribute="group") %}
 ### {{ group | striptags | trim | upper_first }}
-{% for commit in commits %}
+
+{% for commit in commits -%}
 - {{ commit.message | split(pat="\n") | first | trim }}
+{% endfor -%}
 {%- endfor %}
-{% endfor %}
 """
-footer = """
-{%- macro remote_url() -%}
+footer = """{%- macro remote_url() -%}
   https://github.com/Danipulok/pydantic-jsonschema
 {%- endmacro -%}
-
 {% for release in releases -%}
-  {% if release.version -%}
-    {% if release.previous.version -%}
-[{{ release.version | trim_start_matches(pat="v") }}]: {{ self::remote_url() }}/compare/{{ release.previous.version }}...{{ release.version }}
-    {% else -%}
-[{{ release.version | trim_start_matches(pat="v") }}]: {{ self::remote_url() }}/releases/tag/{{ release.version }}
-    {% endif -%}
-  {% else -%}
-    {% if release.previous.version -%}
-[Unreleased]: {{ self::remote_url() }}/compare/{{ release.previous.version }}...HEAD
-    {% endif -%}
-  {% endif -%}
+{% if release.version -%}
+{% if release.previous.version -%}
+[{{ release.version | trim_start_matches(pat="v") }}]: <{{ self::remote_url() }}/compare/{{ release.previous.version }}...{{ release.version }}>
+{% else -%}
+[{{ release.version | trim_start_matches(pat="v") }}]: <{{ self::remote_url() }}/releases/tag/{{ release.version }}>
+{% endif -%}
+{% else -%}
+{% if release.previous.version -%}
+[Unreleased]: <{{ self::remote_url() }}/compare/{{ release.previous.version }}...HEAD>
+{% endif -%}
+{% endif -%}
 {% endfor -%}
 """
-trim = true
+trim = false
+postprocessors = [
+  { pattern = "\n{3,}", replace = "\n\n" },
+]
 
 [git]
 conventional_commits = true
