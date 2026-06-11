@@ -79,6 +79,10 @@ docs-deploy:
 docs-deploy-version version:
     uv run mike deploy --push --update-aliases {{version}}
 
+# Add alias for a documentation version
+docs-alias version alias:
+    uv run mike alias --push --update-aliases {{version}} {{alias}}
+
 # Set default version for documentation
 docs-set-default version:
     uv run mike set-default --push {{version}}

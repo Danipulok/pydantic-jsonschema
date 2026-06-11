@@ -134,4 +134,5 @@ jobs:
         run: |
           version="${GITHUB_REF_NAME#v}"
           just docs-deploy-version "$version"
-          just docs-set-default "$version"
+          just docs-alias "$version" latest
+          just docs-set-default latest
