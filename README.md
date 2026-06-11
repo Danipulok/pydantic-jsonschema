@@ -50,6 +50,11 @@ print(user.model_dump())
 - [ ] Logic fixes in schema conversion
 - [ ] Configurable loading by type (inspired by [adaptix](https://github.com/reagento/adaptix))
 
+## Acknowledgments
+
+- [vgavro](https://github.com/vgavro) — initial library idea, guidance, and ongoing support
+- [bodlan](https://github.com/bodlan) — contributions to documentation and conversion logic
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
