@@ -33,7 +33,20 @@ Before the first public release:
 
 ## Creating a release
 
-1. Run the release recipe:
+1. Generate the changelog for the target version:
+
+   ```bash
+   just changelog X.Y.Z
+   ```
+
+2. Commit the updated changelog:
+
+   ```bash
+   git add docs/changelog.md
+   git commit -m 'docs(changelog): add `X.Y.Z` release section'
+   ```
+
+3. Run the release recipe:
 
    ```bash
    just release X.Y.Z
@@ -41,7 +54,7 @@ Before the first public release:
 
    Pass the version without the leading `v`. This validates `docs/changelog.md`, creates tag `vX.Y.Z`, and pushes `main` plus the tag.
 
-2. The `release.yml` workflow will automatically:
+4. The `release.yml` workflow will automatically:
     - Build sdist and wheel (version derived from git tag via `hatch-vcs`).
     - Publish to PyPI.
     - Generate release notes via `git-cliff`.
