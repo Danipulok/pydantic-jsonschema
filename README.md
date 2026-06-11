@@ -43,13 +43,50 @@ print(user.model_dump())
 #> {'name': 'Alice', 'age': 30}
 ```
 
+## Schema Model
+
+The `Schema` class is a Pydantic model representing a JSON Schema object.
+Use it to parse, inspect, and serialize schemas with full type safety:
+
+```python
+from pydantic_jsonschema import DataType, Schema
+
+schema = Schema(
+    type=DataType.OBJECT,
+    properties={
+        "name": Schema(type=DataType.STRING),
+    },
+    required=["name"],
+)
+
+print(schema.model_dump_json(indent=4))
+"""
+{
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "name"
+    ]
+}
+"""
+```
+
+`Schema` supports `$ref` and `$defs` for reusable definitions — properties referencing a `$ref` are parsed as `Reference` objects and resolved automatically during conversion.
+
+See the [Schema documentation](https://danipulok.github.io/pydantic-jsonschema/latest/schema/)
+for field reference and usage examples.
+
 ## Documentation
 
 [https://danipulok.github.io/pydantic-jsonschema/](https://danipulok.github.io/pydantic-jsonschema/)
 
 ## Roadmap
 
-- [ ] Custom JSON Schema implementation (remove `openapi-pydantic` dependency)
+- [x] Custom JSON Schema implementation (remove `openapi-pydantic` dependency)
 - [ ] Zero-dependency format validation (remove `uri-format`, `iri-format` dependencies)
 - [ ] Logic fixes in schema conversion
 - [ ] Add `inline_snapshot` for tests

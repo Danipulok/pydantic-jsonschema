@@ -98,6 +98,7 @@ print(post.author.name)
 ## Next Steps
 
 - [Installation](install.md) - Install the package and optional extras
+- [Schema](schema.md) - Schema models, fields, and serialization
 - [Converters](converters.md) - Learn how schema conversion works
 - [Format Validators](formats.md) - Add validation for JSON Schema `format` values
 - [Examples](examples.md) - Run complete examples

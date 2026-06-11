@@ -29,7 +29,6 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "openapi-pydantic>=0.5.0",
     "pydantic>=2.0.0",
 ]
 

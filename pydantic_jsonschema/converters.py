@@ -1,5 +1,10 @@
 """JSON Schema to Pydantic model converter."""
 
+# NOTE: `Schema` fields use `X | MISSING` unions (see `_schema.py`). mypy doesn't
+# recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
+# and flags every `is not MISSING` check as a non-overlapping identity comparison.
+# mypy: disable-error-code="comparison-overlap"
+
 from collections.abc import Iterator
 from contextlib import contextmanager
 from types import NoneType
@@ -16,6 +21,7 @@ from typing import (
 )
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, RootModel, create_model
+from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.fields import FieldInfo
 
 from ._utils import sanitize_identifier
@@ -176,7 +182,7 @@ class SchemaConverter:
         :raises SchemaConversionError: If schema contains `$defs` (only allowed in root).
         """
         # Validate that `$defs` is not present in nested schemas
-        if schema.model_extra and _DEFS_KEY in schema.model_extra:
+        if schema.defs is not MISSING:
             msg = f"{_DEFS_KEY} is only allowed in root schema, not in nested schemas"
             raise SchemaConversionError(msg)
 
@@ -202,9 +208,8 @@ class SchemaConverter:
             return self._models_cache[cache_key]
 
         # Determine model name
-        name: str = (
-            model_name or sanitize_identifier(schema.title or "") or self._default_model_name
-        )
+        title: str = schema.title if schema.title is not MISSING else ""
+        name: str = model_name or sanitize_identifier(title) or self._default_model_name
 
         # Handle `allOf` composition -> base classes
         base_classes = self._get_base_classes(schema)
@@ -220,7 +225,7 @@ class SchemaConverter:
             return model
 
         # Handle `allOf` without properties -> combined base class
-        if schema.allOf and not schema.properties:
+        if schema.all_of is not MISSING and schema.properties is MISSING:
             # Single base class
             if len(base_classes) == 1:
                 self._models_cache[cache_key] = base_classes[0]
@@ -244,7 +249,7 @@ class SchemaConverter:
         created_model = create_model(  # type: ignore[call-overload]
             name,
             __config__=model_config,
-            __doc__=schema.description,
+            __doc__=schema.description if schema.description is not MISSING else None,
             __base__=base_classes,
             __module__=__name__,
             **fields,
@@ -263,19 +268,14 @@ class SchemaConverter:
         :param schema: Schema to extract defs from.
         :returns: Mapping of reference paths to schemas.
         """
+        if schema.defs is MISSING:
+            return {}
+
         result_defs: dict[Ref, Schema] = {}
-
-        if not schema.model_extra:
-            return result_defs
-
-        raw_defs = schema.model_extra.get(_DEFS_KEY, {})
-        for name, schema_def in raw_defs.items():
-            schema_instance = Schema.model_validate(schema_def)
-
-            # Store with full reference path
+        for name, schema_def in schema.defs.items():
             ref_path = f"#/{_DEFS_KEY}/{name}"
-            result_defs[ref_path] = schema_instance
-
+            # TODO: Handle `Reference` in `$defs` (def alias to another def).
+            result_defs[ref_path] = schema_def  # type: ignore[assignment]
         return result_defs
 
     def _build_defs_cache(
@@ -366,17 +366,17 @@ class SchemaConverter:
         :param schema: Schema to extract base classes from.
         :returns: Tuple of base classes.
         """
-        if not schema.allOf:
+        if schema.all_of is MISSING:
             return (BaseModel,)
 
         # Convert each `allOf` schema to model
         base_models = []
-        for idx, sub_schema in enumerate(schema.allOf):
+        for idx, sub_schema in enumerate(schema.all_of):
             with self._track_path(f"allOf[{idx}]"):
                 if isinstance(sub_schema, Reference):
                     model = self._get_model(sub_schema.ref)
                 else:
-                    model = self._convert_nested_schema(sub_schema)  # type: ignore[arg-type]
+                    model = self._convert_nested_schema(sub_schema)
                 base_models.append(model)
 
         return tuple(base_models)
@@ -390,7 +390,7 @@ class SchemaConverter:
         base_classes: tuple[type[BaseModel], ...],
     ) -> type[BaseModel]:
         """Create RootModel for non-object schemas."""
-        if schema.allOf and base_classes:
+        if schema.all_of is not MISSING and base_classes:
             return base_classes[0]
 
         field = self._schema_to_field(schema)
@@ -414,7 +414,10 @@ class SchemaConverter:
         """Build Pydantic fields from schema properties."""
         fields: dict[str, tuple[Any, FieldInfo]] = {}
 
-        for field_name, field_schema in (schema.properties or {}).items():
+        properties: dict[str, Reference | Schema] = (
+            schema.properties if schema.properties is not MISSING else {}
+        )
+        for field_name, field_schema in properties.items():
             with self._track_path(f"properties.{field_name}"):
                 # Handle reference fields
                 annotation: AnnotationType | None = None
@@ -426,12 +429,13 @@ class SchemaConverter:
                     # Use schema from defs for field metadata, or empty schema
                     schema_for_field = self._defs_cache.get(field_schema.ref, Schema())
                 else:
-                    schema_for_field = field_schema  # type: ignore[assignment]
+                    schema_for_field = field_schema
 
                 # Convert to Pydantic field
                 field = self._schema_to_field(
                     schema_for_field,
-                    is_required=field_name in (schema.required or []),
+                    is_required=field_name
+                    in (schema.required if schema.required is not MISSING else []),
                     annotation=annotation,
                 )
 
@@ -456,10 +460,10 @@ class SchemaConverter:
         :param schema: Schema to check for format.
         :returns: Annotation with validator applied if applicable.
         """
-        if schema.schema_format not in self._format_validators:
+        if schema.format is MISSING or schema.format not in self._format_validators:
             return annotation
 
-        validator = self._format_validators[schema.schema_format]
+        validator = self._format_validators[schema.format]
 
         if get_origin(validator) is Annotated:
             return validator
@@ -478,14 +482,14 @@ class SchemaConverter:
         config: ConfigDict = {}
 
         # Handle `additionalProperties`
-        if schema.additionalProperties is False:
+        if schema.additional_properties is False:
             config["extra"] = "forbid"
         else:
             config["extra"] = "allow"
 
         return config
 
-    def _schema_to_field(
+    def _schema_to_field(  # noqa: C901
         self,
         schema: Schema,
         /,
@@ -512,23 +516,37 @@ class SchemaConverter:
         # Determine default value
         default = self._get_field_default(schema, is_required=is_required)
 
-        # Get examples
-        examples = schema.examples or ([schema.example] if schema.example else None)
+        # Build kwargs, only including fields that are explicitly set
+        kwargs: dict[str, Any] = {}
+        if schema.examples is not MISSING:
+            kwargs["examples"] = schema.examples
+        if schema.title is not MISSING:
+            kwargs["title"] = schema.title
+        if schema.description is not MISSING:
+            kwargs["description"] = schema.description
+        if schema.minimum is not MISSING:
+            kwargs["ge"] = schema.minimum
+        if schema.exclusive_minimum is not MISSING:
+            kwargs["gt"] = schema.exclusive_minimum
+        if schema.maximum is not MISSING:
+            kwargs["le"] = schema.maximum
+        if schema.exclusive_maximum is not MISSING:
+            kwargs["lt"] = schema.exclusive_maximum
+        if schema.multiple_of is not MISSING:
+            kwargs["multiple_of"] = schema.multiple_of
 
-        # Create FieldInfo
+        min_length = self._get_min_length(schema)
+        if min_length is not None:
+            kwargs["min_length"] = min_length
+
+        max_length = self._get_max_length(schema)
+        if max_length is not None:
+            kwargs["max_length"] = max_length
+
         return FieldInfo(
             annotation=valid_annotation,
             default=default,
-            examples=examples,
-            title=schema.title,
-            description=schema.description,
-            ge=schema.minimum,
-            gt=schema.exclusiveMinimum,
-            le=schema.maximum,
-            lt=schema.exclusiveMaximum,
-            multiple_of=schema.multipleOf,
-            min_length=self._get_min_length(schema),
-            max_length=self._get_max_length(schema),
+            **kwargs,
         )
 
     def _schema_to_annotation(  # noqa: C901, PLR0911, PLR0912
@@ -551,54 +569,54 @@ class SchemaConverter:
             return ForwardRef(sanitize_identifier(schema.ref))
 
         # `enum` / `const` -> `Literal`:
-        if schema.enum or schema.const:
-            values = schema.enum or (schema.const,)
+        if schema.enum is not MISSING or schema.const is not MISSING:
+            values = schema.enum if schema.enum is not MISSING else (schema.const,)
             literal_type = Literal[tuple(values)]  # type: ignore[valid-type]
             return cast("type", literal_type)
 
         # `anyOf` / `oneOf` -> `Union`:
-        if schema.anyOf or schema.oneOf:
-            union_type = "anyOf" if schema.anyOf else "oneOf"
-            union_schemas = schema.anyOf or schema.oneOf or []
+        if schema.any_of is not MISSING or schema.one_of is not MISSING:
+            union_type = "anyOf" if schema.any_of is not MISSING else "oneOf"
+            union_schemas = schema.any_of if schema.any_of is not MISSING else schema.one_of
             union_args: list[type | ForwardRef] = []
             for idx, sub_schema in enumerate(union_schemas):
                 with self._track_path(f"{union_type}[{idx}]"):
-                    sub_schema_annotation = self._schema_to_annotation(sub_schema)  # type: ignore[arg-type]
+                    sub_schema_annotation = self._schema_to_annotation(sub_schema)
                     union_args.append(sub_schema_annotation)
             union_annotation = Union[tuple(union_args)]  # type: ignore[valid-type]  # noqa: UP007
             return cast("type", union_annotation)
 
         # `allOf` -> nested model:
-        if schema.allOf:
+        if schema.all_of is not MISSING:
             return self._convert_nested_schema(schema)
 
         # `array` -> list:
         if schema.type == DataType.ARRAY:
             item_type: type | ForwardRef = Any
-            if schema.items:
+            if schema.items is not MISSING:
                 with self._track_path("items"):
-                    item_type = self._schema_to_annotation(schema.items)  # type: ignore[arg-type]
+                    item_type = self._schema_to_annotation(schema.items)
             list_annotation = list[item_type]  # type: ignore[valid-type]
             return cast("type", list_annotation)
 
         # `object` -> `dict` / `BaseModel`:
         if schema.type == DataType.OBJECT:
-            if schema.properties:
+            if schema.properties is not MISSING:
                 return self._convert_nested_schema(schema)
 
-            if schema.additionalProperties is False:
+            if schema.additional_properties is False:
                 return self._convert_nested_schema(schema)
 
-            if isinstance(schema.additionalProperties, (Schema, Reference)):
+            if isinstance(schema.additional_properties, (Schema, Reference)):
                 with self._track_path("additionalProperties"):
-                    value_annotation = self._schema_to_annotation(schema.additionalProperties)
+                    value_annotation = self._schema_to_annotation(schema.additional_properties)
                     dict_annotation = dict[str, value_annotation]  # type: ignore[valid-type]
                     return cast("type", dict_annotation)
 
             return dict[str, Any]
 
         # Handle basic types
-        if schema.type:
+        if schema.type is not MISSING:
             if isinstance(schema.type, DataType):
                 return _DATA_TYPE_ANNOTATION_MAPPING[schema.type]
             union_args = [_DATA_TYPE_ANNOTATION_MAPPING[data_type] for data_type in schema.type]
@@ -623,9 +641,7 @@ class SchemaConverter:
         if is_required:
             return _PYDANTIC_DEFAULT_MISSING
 
-        # Return `default` field only if it was explicitly set
-        # We can't just check for `None`, since `default`'s default is `None`
-        if "default" in schema.model_fields_set:
+        if schema.default is not MISSING:
             return schema.default
 
         # Field is not required and has no default
@@ -636,28 +652,28 @@ class SchemaConverter:
         schema: Schema,
         /,
     ) -> int | None:
-        """Get min items length based on the schema type.
+        """Get min length based on schema type.
 
-        :param schema: Schema to get min length from.
-        :returns: min items length or None.
+        :param schema: Schema to extract constraint from.
+        :returns: `minItems` for arrays, `minLength` for strings, `None` if unset.
         """
         if schema.type == DataType.ARRAY:
-            return schema.minItems
-        return schema.minLength
+            return schema.min_items if schema.min_items is not MISSING else None
+        return schema.min_length if schema.min_length is not MISSING else None
 
     @staticmethod
     def _get_max_length(
         schema: Schema,
         /,
     ) -> int | None:
-        """Get max items length based on the schema type.
+        """Get max length based on schema type.
 
-        :param schema: Schema to get max length from.
-        :returns: max items length or None.
+        :param schema: Schema to extract constraint from.
+        :returns: `maxItems` for arrays, `maxLength` for strings, `None` if unset.
         """
         if schema.type == DataType.ARRAY:
-            return schema.maxItems
-        return schema.maxLength
+            return schema.max_items if schema.max_items is not MISSING else None
+        return schema.max_length if schema.max_length is not MISSING else None
 
 
 def to_model(

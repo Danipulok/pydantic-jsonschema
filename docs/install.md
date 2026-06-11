@@ -18,12 +18,7 @@ simple as:
 
 (Requires Python 3.12+)
 
-This installs the `pydantic_jsonschema` package, plus the core dependencies required to create and
-validate generated models:
-
-- [`pydantic`](https://docs.pydantic.dev/) for model creation and validation.
-- [`openapi-pydantic`](https://github.com/kuimono/openapi-pydantic) for JSON Schema types such as
-  `Schema`, `Reference`, and `DataType`.
+This installs the `pydantic_jsonschema` package with [`pydantic`](https://docs.pydantic.dev/) as the only core dependency.
 
 ## Optional dependencies
 
@@ -95,6 +90,7 @@ truth for development dependencies, `just` recipes, documentation checks, and PR
 
 ## Next Steps
 
+- [Schema](schema.md) - Schema models, fields, and serialization
 - [Converters](converters.md) - Create Pydantic models from JSON Schema
 - [Format Validators](formats.md) - Add validation for JSON Schema `format` values
 - [Examples](examples.md) - Run complete examples

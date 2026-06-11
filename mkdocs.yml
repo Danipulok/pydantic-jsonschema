@@ -74,6 +74,7 @@ copyright: Copyright &copy; 2026 - Present
 nav:
   - Home: index.md
   - Installation: install.md
+  - Schema: schema.md
   - Converters: converters.md
   - Format Validators: formats.md
   - Examples: examples.md

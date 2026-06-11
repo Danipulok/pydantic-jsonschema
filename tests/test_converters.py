@@ -20,6 +20,8 @@ from pydantic_jsonschema.formats import DateTime, Email, IPv4, Uri
 from pydantic_jsonschema.types import JsonType, Schema
 
 if TYPE_CHECKING:
+    from pydantic.fields import FieldInfo
+
     from tests.conftest import SchemaRaw
 
 
@@ -1065,6 +1067,75 @@ class TestAnnotatedValidators:
         assert isinstance(instance.email, str)  # type: ignore[attr-defined]
         assert isinstance(instance.id, UUID)  # type: ignore[attr-defined]
         assert isinstance(instance.ip, IPv4Address)  # type: ignore[attr-defined]
+
+
+class TestFieldInfoMetadata:
+    """Tests for JSON Schema metadata passed through to Pydantic `FieldInfo`."""
+
+    def test_title_and_description(self) -> None:
+        """Test `title` and `description` propagate to `FieldInfo`."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "title": "Full Name",
+                    "description": "The user's full legal name.",
+                },
+            },
+            "required": ["name"],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        field_info: FieldInfo = model.model_fields["name"]
+        assert field_info.title == "Full Name"
+        assert field_info.description == "The user's full legal name."
+
+    def test_examples(self) -> None:
+        """Test `examples` propagate to `FieldInfo`."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "examples": ["user@example.com", "admin@example.com"],
+                },
+            },
+            "required": ["email"],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        field_info: FieldInfo = model.model_fields["email"]
+        assert field_info.examples == ["user@example.com", "admin@example.com"]
+
+    def test_exclusive_minimum_and_maximum(self) -> None:
+        """Test `exclusiveMinimum` and `exclusiveMaximum` map to `gt` and `lt`."""
+        exclusive_min: int = 0
+        exclusive_max: int = 100
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "score": {
+                    "type": "number",
+                    "exclusiveMinimum": exclusive_min,
+                    "exclusiveMaximum": exclusive_max,
+                },
+            },
+            "required": ["score"],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        field_info: FieldInfo = model.model_fields["score"]
+        assert field_info.metadata is not None
+        gt_meta = [m for m in field_info.metadata if hasattr(m, "gt")]
+        lt_meta = [m for m in field_info.metadata if hasattr(m, "lt")]
+        assert len(gt_meta) == 1
+        assert gt_meta[0].gt == exclusive_min
+        assert len(lt_meta) == 1
+        assert lt_meta[0].lt == exclusive_max
 
 
 class TestSchemaEdgeCases:
