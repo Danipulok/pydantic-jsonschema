@@ -10,8 +10,8 @@ if importlib.util.find_spec("fqdn") is None or importlib.util.find_spec("rfc3986
     )
     raise ImportError(msg)
 
-from fqdn import FQDN  # type: ignore[import-untyped]
-from rfc3986 import (  # type: ignore[import-untyped]
+from fqdn import FQDN
+from rfc3986 import (
     IRIReference,
     URIReference,
     exceptions,
