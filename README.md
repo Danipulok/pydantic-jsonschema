@@ -52,6 +52,7 @@ print(user.model_dump())
 - [ ] Custom JSON Schema implementation (remove `openapi-pydantic` dependency)
 - [ ] Zero-dependency format validation (remove `uri-format`, `iri-format` dependencies)
 - [ ] Logic fixes in schema conversion
+- [ ] Add `inline_snapshot` for tests
 - [ ] Configurable loading by type (inspired by [adaptix](https://github.com/reagento/adaptix))
 
 ## Acknowledgments
