@@ -30,10 +30,14 @@ __all__ = [
 ]
 
 # Reusable validators for URI/IRI
-_URI_VALIDATOR = validators.Validator().require_presence_of("scheme")
-_URI_REFERENCE_VALIDATOR = validators.Validator()
-_IRI_VALIDATOR = validators.Validator().require_presence_of("scheme")
-_IRI_REFERENCE_VALIDATOR = validators.Validator()
+_URI_VALIDATOR = (
+    validators.Validator().require_presence_of("scheme").check_validity_of("scheme", "host", "path")
+)
+_URI_REFERENCE_VALIDATOR = validators.Validator().check_validity_of("scheme", "host", "path")
+_IRI_VALIDATOR = (
+    validators.Validator().require_presence_of("scheme").check_validity_of("scheme", "host", "path")
+)
+_IRI_REFERENCE_VALIDATOR = validators.Validator().check_validity_of("scheme", "host", "path")
 
 
 def validate_hostname(value: JsonType) -> str:
@@ -85,14 +89,13 @@ def validate_uri(value: JsonType) -> str:
     try:
         uri = URIReference.from_string(value)
         _URI_VALIDATOR.validate(uri)
-    except exceptions.ValidationError as exc:
-        # Extract error message from ValidationError tuple
-        error_msg = exc.args[0] if exc.args else "Invalid URI"
+    except exceptions.ValidationError as er:
+        error_msg = er.args[0] if er.args else "Invalid URI"
         msg = f"Invalid URI format: `{value!r}` - {error_msg}"
         raise FormatValidationError(
             message=msg,
             value=value,
-        ) from exc
+        ) from er
 
     return value
 
@@ -116,14 +119,13 @@ def validate_uri_reference(value: JsonType) -> str:
     try:
         uri_ref = URIReference.from_string(value)
         _URI_REFERENCE_VALIDATOR.validate(uri_ref)
-    except exceptions.ValidationError as exc:  # pragma: no cover
-        # Extract error message from ValidationError tuple
-        error_msg = exc.args[0] if exc.args else "Invalid URI reference"
+    except exceptions.ValidationError as er:
+        error_msg = er.args[0] if er.args else "Invalid URI reference"
         msg = f"Invalid URI reference format: `{value!r}` - {error_msg}"
         raise FormatValidationError(
             message=msg,
             value=value,
-        ) from exc
+        ) from er
 
     return value
 
@@ -148,14 +150,13 @@ def validate_iri(value: JsonType) -> str:
     try:
         iri = IRIReference.from_string(value)
         _IRI_VALIDATOR.validate(iri)
-    except exceptions.ValidationError as exc:
-        # Extract error message from ValidationError tuple
-        error_msg = exc.args[0] if exc.args else "Invalid IRI"
+    except exceptions.ValidationError as er:
+        error_msg = er.args[0] if er.args else "Invalid IRI"
         msg = f"Invalid IRI format: `{value!r}` - {error_msg}"
         raise FormatValidationError(
             message=msg,
             value=value,
-        ) from exc
+        ) from er
 
     return value
 
@@ -179,13 +180,12 @@ def validate_iri_reference(value: JsonType) -> str:
     try:
         iri_ref = IRIReference.from_string(value)
         _IRI_REFERENCE_VALIDATOR.validate(iri_ref)
-    except exceptions.ValidationError as exc:  # pragma: no cover
-        # Extract error message from ValidationError tuple
-        error_msg = exc.args[0] if exc.args else "Invalid IRI reference"
+    except exceptions.ValidationError as er:
+        error_msg = er.args[0] if er.args else "Invalid IRI reference"
         msg = f"Invalid IRI reference format: `{value!r}` - {error_msg}"
         raise FormatValidationError(
             message=msg,
             value=value,
-        ) from exc
+        ) from er
 
     return value
