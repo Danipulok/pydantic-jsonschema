@@ -49,3 +49,11 @@ repos:
         language: system
         always_run: true
         pass_filenames: false
+
+      - id: test
+        name: Test
+        entry: just
+        args: [test]
+        language: system
+        always_run: true
+        pass_filenames: false
