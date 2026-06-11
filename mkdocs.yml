@@ -69,7 +69,7 @@ extra:
       link: https://pypi.org/project/pydantic-jsonschema/
   generator: false
 
-copyright: Copyright &copy; 2024 - Present
+copyright: Copyright &copy; 2026 - Present
 
 nav:
   - Home: index.md
