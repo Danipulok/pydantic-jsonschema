@@ -1,3 +1,11 @@
+# NOTE: The body/footer templates use careful `-%` whitespace control and
+# `trim = false` because `trim = true` strips trailing newlines from each
+# rendered body, collapsing the blank line between release sections.
+# The `postprocessors` regex collapses 3+ consecutive newlines into exactly 2
+# (one blank line), which satisfies markdownlint MD012 (no-multiple-blanks)
+# and MD022/MD032 (blanks-around-headings/lists).
+# Footer wraps URLs in `<...>` to satisfy markdownlint MD034 (no-bare-urls).
+
 [changelog]
 header = """# Changelog
 
