@@ -83,11 +83,14 @@ jobs:
       - name: Install `uv`
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
+      - name: Install `just`
+        uses: extractions/setup-just@e33e0265a09d0d9e33f4c58b0aea4c77d8a1ceb0 # v3
+
       - name: Install dependencies
-        run: uv sync --group release
+        run: just ci-install-release
 
       - name: Generate release notes
-        run: uv run git-cliff --latest --strip header -o /tmp/release-notes.md
+        run: just ci-release-notes /tmp/release-notes.md
 
       - name: Download all the dists
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -116,8 +119,11 @@ jobs:
       - name: Install `uv`
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
+      - name: Install `just`
+        uses: extractions/setup-just@e33e0265a09d0d9e33f4c58b0aea4c77d8a1ceb0 # v3
+
       - name: Install dependencies
-        run: uv sync --group docs
+        run: just ci-install-docs
 
       - name: Configure Git
         run: |
@@ -127,5 +133,5 @@ jobs:
       - name: Deploy versioned documentation
         run: |
           version="${GITHUB_REF_NAME#v}"
-          uv run mike deploy --push --update-aliases "$version"
-          uv run mike set-default --push "$version"
+          just docs-deploy-version "$version"
+          just docs-set-default "$version"

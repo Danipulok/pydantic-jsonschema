@@ -162,3 +162,15 @@ ci-test:
 ci-build:
     uv build
     uvx twine check dist/*
+
+# Install docs dependencies for CI
+ci-install-docs: _check-uv
+    uv sync --group docs
+
+# Install release dependencies for CI
+ci-install-release: _check-uv
+    uv sync --group release
+
+# Generate release notes for CI
+ci-release-notes output:
+    uv run --no-sync git-cliff --latest --strip header -o {{output}}
