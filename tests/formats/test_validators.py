@@ -118,6 +118,17 @@ class TestURIValidators:
         """Test valid URI reference formats."""
         assert validate_uri_reference(value) == value
 
+    @pytest.mark.parametrize(
+        ("value", "error_match"),
+        [
+            ("http://[invalid", r"host was found to be invalid"),
+        ],
+    )
+    def test_validate_uri_reference_failure(self, value: str, error_match: str) -> None:
+        """Test invalid URI reference formats."""
+        with pytest.raises(ValueError, match=error_match):
+            validate_uri_reference(value)
+
     def test_validate_iri_success(self) -> None:
         """Test valid IRI formats."""
         result = validate_iri("https://www.example.com/こんにちは")
@@ -146,6 +157,17 @@ class TestURIValidators:
     def test_validate_iri_reference_success(self, value: str) -> None:
         """Test valid IRI reference formats."""
         assert validate_iri_reference(value) == value
+
+    @pytest.mark.parametrize(
+        ("value", "error_match"),
+        [
+            ("http://[invalid", r"host was found to be invalid"),
+        ],
+    )
+    def test_validate_iri_reference_failure(self, value: str, error_match: str) -> None:
+        """Test invalid IRI reference formats."""
+        with pytest.raises(ValueError, match=error_match):
+            validate_iri_reference(value)
 
 
 @pytest.mark.parametrize(
