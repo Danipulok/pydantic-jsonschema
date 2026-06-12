@@ -582,6 +582,8 @@ class SchemaConverter:
         properties: dict[str, Reference | Schema] = (
             schema.properties if schema.properties is not MISSING else {}
         )
+        required_names: list[str] = schema.required if schema.required is not MISSING else []
+
         for field_name, field_schema in properties.items():
             with self._track_path(f"properties.{field_name}"):
                 # Handle reference fields
@@ -599,8 +601,7 @@ class SchemaConverter:
                 # Convert to Pydantic field
                 field = self._schema_to_field(
                     schema_for_field,
-                    is_required=field_name
-                    in (schema.required if schema.required is not MISSING else []),
+                    is_required=field_name in required_names,
                     annotation=annotation,
                 )
 
