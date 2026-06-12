@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.0.4] — 2026-06-12
+
+### Build
+
+- add `just release-auto` command
+
+### Changed
+
+- replace `email-validator` dep with built-in `validate_email`
+
 ## [0.0.3] — 2026-06-12
 
 ### Changed
@@ -12,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Documentation
 
+- add `0.0.3` release section
 - add comments explaining template workarounds for markdownlint
 - add manual GitHub Release and docs deploy steps
 - add `just changelog` step to release flow
@@ -200,6 +211,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - add coverage tests and set `cov-fail-under`
 - add comprehensive test suite
 
-[0.0.3]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.2...0.0.3>
+[0.0.4]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.3...v0.0.4>
+[0.0.3]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.2...v0.0.3>
 [0.0.2]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.1...v0.0.2>
 [0.0.1]: <https://github.com/Danipulok/pydantic-jsonschema/releases/tag/v0.0.1>
