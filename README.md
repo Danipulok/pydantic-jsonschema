@@ -20,7 +20,7 @@ uv add pydantic-jsonschema
 ```
 
 Requires Python 3.12+.
-See the [installation guide](https://danipulok.github.io/pydantic-jsonschema/latest/install/) for optional format validator extras.
+See the [installation guide](https://danipulok.github.io/pydantic-jsonschema/latest/install/) for third-party validator libraries.
 
 ## Quick Start
 

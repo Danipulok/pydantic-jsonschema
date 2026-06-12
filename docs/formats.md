@@ -7,15 +7,12 @@ matching entry in `format_validators`.
 Without a matching validator, `format` is treated as metadata and the normal JSON Schema type still
 applies.
 
-## Install Optional Dependencies
+## Third-Party Validator Libraries
 
-For domain-specific types, install the appropriate extra:
+All built-in format validators work with zero extra dependencies.
+For domain-specific types, install [`pydantic-extra-types`](https://github.com/pydantic/pydantic-extra-types) or other packages directly.
 
-| Extra           | Use for                                      |
-|-----------------|----------------------------------------------|
-| `formats-extra` | Domain-specific `pydantic-extra-types` types |
-
-See [Installation](install.md#optional-dependencies) for the install commands.
+See [Installation](install.md#third-party-validator-libraries) for the install commands.
 
 ## Basic Usage
 
@@ -124,8 +121,8 @@ print(type(user.created_at).__name__)
 
 ## Third-Party Pydantic Types
 
-The `formats-extra` extra installs `pydantic-extra-types`, but it does not automatically map schema
-formats. Import the type you want and pass it through `format_validators`.
+If you want to use third-party or custom format validators, you can pass them via `format_validators`.
+Here's an example involving `pydantic-extra-types` package.
 
 ```python title="extra_types.py"
 from pydantic_extra_types.color import Color

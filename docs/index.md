@@ -28,7 +28,7 @@ Use it when you need to:
 
 (Requires Python 3.12+)
 
-See the [installation guide](install.md) for optional format validator extras.
+See the [installation guide](install.md) for third-party validator libraries.
 
 ## Quick Start
 
@@ -97,7 +97,7 @@ print(post.author.name)
 
 ## Next Steps
 
-- [Installation](install.md) - Install the package and optional extras
+- [Installation](install.md) - Install the package and third-party validator libraries
 - [Schema](schema.md) - Schema models, fields, and serialization
 - [Converters](converters.md) - Learn how schema conversion works
 - [Format Validators](formats.md) - Add validation for JSON Schema `format` values
