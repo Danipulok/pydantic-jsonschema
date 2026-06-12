@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.0.9] — 2026-06-12
+
+### Changed
+
+- extract `_rebuild_def_models` from `_build_defs_cache`
+- replace tri-state `is_required` with explicit `field_kind`
+- route defs bookkeeping through `_get_model`
+- hoist `required` lookup out of the fields loop
+
+### Documentation
+
+- add `llms.txt` export and copy-page-as-Markdown button
+- note unvalidated extras with `properties` + schema `additionalProperties`
+
+### Other
+
+- build docs on every commit
+
 ## [0.0.8] — 2026-06-12
 
 ### Added
@@ -25,6 +43,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Documentation
 
+- add `0.0.8` release section
 - document unsupported keywords and known limitations
 - link format spec section in module docstring
 
@@ -308,6 +327,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - add coverage tests and set `cov-fail-under`
 - add comprehensive test suite
 
+[0.0.9]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.8...v0.0.9>
 [0.0.8]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.7...v0.0.8>
 [0.0.7]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.6...v0.0.7>
 [0.0.6]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.5...v0.0.6>
