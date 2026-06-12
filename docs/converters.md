@@ -111,6 +111,29 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | `format` with validators                     | configured format validation                | see [Format Validators](formats.md) |
 | `title`, `model_name`, `default_model_name`  | generated class name                        | `User`, `CustomUser`, `Model`       |
 
+## Unsupported Keywords
+
+Unknown keywords are preserved on the `Schema` model (`extra="allow"`) but do not affect the
+generated model's validation:
+
+| Keyword group | Ignored keywords                                                                                                 |
+|---------------|------------------------------------------------------------------------------------------------------------------|
+| composition   | `not`, `if` / `then` / `else`                                                                                    |
+| arrays        | `prefixItems`, `contains`, `uniqueItems`                                                                         |
+| objects       | `patternProperties`, `propertyNames`, `minProperties`, `maxProperties`, `dependentRequired`, `dependentSchemas`  |
+
+## Known Limitations
+
+- `$defs` is only allowed in the root schema — nested `$defs` raises `SchemaConversionError`.
+- Only local references (`#/$defs/...`) and pre-built `refs` models are resolved — external
+  `$ref` URLs are not fetched.
+- `pattern` is compiled by Pydantic's default Rust regex engine, which does not support
+  ECMA-262 lookarounds — such patterns fail at model build time.
+- `format` is metadata unless a matching entry is passed in `format_validators` — see
+  [Format Validators](formats.md). Built-in aliases cover 13 of the 19 spec-defined formats;
+  `idn-email`, `idn-hostname`, `uri-template`, `json-pointer`, `relative-json-pointer`, and
+  `regex` are not built in yet.
+
 ## Common Conversions
 
 The sections below show the most common conversions in runnable examples.
