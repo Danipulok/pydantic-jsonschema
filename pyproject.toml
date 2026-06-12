@@ -29,7 +29,14 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "pydantic>=2.0.0",
+    # NOTE: `2.12.0` is the floor for `pydantic.experimental.missing_sentinel`,
+    # but `2.12.x` emits `PydanticSerializationUnexpectedValue` warnings on every
+    # `Schema.model_dump()` with nested schemas. Clean from `2.13.0`.
+    #
+    # Reproduce on `2.12.5`:
+    #   uv run --with 'pydantic==2.12.5' -m pytest -q
+    #   # -> 449 passed, 5 warnings (Expected 'MISSING' sentinel)
+    "pydantic>=2.13.0",
 ]
 
 [project.urls]
