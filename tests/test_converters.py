@@ -1529,13 +1529,61 @@ class TestSchemaEdgeCases:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
 
-        instance = model(valid_name="test", another_name="value")
+        instance = model({"valid_name": "test", "another_name": "value"})  # type: ignore[call-arg]
         assert instance.model_dump() == snapshot(
             {
                 "valid_name": "test",
                 "another_name": "value",
             }
         )
+
+    def test_root_additional_properties_typed_validation(self) -> None:
+        """Test root object with schema-valued `additionalProperties` validates value types."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "additionalProperties": {"type": "integer"},
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model({"count": 42, "total": 100})  # type: ignore[call-arg]
+        assert instance.model_dump() == snapshot(
+            {
+                "count": 42,
+                "total": 100,
+            }
+        )
+
+        with pytest.raises(ValidationError):
+            model({"count": "not-an-integer"})  # type: ignore[call-arg]
+
+    def test_root_additional_properties_with_ref(self) -> None:
+        """Test root object with `$ref`-valued `additionalProperties`."""
+        schema_raw: SchemaRaw = {
+            "$defs": {
+                "Item": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                    },
+                },
+            },
+            "type": "object",
+            "additionalProperties": {"$ref": "#/$defs/Item"},
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model({"first": {"name": "A"}, "second": {"name": "B"}})  # type: ignore[call-arg]
+        assert instance.model_dump() == snapshot(
+            {
+                "first": {"name": "A"},
+                "second": {"name": "B"},
+            }
+        )
+
+        with pytest.raises(ValidationError):
+            model({"first": "not-an-item"})  # type: ignore[call-arg]
 
     def test_model_generation_with_uncached_ref(self) -> None:
         """Test model generation fallback when ref exists but model not yet cached.

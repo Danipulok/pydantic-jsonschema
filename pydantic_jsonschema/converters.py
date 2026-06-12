@@ -220,6 +220,22 @@ class SchemaConverter:
             self._models_cache[cache_key] = model
             return model
 
+        # Root object without `properties` but with schema-valued `additionalProperties`
+        # -> `RootModel[dict[str, ...]]`, so values are validated the same way as in
+        # nested objects (a plain `BaseModel` with `extra="allow"` would not check them).
+        if (
+            schema.properties is MISSING
+            and schema.all_of is MISSING
+            and isinstance(schema.additional_properties, (Schema, Reference))
+        ):
+            model = self._create_root_model(
+                schema,
+                model_name=name,
+                base_classes=base_classes,
+            )
+            self._models_cache[cache_key] = model
+            return model
+
         # Handle `allOf` without properties -> combined base class
         if schema.all_of is not MISSING and schema.properties is MISSING:
             # Single base class

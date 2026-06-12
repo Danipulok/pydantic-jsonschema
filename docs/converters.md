@@ -98,6 +98,7 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | property with `$ref: "#/$defs/Person"`       | model generated from `$defs.Person`         | shared `Person` field type          |
 | `$ref` passed through `refs`                 | existing Pydantic model                     | existing `Address` class            |
 | root object + `additionalProperties: false`  | generated model with `extra="forbid"`       | unknown fields rejected             |
+| root object + `additionalProperties: {...}`  | typed dictionary root model                 | `RootModel[dict[str, int]]`         |
 | field object + `additionalProperties: false` | generated empty model field                 | only `{}` is valid                  |
 | field object + `additionalProperties: {...}` | typed dictionary field                      | `dict[str, int]`                    |
 | `required` entry                             | required Pydantic field                     | `Field required` validation         |
@@ -121,6 +122,7 @@ Object conversion depends on where the schema appears.
 | root schema     | `{"type": "object"}`                                | generated model with no fields        |
 | root schema     | `{"type": "object", "properties": ...}`             | generated model with fields           |
 | root schema     | `{"type": "object", "additionalProperties": false}` | generated model with `extra="forbid"` |
+| root schema     | `{"type": "object", "additionalProperties": {...}}` | typed dictionary root model           |
 | property schema | `{"type": "object"}`                                | `dict[str, Any]` field                |
 | property schema | `{"type": "object", "properties": ...}`             | nested generated model                |
 | property schema | `{"type": "object", "additionalProperties": false}` | only an empty object is valid         |
