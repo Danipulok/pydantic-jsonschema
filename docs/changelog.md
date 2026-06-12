@@ -4,12 +4,38 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.0.7] — 2026-06-12
+
+### Added
+
+- enforce `oneOf` exactly-one-branch semantics via `OneOf` validator
+
+### Build
+
+- raise `pydantic-extra-types` floor to `2.3.0`
+- raise `pydantic` floor to `2.13.0`
+
+### Fixed
+
+- validate root `additionalProperties` values via `RootModel`
+- resolve `Reference` aliases in `$defs`
+
+### Testing
+
+- cover `const: null` conversion to `Literal[None]`
+- replace partial assertions with full `snapshot` comparisons
+- wrap literal assertions with `inline_snapshot`
+
 ## [0.0.6] — 2026-06-12
 
 ### Changed
 
 - remove `JsonType` alias in favor of `pydantic.JsonValue`
 - replace `BeforeValidator` with `AfterValidator` in format aliases
+
+### Documentation
+
+- add `0.0.6` release section
 
 ### Other
 
@@ -240,6 +266,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - add coverage tests and set `cov-fail-under`
 - add comprehensive test suite
 
+[0.0.7]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.6...v0.0.7>
 [0.0.6]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.5...v0.0.6>
 [0.0.5]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.4...v0.0.5>
 [0.0.4]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.3...v0.0.4>
