@@ -157,7 +157,5 @@ skip_covered = true # Omit fully covered files from report output
 show_missing = true # Show line numbers of missing coverage in report
 precision = 2       # Number of decimal places in coverage percentages
 exclude_lines = [
-    "pragma: no cover",     # Standard marker to exclude line from coverage
-    "except ImportError.*", # Import guards for optional dependencies
     "\\(Protocol\\):$",     # Do not count Protocol definitions
 ]
