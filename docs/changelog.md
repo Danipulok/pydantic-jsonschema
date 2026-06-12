@@ -4,6 +4,44 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.0.8] — 2026-06-12
+
+### Added
+
+- add `pattern` field and map it to Pydantic `pattern` constraint
+
+### Build
+
+- add weekly grouped updates for `uv` and `github-actions`
+- route all workflow steps through `just ci-*` recipes
+
+### Changed
+
+- drop duplicated `_get_model` caching and fix stale docstrings
+- decompose `_build_model` into model-flavor builders
+- split `_schema_to_annotation` into focused handlers
+- reorganize `test_converters.py` into feature-based classes
+- merge `test_types.py` into `test_schema.py` and split into logical classes
+
+### Documentation
+
+- document unsupported keywords and known limitations
+- link format spec section in module docstring
+
+### Fixed
+
+- map multi-type `object` to `dict[str, Any]` instead of `Any`
+- default optional fields to `MISSING` sentinel instead of `None`
+
+### Other
+
+- group recipes into logical sections
+- clean `dist/` before CI build
+
+### Testing
+
+- add explicit `id` to multi-argument parameter sets
+
 ## [0.0.7] — 2026-06-12
 
 ### Added
@@ -14,6 +52,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - raise `pydantic-extra-types` floor to `2.3.0`
 - raise `pydantic` floor to `2.13.0`
+
+### Documentation
+
+- add `0.0.7` release section
 
 ### Fixed
 
@@ -266,6 +308,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - add coverage tests and set `cov-fail-under`
 - add comprehensive test suite
 
+[0.0.8]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.7...v0.0.8>
 [0.0.7]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.6...v0.0.7>
 [0.0.6]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.5...v0.0.6>
 [0.0.5]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.4...v0.0.5>
