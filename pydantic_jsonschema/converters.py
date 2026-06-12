@@ -68,6 +68,7 @@ type SchemaHash = str  # Schema cache key (JSON hash)
 type FormatName = str  # Format name like "date-time", "uuid"
 type AnnotationType = Any  # `type`, `Annotated`, `Union`, `Literal`, `ForwardRef`, etc.
 type PythonType = Any  # Anything that Pydantic supports
+type FieldKindType = Literal["required", "optional", "root"]  # How a field is used in a model
 type FormatValidatorType = FormatValidator | type  # `FormatValidator` or `Annotated`
 
 
@@ -550,7 +551,7 @@ class SchemaConverter:
         :param model_name: Name for the generated model.
         :returns: `RootModel` subclass.
         """
-        field = self._schema_to_field(schema)
+        field = self._schema_to_field(schema, field_kind="root")
 
         created_model = type(
             model_name,
@@ -593,7 +594,7 @@ class SchemaConverter:
                 # Convert to Pydantic field
                 field = self._schema_to_field(
                     schema_for_field,
-                    is_required=field_name in required_names,
+                    field_kind="required" if field_name in required_names else "optional",
                     annotation=annotation,
                 )
 
@@ -652,13 +653,13 @@ class SchemaConverter:
         schema: Schema,
         /,
         *,
-        is_required: bool | None = None,
+        field_kind: FieldKindType,
         annotation: AnnotationType | None = None,
     ) -> FieldInfo:
         """Convert schema to Pydantic FieldInfo.
 
         :param schema: Schema to convert.
-        :param is_required: Whether field is is_required.
+        :param field_kind: `required` / `optional` object property, or `root` model value.
         :param annotation: Pre-computed annotation.
         :returns: Pydantic FieldInfo.
         """
@@ -672,7 +673,7 @@ class SchemaConverter:
         valid_annotation = self._apply_validators(valid_annotation, schema)
 
         # Determine default value
-        default = self._get_field_default(schema, is_required=is_required)
+        default = self._get_field_default(schema, field_kind=field_kind)
 
         # `MISSING` must be part of the annotation for Pydantic to accept it as default.
         if default is MISSING:
@@ -884,23 +885,23 @@ class SchemaConverter:
         schema: Schema,
         /,
         *,
-        is_required: bool | None,
-    ) -> Any:  # noqa:  ANN401
+        field_kind: FieldKindType,
+    ) -> Any:  # noqa: ANN401
         """Determine default value for the field based on its schema.
 
         :param schema: Schema to get default from.
-        :param is_required: Whether field is required.
-        :returns: Default value or Ellipsis for required fields.
+        :param field_kind: `required` / `optional` object property, or `root` model value.
+        :returns: Default value, `...` for required fields, or the `MISSING` sentinel.
         """
-        if is_required:
+        if field_kind == "required":
             return _PYDANTIC_DEFAULT_MISSING
 
         if schema.default is not MISSING:
             return schema.default
 
-        # Root model values (`is_required=None`) have no "absent" concept:
+        # Root model values have no "absent" concept:
         # a bare `{"type": "string"}` root schema always validates a value.
-        if is_required is None:
+        if field_kind == "root":
             return _PYDANTIC_DEFAULT_MISSING
 
         # Optional field without explicit default -> `MISSING` sentinel, so the
