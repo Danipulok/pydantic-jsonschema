@@ -106,8 +106,8 @@ clean:
     find . -type d -name __pycache__ -exec rm -rf {} +
     find . -type f -name "*.pyc" -delete
 
-# Tag a release and push (triggers `release.yml` workflow)
-release version:
+# Validate release version format
+_check-release-version version:
     #!/usr/bin/env bash
     set -euo pipefail
     version="{{version}}"
@@ -119,6 +119,12 @@ release version:
         printf 'Release version must look like `0.0.1`, `1.0.0b1`, or `1.0.0rc1`: %s\n' "$version" >&2
         exit 2
     fi
+
+# Tag a release and push (triggers `release.yml` workflow)
+release version: (_check-release-version version)
+    #!/usr/bin/env bash
+    set -euo pipefail
+    version="{{version}}"
     if ! grep -q "^## \[$version\]" docs/changelog.md; then
         printf 'docs/changelog.md must contain release section `## [%s]`.\n' "$version" >&2
         exit 2
@@ -129,6 +135,22 @@ release version:
     fi
     git tag "v$version"
     git push origin main "v$version"
+
+# Generate changelog, commit it, and run `just release`
+release-auto version: (_check-release-version version)
+    #!/usr/bin/env bash
+    set -euo pipefail
+    version="{{version}}"
+    if [[ -n "$(git status --porcelain)" ]]; then
+        printf 'Working tree must be clean before release.\n' >&2
+        exit 2
+    fi
+    just changelog "v$version"
+    if [[ -n "$(git status --porcelain docs/changelog.md)" ]]; then
+        git add docs/changelog.md
+        git commit -m "docs(changelog): add \`$version\` release section"
+    fi
+    just release "$version"
 
 # Generate `docs/changelog.md` from git history via `git-cliff`
 changelog tag="":
