@@ -89,7 +89,7 @@ for field reference and usage examples.
 - [x] Custom JSON Schema implementation (remove `openapi-pydantic` dependency)
 - [x] Remove `fqdn` and `rfc3986` dependencies
 - [x] Remove `email-validator` dependency
-- [ ] Logic fixes in schema conversion
+- [x] Logic fixes in schema conversion
 - [x] Add `inline_snapshot` for tests
 - [ ] Configurable loading by type (inspired by [adaptix](https://github.com/reagento/adaptix))
 

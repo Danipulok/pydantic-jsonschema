@@ -705,6 +705,91 @@ class TestComposition:
         instance = model(value=True)
         assert instance.model_dump() == snapshot({"value": True})
 
+    def test_oneof_overlapping_branches_rejected(self) -> None:
+        """Test `oneOf` rejects a value matching more than one branch."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "oneOf": [
+                        {"type": "integer"},
+                        {"type": "number"},
+                    ],
+                },
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(value=1.5)
+        assert instance.model_dump() == snapshot({"value": 1.5})
+
+        with pytest.raises(ValidationError, match=r"matches 2 `oneOf` branches"):
+            model(value=1)
+
+    def test_oneof_no_matching_branch_rejected(self) -> None:
+        """Test `oneOf` rejects a value matching zero branches."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "oneOf": [
+                        {"type": "string"},
+                        {"type": "boolean"},
+                    ],
+                },
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        with pytest.raises(ValidationError, match=r"matches 0 `oneOf` branches"):
+            model(value=[1, 2, 3])
+
+    def test_oneof_with_forward_ref(self) -> None:
+        """Test `oneOf` with a forward reference branch resolved lazily."""
+        schema_raw: SchemaRaw = {
+            "$defs": {
+                "TypeA": {
+                    "type": "object",
+                    "properties": {
+                        "other": {
+                            "oneOf": [
+                                {"$ref": "#/$defs/TypeB"},
+                                {"type": "null"},
+                            ],
+                        },
+                    },
+                },
+                "TypeB": {
+                    "type": "object",
+                    "properties": {
+                        "b": {"type": "integer"},
+                    },
+                },
+            },
+            "type": "object",
+            "properties": {
+                "item": {"$ref": "#/$defs/TypeA"},
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(item={"other": {"b": 42}})
+        assert instance.model_dump() == snapshot(
+            {
+                "item": {"other": {"b": 42}},
+            }
+        )
+
+        instance = model(item={"other": None})
+        assert instance.model_dump() == snapshot(
+            {
+                "item": {"other": None},
+            }
+        )
+
     def test_allof_with_reference(self) -> None:
         """Test `allOf` with `$ref`."""
         schema_raw: SchemaRaw = {

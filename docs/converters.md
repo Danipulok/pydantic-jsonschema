@@ -92,7 +92,8 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | `{"type": "array", "items": {...}}`          | typed `list[...]`                           | `tags: list[str]`                   |
 | `{"enum": [...]}`                            | `Literal[...]`                              | `Literal["draft", "published"]`     |
 | `{"const": "active"}`                        | single-value `Literal[...]`                 | `Literal["active"]`                 |
-| `anyOf` or `oneOf`                           | union annotation                            | `str` or `int`                      |
+| `anyOf`                                      | union annotation                            | `str` or `int`                      |
+| `oneOf`                                      | union with exactly-one-branch validation    | ambiguous matches rejected          |
 | `allOf`                                      | generated model inheritance or nested model | combined Pydantic model             |
 | nested object property                       | nested generated model                      | `post.author.name`                  |
 | property with `$ref: "#/$defs/Person"`       | model generated from `$defs.Person`         | shared `Person` field type          |
@@ -247,6 +248,47 @@ print(text_data.value)
 #> hello
 print(number_data.value)
 #> 42
+```
+
+!!! note "`oneOf` requires exactly one matching branch"
+
+    `anyOf` maps to a plain `Union` and accepts a value when *any* branch matches.
+    `oneOf` additionally enforces JSON Schema semantics: a value matching more than one branch (or none) is rejected.
+    The generated model also dumps the union back as `oneOf` in `model_json_schema()`.
+
+```python title="one_of_schema.py"
+from pydantic import ValidationError
+
+from pydantic_jsonschema import Schema, to_model
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "value": {
+                "oneOf": [
+                    {"type": "integer"},
+                    {"type": "number"},
+                ]
+            }
+        },
+    }
+)
+
+Model = to_model(schema)
+
+print(Model(value=1.5).value)
+#> 1.5
+
+try:
+    # `1` matches both `integer` and `number` -> not exactly one branch
+    Model(value=1)
+except ValidationError as er:
+    print(type(er).__name__)
+    #> ValidationError
+
+print(Model.model_json_schema()["properties"]["value"]["oneOf"])
+#> [{'type': 'integer'}, {'type': 'number'}]
 ```
 
 ## Nested Objects

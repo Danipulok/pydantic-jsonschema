@@ -24,6 +24,7 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict, RootModel, create_m
 from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.fields import FieldInfo
 
+from ._one_of import OneOf
 from ._utils import sanitize_identifier
 from .exceptions import SchemaConversionError, SchemaReferenceError
 from .types import DataType, Reference, Schema
@@ -113,6 +114,7 @@ class SchemaConverter:
         self._defs_cache: dict[Ref, Schema] = {}
         self._models_cache: dict[SchemaHash, type[BaseModel]] = {}
         self._resolution_path: list[str] = []  # Track path for error reporting
+        self._one_of_validators: list[OneOf] = []
 
     @staticmethod
     def _hash_schema(
@@ -161,7 +163,15 @@ class SchemaConverter:
         self._build_defs_cache(schema)
 
         # Build model using common logic
-        return self._build_model(schema, model_name=model_name)
+        model = self._build_model(schema, model_name=model_name)
+
+        # Bind the forward-refs namespace so `OneOf` validators can resolve
+        # `ForwardRef` branches lazily at validation time.
+        namespace = self._get_forward_refs_namespace()
+        for one_of_validator in self._one_of_validators:
+            one_of_validator.bind_namespace(namespace)
+
+        return model
 
     def _convert_nested_schema(
         self,
@@ -643,6 +653,25 @@ class SchemaConverter:
             **kwargs,
         )
 
+    def _union_args(
+        self,
+        union_schemas: list[Schema | Reference],
+        /,
+        *,
+        kind: Literal["anyOf", "oneOf"],
+    ) -> list[type | ForwardRef]:
+        """Convert union sub-schemas to annotations.
+
+        :param union_schemas: Sub-schemas of an `anyOf` / `oneOf` composition.
+        :param kind: Composition keyword for path tracking (`anyOf` or `oneOf`).
+        :returns: Annotations for every sub-schema.
+        """
+        union_args: list[type | ForwardRef] = []
+        for index, sub_schema in enumerate(union_schemas):
+            with self._track_path(f"{kind}[{index}]"):
+                union_args.append(self._schema_to_annotation(sub_schema))
+        return union_args
+
     def _schema_to_annotation(  # noqa: C901, PLR0911, PLR0912
         self,
         schema: Schema | Reference,
@@ -668,17 +697,17 @@ class SchemaConverter:
             literal_type = Literal[tuple(values)]  # type: ignore[valid-type]
             return cast("type", literal_type)
 
-        # `anyOf` / `oneOf` -> `Union`:
-        if schema.any_of is not MISSING or schema.one_of is not MISSING:
-            union_type = "anyOf" if schema.any_of is not MISSING else "oneOf"
-            union_schemas = schema.any_of if schema.any_of is not MISSING else schema.one_of
-            union_args: list[type | ForwardRef] = []
-            for idx, sub_schema in enumerate(union_schemas):
-                with self._track_path(f"{union_type}[{idx}]"):
-                    sub_schema_annotation = self._schema_to_annotation(sub_schema)
-                    union_args.append(sub_schema_annotation)
+        # `anyOf` -> `Union`:
+        if schema.any_of is not MISSING:
+            union_args: list[type | ForwardRef] = self._union_args(schema.any_of, kind="anyOf")
             union_annotation = Union[tuple(union_args)]  # type: ignore[valid-type]  # noqa: UP007
             return cast("type", union_annotation)
+
+        # `oneOf` -> union of branches + exactly-one-branch validation:
+        if schema.one_of is not MISSING:
+            one_of_validator = OneOf(branches=self._union_args(schema.one_of, kind="oneOf"))
+            self._one_of_validators.append(one_of_validator)
+            return cast("type", one_of_validator.as_annotation())
 
         # `allOf` -> nested model:
         if schema.all_of is not MISSING:
