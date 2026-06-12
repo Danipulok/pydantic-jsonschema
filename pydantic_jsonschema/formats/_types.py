@@ -9,7 +9,7 @@ from datetime import date, datetime, time, timedelta
 from ipaddress import IPv4Address, IPv6Address
 from typing import Annotated
 
-from pydantic import BeforeValidator
+from pydantic import AfterValidator
 
 from pydantic_jsonschema.formats._email import validate_email
 from pydantic_jsonschema.formats._hostname import validate_hostname
@@ -43,8 +43,8 @@ Date = date
 Duration = timedelta
 
 # String formats
-Email = Annotated[str, BeforeValidator(validate_email)]
-Hostname = Annotated[str, BeforeValidator(validate_hostname)]
+Email = Annotated[str, AfterValidator(validate_email)]
+Hostname = Annotated[str, AfterValidator(validate_hostname)]
 UUID = uuid.UUID
 
 # IP formats (Pydantic native support)
@@ -52,7 +52,7 @@ IPv4 = IPv4Address
 IPv6 = IPv6Address
 
 # URI/IRI formats
-Uri = Annotated[str, BeforeValidator(validate_uri)]
-UriReference = Annotated[str, BeforeValidator(validate_uri_reference)]
-Iri = Annotated[str, BeforeValidator(validate_iri)]
-IriReference = Annotated[str, BeforeValidator(validate_iri_reference)]
+Uri = Annotated[str, AfterValidator(validate_uri)]
+UriReference = Annotated[str, AfterValidator(validate_uri_reference)]
+Iri = Annotated[str, AfterValidator(validate_iri)]
+IriReference = Annotated[str, AfterValidator(validate_iri_reference)]

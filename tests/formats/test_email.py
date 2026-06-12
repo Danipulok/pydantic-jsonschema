@@ -201,17 +201,3 @@ class TestInvalidEmails:
         """Characters outside atext set are rejected in unquoted local part."""
         with pytest.raises(ValueError, match="Invalid email format"):
             validate_email(value)
-
-    @pytest.mark.parametrize(
-        "value",
-        [
-            123,
-            None,
-            [],
-            {},
-        ],
-    )
-    def test_non_string_types_rejected(self, value: object) -> None:
-        """Non-string types are rejected before email validation."""
-        with pytest.raises(ValueError, match="Expected string"):
-            validate_email(value)  # type: ignore[arg-type]

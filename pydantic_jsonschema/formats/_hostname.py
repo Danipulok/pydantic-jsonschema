@@ -8,8 +8,6 @@ import re
 from typing import Final
 
 from pydantic_jsonschema.exceptions import FormatValidationError
-from pydantic_jsonschema.formats._utils import check_str
-from pydantic_jsonschema.types import JsonType
 
 __all__ = ["validate_hostname"]
 
@@ -28,21 +26,19 @@ _HOSTNAME_RE: Final[re.Pattern[str]] = re.compile(
 _MAX_HOSTNAME_LENGTH: Final[int] = 253
 
 
-def validate_hostname(value: JsonType) -> str:
+def validate_hostname(value: str) -> str:
     """Validate hostname format per RFC 1123, section 2.1.
 
     :param value: Value to validate.
     :returns: Original value if valid.
     :raises FormatValidationError: If value is not a valid hostname.
     """
-    string_value: str = check_str(value)
-
-    length: int = len(string_value.rstrip("."))
-    if length == 0 or length > _MAX_HOSTNAME_LENGTH or not _HOSTNAME_RE.match(string_value):
+    length: int = len(value.rstrip("."))
+    if length == 0 or length > _MAX_HOSTNAME_LENGTH or not _HOSTNAME_RE.match(value):
         msg = f"Invalid hostname format: `{value!r}`"
         raise FormatValidationError(
             message=msg,
             value=value,
         )
 
-    return string_value
+    return value

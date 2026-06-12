@@ -8,8 +8,6 @@ import re
 from typing import Final
 
 from pydantic_jsonschema.exceptions import FormatValidationError
-from pydantic_jsonschema.formats._utils import check_str
-from pydantic_jsonschema.types import JsonType
 
 __all__ = [
     "validate_iri",
@@ -78,16 +76,14 @@ def _validate_uri_reference(value: str, *, require_scheme: bool) -> str | None:
     return None
 
 
-def validate_uri(value: JsonType) -> str:
+def validate_uri(value: str) -> str:
     """Validate URI format per RFC 3986.
 
     :param value: Value to validate.
     :returns: Original value if valid.
     :raises FormatValidationError: If value is not a valid URI.
     """
-    string_value: str = check_str(value)
-
-    error: str | None = _validate_uri_reference(string_value, require_scheme=True)
+    error: str | None = _validate_uri_reference(value, require_scheme=True)
     if error is not None:
         msg = f"Invalid URI format: `{value!r}` - {error}"
         raise FormatValidationError(
@@ -95,19 +91,17 @@ def validate_uri(value: JsonType) -> str:
             value=value,
         )
 
-    return string_value
+    return value
 
 
-def validate_uri_reference(value: JsonType) -> str:
+def validate_uri_reference(value: str) -> str:
     """Validate URI reference format per RFC 3986.
 
     :param value: Value to validate.
     :returns: Original value if valid.
     :raises FormatValidationError: If value is not a valid URI reference.
     """
-    string_value: str = check_str(value)
-
-    error: str | None = _validate_uri_reference(string_value, require_scheme=False)
+    error: str | None = _validate_uri_reference(value, require_scheme=False)
     if error is not None:
         msg = f"Invalid URI reference format: `{value!r}` - {error}"
         raise FormatValidationError(
@@ -115,19 +109,17 @@ def validate_uri_reference(value: JsonType) -> str:
             value=value,
         )
 
-    return string_value
+    return value
 
 
-def validate_iri(value: JsonType) -> str:
+def validate_iri(value: str) -> str:
     """Validate IRI format per RFC 3987.
 
     :param value: Value to validate.
     :returns: Original value if valid.
     :raises FormatValidationError: If value is not a valid IRI.
     """
-    string_value: str = check_str(value)
-
-    error: str | None = _validate_uri_reference(string_value, require_scheme=True)
+    error: str | None = _validate_uri_reference(value, require_scheme=True)
     if error is not None:
         msg = f"Invalid IRI format: `{value!r}` - {error}"
         raise FormatValidationError(
@@ -135,19 +127,17 @@ def validate_iri(value: JsonType) -> str:
             value=value,
         )
 
-    return string_value
+    return value
 
 
-def validate_iri_reference(value: JsonType) -> str:
+def validate_iri_reference(value: str) -> str:
     """Validate IRI reference format per RFC 3987.
 
     :param value: Value to validate.
     :returns: Original value if valid.
     :raises FormatValidationError: If value is not a valid IRI reference.
     """
-    string_value: str = check_str(value)
-
-    error: str | None = _validate_uri_reference(string_value, require_scheme=False)
+    error: str | None = _validate_uri_reference(value, require_scheme=False)
     if error is not None:
         msg = f"Invalid IRI reference format: `{value!r}` - {error}"
         raise FormatValidationError(
@@ -155,4 +145,4 @@ def validate_iri_reference(value: JsonType) -> str:
             value=value,
         )
 
-    return string_value
+    return value

@@ -233,20 +233,6 @@ class TestInvalidUri:
         with pytest.raises(ValueError, match=r"Invalid URI"):
             validate_uri("http://host#frag\nmore")
 
-    @pytest.mark.parametrize(
-        "value",
-        [
-            123,
-            None,
-            [],
-            {},
-        ],
-    )
-    def test_non_string_types_rejected(self, value: object) -> None:
-        """Non-string types are rejected before URI validation."""
-        with pytest.raises(ValueError, match="Expected string"):
-            validate_uri(value)  # type: ignore[arg-type]
-
 
 class TestValidUriReference:
     """Valid URI references per RFC 3986 (scheme optional)."""
@@ -306,20 +292,6 @@ class TestInvalidUriReference:
         with pytest.raises(ValueError, match=r"host was found to be invalid"):
             validate_uri_reference(value)
 
-    @pytest.mark.parametrize(
-        "value",
-        [
-            123,
-            None,
-            [],
-            {},
-        ],
-    )
-    def test_non_string_types_rejected(self, value: object) -> None:
-        """Non-string types are rejected before validation."""
-        with pytest.raises(ValueError, match="Expected string"):
-            validate_uri_reference(value)  # type: ignore[arg-type]
-
 
 class TestValidIri:
     """Valid IRIs per RFC 3987 (scheme required, non-ASCII allowed)."""
@@ -369,20 +341,6 @@ class TestInvalidIri:
         with pytest.raises(ValueError, match=r"host was found to be invalid"):
             validate_iri("http://example.com:abc")
 
-    @pytest.mark.parametrize(
-        "value",
-        [
-            123,
-            None,
-            [],
-            {},
-        ],
-    )
-    def test_non_string_types_rejected(self, value: object) -> None:
-        """Non-string types are rejected before IRI validation."""
-        with pytest.raises(ValueError, match="Expected string"):
-            validate_iri(value)  # type: ignore[arg-type]
-
 
 class TestValidIriReference:
     """Valid IRI references per RFC 3987 (scheme optional, non-ASCII allowed)."""
@@ -422,17 +380,3 @@ class TestInvalidIriReference:
         """IRI references with invalid authority are rejected."""
         with pytest.raises(ValueError, match=r"host was found to be invalid"):
             validate_iri_reference(value)
-
-    @pytest.mark.parametrize(
-        "value",
-        [
-            123,
-            None,
-            [],
-            {},
-        ],
-    )
-    def test_non_string_types_rejected(self, value: object) -> None:
-        """Non-string types are rejected before IRI reference validation."""
-        with pytest.raises(ValueError, match="Expected string"):
-            validate_iri_reference(value)  # type: ignore[arg-type]

@@ -181,17 +181,3 @@ class TestInvalidHostnames:
         """Control characters are not valid in hostnames."""
         with pytest.raises(ValueError, match="Invalid hostname format"):
             validate_hostname(value)
-
-    @pytest.mark.parametrize(
-        "value",
-        [
-            123,
-            None,
-            [],
-            {},
-        ],
-    )
-    def test_non_string_types_rejected(self, value: object) -> None:
-        """Non-string types are rejected before hostname validation."""
-        with pytest.raises(ValueError, match="Expected string"):
-            validate_hostname(value)  # type: ignore[arg-type]

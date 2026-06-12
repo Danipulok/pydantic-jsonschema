@@ -1,7 +1,7 @@
 """Tests for format type aliases exported from `pydantic_jsonschema.formats`."""
 
 import pytest
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, JsonValue, ValidationError
 
 from pydantic_jsonschema.formats import (
     UUID,
@@ -231,6 +231,24 @@ class TestEmail:
         with pytest.raises(ValidationError):
             Model(value=value)
 
+    @pytest.mark.parametrize(
+        "value",
+        [
+            123,
+            None,
+            [],
+            {},
+        ],
+    )
+    def test_non_string_rejected(self, value: JsonValue) -> None:
+        """Non-string input is rejected by the base `str` type."""
+
+        class Model(BaseModel):
+            value: Email
+
+        with pytest.raises(ValidationError):
+            Model(value=value)
+
 
 class TestHostname:
     """Test `Hostname` format type."""
@@ -260,6 +278,24 @@ class TestHostname:
     )
     def test_invalid(self, value: str) -> None:
         """Invalid hostname is rejected."""
+
+        class Model(BaseModel):
+            value: Hostname
+
+        with pytest.raises(ValidationError):
+            Model(value=value)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            123,
+            None,
+            [],
+            {},
+        ],
+    )
+    def test_non_string_rejected(self, value: JsonValue) -> None:
+        """Non-string input is rejected by the base `str` type."""
 
         class Model(BaseModel):
             value: Hostname
@@ -375,6 +411,24 @@ class TestUri:
         with pytest.raises(ValidationError):
             Model(value=value)
 
+    @pytest.mark.parametrize(
+        "value",
+        [
+            123,
+            None,
+            [],
+            {},
+        ],
+    )
+    def test_non_string_rejected(self, value: JsonValue) -> None:
+        """Non-string input is rejected by the base `str` type."""
+
+        class Model(BaseModel):
+            value: Uri
+
+        with pytest.raises(ValidationError):
+            Model(value=value)
+
 
 class TestUriReference:
     """Test `UriReference` format type."""
@@ -404,6 +458,24 @@ class TestUriReference:
     )
     def test_invalid(self, value: str) -> None:
         """URI reference with invalid authority is rejected."""
+
+        class Model(BaseModel):
+            value: UriReference
+
+        with pytest.raises(ValidationError):
+            Model(value=value)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            123,
+            None,
+            [],
+            {},
+        ],
+    )
+    def test_non_string_rejected(self, value: JsonValue) -> None:
+        """Non-string input is rejected by the base `str` type."""
 
         class Model(BaseModel):
             value: UriReference
@@ -446,6 +518,24 @@ class TestIri:
         with pytest.raises(ValidationError):
             Model(value=value)
 
+    @pytest.mark.parametrize(
+        "value",
+        [
+            123,
+            None,
+            [],
+            {},
+        ],
+    )
+    def test_non_string_rejected(self, value: JsonValue) -> None:
+        """Non-string input is rejected by the base `str` type."""
+
+        class Model(BaseModel):
+            value: Iri
+
+        with pytest.raises(ValidationError):
+            Model(value=value)
+
 
 class TestIriReference:
     """Test `IriReference` format type."""
@@ -474,6 +564,24 @@ class TestIriReference:
     )
     def test_invalid(self, value: str) -> None:
         """IRI reference with invalid authority is rejected."""
+
+        class Model(BaseModel):
+            value: IriReference
+
+        with pytest.raises(ValidationError):
+            Model(value=value)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            123,
+            None,
+            [],
+            {},
+        ],
+    )
+    def test_non_string_rejected(self, value: JsonValue) -> None:
+        """Non-string input is rejected by the base `str` type."""
 
         class Model(BaseModel):
             value: IriReference
