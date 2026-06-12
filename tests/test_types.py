@@ -18,12 +18,7 @@ class TestSchemaSerialization:
         schema = Schema(type=DataType.STRING)
         dumped: dict[str, object] = schema.model_dump()
 
-        assert dumped == {"type": DataType.STRING}
-        assert "description" not in dumped
-        assert "title" not in dumped
-        assert "properties" not in dumped
-        assert "items" not in dumped
-        assert "minimum" not in dumped
+        assert dumped == snapshot({"type": DataType.STRING})
 
     def test_only_set_fields_dumped(self) -> None:
         """Test that only explicitly provided fields appear in dump."""
@@ -33,10 +28,12 @@ class TestSchemaSerialization:
         )
         dumped: dict[str, object] = schema.model_dump()
 
-        assert dumped == {
-            "type": DataType.OBJECT,
-            "description": "A user object",
-        }
+        assert dumped == snapshot(
+            {
+                "type": DataType.OBJECT,
+                "description": "A user object",
+            }
+        )
 
     def test_nested_none_stripping(self) -> None:
         """Test that None values are stripped recursively in nested schemas."""
@@ -49,13 +46,15 @@ class TestSchemaSerialization:
         )
         dumped: dict[str, object] = schema.model_dump()
 
-        assert dumped == {
-            "type": DataType.OBJECT,
-            "properties": {
-                "name": {"type": DataType.STRING},
-                "age": {"type": DataType.INTEGER, "minimum": 0},
-            },
-        }
+        assert dumped == snapshot(
+            {
+                "type": DataType.OBJECT,
+                "properties": {
+                    "name": {"type": DataType.STRING},
+                    "age": {"type": DataType.INTEGER, "minimum": 0.0},
+                },
+            }
+        )
 
     def test_model_validate_roundtrip(self) -> None:
         """Test that Schema roundtrips through model_validate without adding None fields."""
@@ -69,10 +68,13 @@ class TestSchemaSerialization:
         schema = Schema.model_validate(schema_raw)
         dumped: dict[str, object] = schema.model_dump()
 
-        assert "title" not in dumped
-        assert "description" not in dumped
-        assert "items" not in dumped
-        assert "minimum" not in dumped
+        assert dumped == snapshot(
+            {
+                "type": DataType.OBJECT,
+                "properties": {"name": {"type": DataType.STRING}},
+                "required": ["name"],
+            }
+        )
 
     def test_empty_schema_dumps_empty(self) -> None:
         """Test that a Schema with no fields set dumps to empty dict."""
@@ -90,18 +92,14 @@ class TestReferenceSerialization:
         ref = Reference.model_validate({"$ref": "#/$defs/User"})
         dumped: dict[str, object] = ref.model_dump()
 
-        assert "$ref" in dumped
-        assert "ref" not in dumped
-        assert dumped["$ref"] == "#/$defs/User"
+        assert dumped == snapshot({"$ref": "#/$defs/User"})
 
     def test_ref_json_key_is_dollar_ref(self) -> None:
         """Test that Reference JSON output uses `$ref` key."""
         ref = Reference.model_validate({"$ref": "#/$defs/Address"})
         json_str: str = ref.model_dump_json()
 
-        assert '"$ref"' in json_str
-        assert '"ref"' not in json_str
-        assert "#/$defs/Address" in json_str
+        assert json_str == snapshot('{"$ref":"#/$defs/Address"}')
 
     def test_ref_none_fields_stripped(self) -> None:
         """Test that Reference strips None fields on serialization."""
@@ -109,5 +107,3 @@ class TestReferenceSerialization:
         dumped: dict[str, object] = ref.model_dump()
 
         assert dumped == snapshot({"$ref": "#/$defs/Item"})
-        assert "summary" not in dumped
-        assert "description" not in dumped

@@ -16,8 +16,8 @@ class TestExceptions:
     def test_schema_conversion_error(self) -> None:
         """Test `SchemaConversionError` stores message and renders in `repr()`."""
         error = SchemaConversionError(message="Invalid schema format")
-        assert str(error)
-        assert "Invalid schema format" in repr(error)
+        assert repr(error) == snapshot("SchemaConversionError(message='Invalid schema format')")
+        assert str(error) == repr(error)
 
         with pytest.raises(SchemaConversionError) as exc_info:
             raise error
@@ -26,9 +26,10 @@ class TestExceptions:
     def test_schema_reference_error(self) -> None:
         """Test `SchemaReferenceError` stores message and path."""
         error = SchemaReferenceError(message="Reference not found", path=["definitions", "User"])
-        assert str(error)
-        assert "Reference not found" in repr(error)
-        assert error.path == snapshot(["definitions", "User"])
+        assert repr(error) == snapshot(
+            "SchemaReferenceError(message='Reference not found', path=['definitions', 'User'])"
+        )
+        assert str(error) == repr(error)
 
         with pytest.raises(SchemaReferenceError) as exc_info:
             raise error

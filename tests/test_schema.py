@@ -35,7 +35,7 @@ class TestReference:
     def test_model_validate(self) -> None:
         """Test parsing from JSON Schema `$ref` dict."""
         ref = Reference.model_validate({"$ref": "#/$defs/User"})
-        assert ref.ref == "#/$defs/User"
+        assert ref == snapshot(Reference(ref="#/$defs/User"))
 
     def test_serialize_by_alias(self) -> None:
         """Test serialization uses `$ref` key."""
@@ -47,7 +47,7 @@ class TestReference:
         """Test JSON output uses `$ref` key."""
         ref = Reference(ref="#/$defs/User")
         json_str: str = ref.model_dump_json()
-        assert '"$ref"' in json_str
+        assert json_str == snapshot('{"$ref":"#/$defs/User"}')
 
 
 class TestSchema:
@@ -68,9 +68,8 @@ class TestSchema:
     def test_alias_generator_camel_case(self) -> None:
         """Test that snake_case fields serialize to camelCase."""
         schema = Schema.model_validate({"allOf": [{"$ref": "#/$defs/Base"}]})
-        assert len(schema.all_of) == 1
         dumped: dict[str, Any] = schema.model_dump()
-        assert "allOf" in dumped
+        assert dumped == snapshot({"allOf": [{"$ref": "#/$defs/Base"}]})
 
     def test_populate_by_name(self) -> None:
         """Test that fields can be set using Python names."""
@@ -84,9 +83,14 @@ class TestSchema:
             "$defs": {"User": {"type": "object"}},
         }
         schema = Schema.model_validate(raw)
-        assert "User" in schema.defs
         dumped: dict[str, Any] = schema.model_dump()
-        assert "$defs" in dumped
+        assert dumped == snapshot(
+            {
+                "$defs": {
+                    "User": {"type": DataType.OBJECT},
+                },
+            }
+        )
 
     def test_numeric_constraints(self) -> None:
         """Test numeric validation fields serialize to camelCase."""
@@ -144,7 +148,12 @@ class TestSchema:
                 "additionalProperties": False,
             }
         )
-        assert schema.additional_properties is False
+        assert schema.model_dump() == snapshot(
+            {
+                "type": DataType.OBJECT,
+                "additionalProperties": False,
+            }
+        )
 
     def test_composition_any_of(self) -> None:
         """Test `anyOf` composition."""
@@ -153,7 +162,14 @@ class TestSchema:
                 "anyOf": [{"type": "string"}, {"type": "integer"}],
             }
         )
-        assert len(schema.any_of) == len(["string", "integer"])
+        assert schema.model_dump() == snapshot(
+            {
+                "anyOf": [
+                    {"type": DataType.STRING},
+                    {"type": DataType.INTEGER},
+                ],
+            }
+        )
 
     def test_composition_one_of(self) -> None:
         """Test `oneOf` composition."""
@@ -162,7 +178,14 @@ class TestSchema:
                 "oneOf": [{"type": "string"}, {"type": "null"}],
             }
         )
-        assert len(schema.one_of) == len(["string", "null"])
+        assert schema.model_dump() == snapshot(
+            {
+                "oneOf": [
+                    {"type": DataType.STRING},
+                    {"type": DataType.NULL},
+                ],
+            }
+        )
 
     def test_metadata_fields(self) -> None:
         """Test metadata fields: `title`, `description`, `default`, `examples`."""
@@ -204,7 +227,7 @@ class TestSchema:
         """Test that unknown keywords are preserved via `extra="allow"`."""
         schema = Schema.model_validate({"type": "string", "x-custom": True})
         dumped: dict[str, Any] = schema.model_dump()
-        assert dumped["x-custom"] is True
+        assert dumped == snapshot({"type": DataType.STRING, "x-custom": True})
 
     def test_items_field(self) -> None:
         """Test `items` parsed as nested `Schema`."""
@@ -215,9 +238,14 @@ class TestSchema:
             }
         )
         assert isinstance(schema.items, Schema)
+        assert schema.model_dump() == snapshot(
+            {
+                "type": DataType.ARRAY,
+                "items": {"type": DataType.STRING},
+            }
+        )
 
     def test_multi_type(self) -> None:
         """Test `type` as a list of types."""
         schema = Schema.model_validate({"type": ["string", "null"]})
-        assert isinstance(schema.type, list)
-        assert len(schema.type) == len(["string", "null"])
+        assert schema.model_dump() == snapshot({"type": [DataType.STRING, DataType.NULL]})

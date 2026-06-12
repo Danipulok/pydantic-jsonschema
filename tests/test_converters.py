@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Annotated, Any
 from uuid import UUID
 
 import pytest
+from annotated_types import Gt, Lt
 from inline_snapshot import snapshot
 from pydantic import BaseModel, GetCoreSchemaHandler, JsonValue, ValidationError
 from pydantic.functional_validators import AfterValidator
@@ -651,7 +652,7 @@ class TestComposition:
         model = to_model(schema)
 
         instance = model("hello world")  # type: ignore[call-arg]
-        assert instance.model_dump() == "hello world"  # type: ignore[comparison-overlap]
+        assert instance.model_dump() == snapshot("hello world")
 
     def test_allof_in_property(self) -> None:
         """Test allOf in property annotation."""
@@ -1178,13 +1179,7 @@ class TestFieldInfoMetadata:
         model = to_model(schema)
 
         field_info: FieldInfo = model.model_fields["score"]
-        assert field_info.metadata is not None
-        gt_meta = [m for m in field_info.metadata if hasattr(m, "gt")]
-        lt_meta = [m for m in field_info.metadata if hasattr(m, "lt")]
-        assert len(gt_meta) == 1
-        assert gt_meta[0].gt == exclusive_min
-        assert len(lt_meta) == 1
-        assert lt_meta[0].lt == exclusive_max
+        assert field_info.metadata == snapshot([Gt(gt=0.0), Lt(lt=100.0)])
 
 
 class TestSchemaEdgeCases:
@@ -1233,7 +1228,7 @@ class TestSchemaEdgeCases:
         model = to_model(schema)
 
         instance = model("hello world")  # type: ignore[call-arg]
-        assert instance.model_dump() == "hello world"  # type: ignore[comparison-overlap]
+        assert instance.model_dump() == snapshot("hello world")
 
         with pytest.raises(ValidationError):
             model("hi")  # type: ignore[call-arg]
@@ -1702,16 +1697,18 @@ class TestSchemaFormatValidators:
 
         instance = model(created_at="2024-01-15T10:30:00Z")
 
-        assert instance.model_dump() == {
-            "created_at": datetime(
-                year=2024,
-                month=1,
-                day=15,
-                hour=10,
-                minute=30,
-                tzinfo=UTC,
-            ),
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "created_at": datetime(
+                    year=2024,
+                    month=1,
+                    day=15,
+                    hour=10,
+                    minute=30,
+                    tzinfo=UTC,
+                ),
+            }
+        )
 
         with pytest.raises(ValidationError):
             model(created_at="not-a-datetime")
@@ -1729,9 +1726,11 @@ class TestSchemaFormatValidators:
         model = to_model(schema, format_validators={"uuid": UUID_FORMAT})
 
         instance = model(id="550e8400-e29b-41d4-a716-446655440000")
-        assert instance.model_dump() == {
-            "id": UUID("550e8400-e29b-41d4-a716-446655440000"),
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "id": UUID("550e8400-e29b-41d4-a716-446655440000"),
+            }
+        )
 
         with pytest.raises(ValidationError):
             model(id="not-a-uuid")
@@ -1749,9 +1748,11 @@ class TestSchemaFormatValidators:
         model = to_model(schema, format_validators={"ipv4": IPv4})
 
         instance = model(ip="192.168.1.1")
-        assert instance.model_dump() == {
-            "ip": IPv4Address("192.168.1.1"),
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "ip": IPv4Address("192.168.1.1"),
+            }
+        )
 
         with pytest.raises(ValidationError):
             model(ip="999.999.999.999")
@@ -1810,17 +1811,19 @@ class TestSchemaFormatValidators:
             ip="192.168.1.1",
         )
 
-        assert instance.model_dump() == {
-            "email": "alice@example.com",
-            "website": "https://example.com",
-            "created_at": datetime(
-                year=2024,
-                month=1,
-                day=15,
-                hour=10,
-                minute=30,
-                tzinfo=UTC,
-            ),
-            "id": UUID("550e8400-e29b-41d4-a716-446655440000"),
-            "ip": IPv4Address("192.168.1.1"),
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "email": "alice@example.com",
+                "website": "https://example.com",
+                "created_at": datetime(
+                    year=2024,
+                    month=1,
+                    day=15,
+                    hour=10,
+                    minute=30,
+                    tzinfo=UTC,
+                ),
+                "id": UUID("550e8400-e29b-41d4-a716-446655440000"),
+                "ip": IPv4Address("192.168.1.1"),
+            }
+        )
