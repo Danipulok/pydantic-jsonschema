@@ -91,6 +91,19 @@ wheels = [
 ]
 
 [[package]]
+name = "beautifulsoup4"
+version = "4.14.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "soupsieve" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c3/b0/1c6a16426d389813b48d95e26898aff79abbde42ad353958ad95cc8c9b21/beautifulsoup4-4.14.3.tar.gz", hash = "sha256:6292b1c5186d356bba669ef9f7f051757099565ad9ada5dd630bd9de5fa7fb86", size = 627737, upload-time = "2025-11-30T15:08:26.084Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1a/39/47f9197bdd44df24d67ac8893641e16f386c984a0619ef2ee4c51fbbc019/beautifulsoup4-4.14.3-py3-none-any.whl", hash = "sha256:0918bfe44902e6ad8d57732ba310582e98da931428d231a5ecb9e7c703a735bb", size = 107721, upload-time = "2025-11-30T15:08:24.087Z" },
+]
+
+[[package]]
 name = "black"
 version = "26.5.1"
 source = { registry = "https://pypi.org/simple" }
@@ -628,14 +641,27 @@ wheels = [
 
 [[package]]
 name = "markdown-it-py"
-version = "4.2.0"
+version = "3.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "mdurl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/06/ff/7841249c247aa650a76b9ee4bbaeae59370dc8bfd2f6c01f3630c35eb134/markdown_it_py-4.2.0.tar.gz", hash = "sha256:04a21681d6fbb623de53f6f364d352309d4094dd4194040a10fd51833e418d49", size = 82454, upload-time = "2026-05-07T12:08:28.36Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/38/71/3b932df36c1a044d397a1f92d1cf91ee0a503d91e470cbd670aa66b07ed0/markdown-it-py-3.0.0.tar.gz", hash = "sha256:e3f60a94fa066dc52ec76661e37c851cb232d92f9886b15cb560aaada2df8feb", size = 74596, upload-time = "2023-06-03T06:41:14.443Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b3/81/4da04ced5a082363ecfa159c010d200ecbd959ae410c10c0264a38cac0f5/markdown_it_py-4.2.0-py3-none-any.whl", hash = "sha256:9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a", size = 91687, upload-time = "2026-05-07T12:08:27.182Z" },
+    { url = "https://files.pythonhosted.org/packages/42/d7/1ec15b46af6af88f19b8e5ffea08fa375d433c998b8a7639e76935c14f1f/markdown_it_py-3.0.0-py3-none-any.whl", hash = "sha256:355216845c60bd96232cd8d8c40e8f9765cc86f46880e43a8fd22dc1a1a8cab1", size = 87528, upload-time = "2023-06-03T06:41:11.019Z" },
+]
+
+[[package]]
+name = "markdownify"
+version = "1.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "beautifulsoup4" },
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3f/bc/c8c8eea5335341306b0fa7e1cb33c5e1c8d24ef70ddd684da65f41c49c92/markdownify-1.2.2.tar.gz", hash = "sha256:b274f1b5943180b031b699b199cbaeb1e2ac938b75851849a31fd0c3d6603d09", size = 18816, upload-time = "2025-11-16T19:21:18.565Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/ce/f1e3e9d959db134cedf06825fae8d5b294bd368aacdd0831a3975b7c4d55/markdownify-1.2.2-py3-none-any.whl", hash = "sha256:3f02d3cc52714084d6e589f70397b6fc9f2f3a8531481bf35e8cc39f975e186a", size = 15724, upload-time = "2025-11-16T19:21:17.622Z" },
 ]
 
 [[package]]
@@ -699,6 +725,31 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/fb/df/5bd7a48c256faecd1d36edc13133e51397e41b73bb77e1a69deab746ebac/markupsafe-3.0.3-cp314-cp314t-win32.whl", hash = "sha256:915c04ba3851909ce68ccc2b8e2cd691618c4dc4c4232fb7982bca3f41fd8c3d", size = 14819, upload-time = "2025-09-27T18:37:26.285Z" },
     { url = "https://files.pythonhosted.org/packages/1a/8a/0402ba61a2f16038b48b39bccca271134be00c5c9f0f623208399333c448/markupsafe-3.0.3-cp314-cp314t-win_amd64.whl", hash = "sha256:4faffd047e07c38848ce017e8725090413cd80cbc23d86e55c587bf979e579c9", size = 15426, upload-time = "2025-09-27T18:37:27.316Z" },
     { url = "https://files.pythonhosted.org/packages/70/bc/6f1c2f612465f5fa89b95bead1f44dcb607670fd42891d8fdcd5d039f4f4/markupsafe-3.0.3-cp314-cp314t-win_arm64.whl", hash = "sha256:32001d6a8fc98c8cb5c947787c5d08b0a50663d139f1305bac5885d98d9b40fa", size = 14146, upload-time = "2025-09-27T18:37:28.327Z" },
+]
+
+[[package]]
+name = "mdformat"
+version = "0.7.22"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "markdown-it-py" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fc/eb/b5cbf2484411af039a3d4aeb53a5160fae25dd8c84af6a4243bc2f3fedb3/mdformat-0.7.22.tar.gz", hash = "sha256:eef84fa8f233d3162734683c2a8a6222227a229b9206872e6139658d99acb1ea", size = 34610, upload-time = "2025-01-30T18:00:51.418Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f2/6f/94a7344f6d634fe3563bea8b33bccedee37f2726f7807e9a58440dc91627/mdformat-0.7.22-py3-none-any.whl", hash = "sha256:61122637c9e1d9be1329054f3fa216559f0d1f722b7919b060a8c2a4ae1850e5", size = 34447, upload-time = "2025-01-30T18:00:48.708Z" },
+]
+
+[[package]]
+name = "mdformat-tables"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mdformat" },
+    { name = "wcwidth" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/64/fc/995ba209096bdebdeb8893d507c7b32b7e07d9a9f2cdc2ec07529947794b/mdformat_tables-1.0.0.tar.gz", hash = "sha256:a57db1ac17c4a125da794ef45539904bb8a9592e80557d525e1f169c96daa2c8", size = 6106, upload-time = "2024-08-23T23:41:33.413Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2a/37/d78e37d14323da3f607cd1af7daf262cb87fe614a245c15ad03bb03a2706/mdformat_tables-1.0.0-py3-none-any.whl", hash = "sha256:94cd86126141b2adc3b04c08d1441eb1272b36c39146bab078249a41c7240a9a", size = 5104, upload-time = "2024-08-23T23:41:31.863Z" },
 ]
 
 [[package]]
@@ -775,6 +826,18 @@ wheels = [
 ]
 
 [[package]]
+name = "mkdocs-copy-to-llm"
+version = "0.2.10"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mkdocs" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/80/69/2b6f447cb548f1e91541e453a6af8d87c953018c08c147cf18ec0849075d/mkdocs_copy_to_llm-0.2.10.tar.gz", hash = "sha256:70506eb248ab022d3068b6d510c9337a38efcc4bc65bae0798d72e4d9e29eade", size = 36173, upload-time = "2026-03-10T10:27:32.72Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/15/98/f06fcdc6d9057618c19c39f1dbf7ba2151626933e88cd7db471cb15edd95/mkdocs_copy_to_llm-0.2.10-py3-none-any.whl", hash = "sha256:cf39b922eb9fabd853e39a6c2e2fb698be6775bfdaf2ff1e0158feed129696f8", size = 23670, upload-time = "2026-03-10T10:27:31.34Z" },
+]
+
+[[package]]
 name = "mkdocs-get-deps"
 version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
@@ -798,6 +861,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/8d/26/c793459622da8e31f954c6f5fb51e8f098143fdfc147b1e3c25bf686f4aa/mkdocs_glightbox-0.5.2.tar.gz", hash = "sha256:c7622799347c32310878e01ccf14f70648445561010911c80590cec0353370ac", size = 510586, upload-time = "2025-10-23T14:55:18.909Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4e/ca/03624e017e5ee2d7ce8a08d89f81c1e535eb3c30d7b2dc4a435ea3fbbeae/mkdocs_glightbox-0.5.2-py3-none-any.whl", hash = "sha256:23a431ea802b60b1030c73323db2eed6ba859df1a0822ce575afa43e0ea3f47e", size = 26458, upload-time = "2025-10-23T14:55:17.43Z" },
+]
+
+[[package]]
+name = "mkdocs-llmstxt"
+version = "0.5.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "beautifulsoup4" },
+    { name = "markdownify" },
+    { name = "mdformat" },
+    { name = "mdformat-tables" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7f/f5/4c31cdffa7c09bf48d8c7a50d8342dc100abac98ac4150826bc11afc0c9f/mkdocs_llmstxt-0.5.0.tar.gz", hash = "sha256:b2fa9e6d68df41d7467e948a4745725b6c99434a36b36204857dbd7bb3dfe041", size = 33909, upload-time = "2025-11-20T14:02:24.861Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ad/2b/82928cc9e8d9269cd79e7ebf015efdc4945e6c646e86ec1d4dba1707f215/mkdocs_llmstxt-0.5.0-py3-none-any.whl", hash = "sha256:753c699913d2d619a9072604b26b6dc9f5fb6d257d9b107857f80c8a0b787533", size = 12040, upload-time = "2025-11-20T14:02:23.483Z" },
 ]
 
 [[package]]
@@ -1186,7 +1264,9 @@ dev = [
     { name = "inline-snapshot" },
     { name = "mike" },
     { name = "mkdocs" },
+    { name = "mkdocs-copy-to-llm" },
     { name = "mkdocs-glightbox" },
+    { name = "mkdocs-llmstxt" },
     { name = "mkdocs-material", extra = ["imaging"] },
     { name = "mkdocstrings-python" },
     { name = "mypy" },
@@ -1200,7 +1280,9 @@ dev = [
 docs = [
     { name = "mike" },
     { name = "mkdocs" },
+    { name = "mkdocs-copy-to-llm" },
     { name = "mkdocs-glightbox" },
+    { name = "mkdocs-llmstxt" },
     { name = "mkdocs-material", extra = ["imaging"] },
     { name = "mkdocstrings-python" },
 ]
@@ -1231,7 +1313,9 @@ dev = [
     { name = "inline-snapshot", specifier = ">=0.34.0" },
     { name = "mike", specifier = ">=2.1.0" },
     { name = "mkdocs", specifier = ">=1.6.1" },
+    { name = "mkdocs-copy-to-llm", specifier = ">=0.2.10" },
     { name = "mkdocs-glightbox", specifier = ">=0.4.0" },
+    { name = "mkdocs-llmstxt", specifier = ">=0.5.0" },
     { name = "mkdocs-material", extras = ["imaging"], specifier = ">=9.5.45" },
     { name = "mkdocstrings-python", specifier = ">=1.12.2" },
     { name = "mypy", specifier = ">=1.17.1" },
@@ -1245,7 +1329,9 @@ dev = [
 docs = [
     { name = "mike", specifier = ">=2.1.0" },
     { name = "mkdocs", specifier = ">=1.6.1" },
+    { name = "mkdocs-copy-to-llm", specifier = ">=0.2.10" },
     { name = "mkdocs-glightbox", specifier = ">=0.4.0" },
+    { name = "mkdocs-llmstxt", specifier = ">=0.5.0" },
     { name = "mkdocs-material", extras = ["imaging"], specifier = ">=9.5.45" },
     { name = "mkdocstrings-python", specifier = ">=1.12.2" },
 ]
@@ -1558,6 +1644,15 @@ wheels = [
 ]
 
 [[package]]
+name = "soupsieve"
+version = "2.8.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/47/2c/0a5f6f8ee0d5589e48c7640213ed5175d52cf540a06725b628cc1a45d6ce/soupsieve-2.8.4.tar.gz", hash = "sha256:e121fd02e975c695e4e9e8774a5ee35d74714b59307868dcc5319ad2d9e3328e", size = 121110, upload-time = "2026-05-24T13:55:57.154Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5e/f5/0c41cb68dcae6b7de4fac4188a3a9589e21fb31df21ea3a2e888db95e6c9/soupsieve-2.8.4-py3-none-any.whl", hash = "sha256:e7e6b0769c8f51ed59acab6e994b00621096cfb1c640a7509295987388fbaf65", size = 37304, upload-time = "2026-05-24T13:55:55.406Z" },
+]
+
+[[package]]
 name = "tinycss2"
 version = "1.5.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1645,6 +1740,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/07/f6/d0e5b343768e8bcb4cda79f0f2f55051bf26177ecd5651f84c07567461cf/watchdog-6.0.0-py3-none-win32.whl", hash = "sha256:07df1fdd701c5d4c8e55ef6cf55b8f0120fe1aef7ef39a1c6fc6bc2e606d517a", size = 79065, upload-time = "2024-11-01T14:07:09.525Z" },
     { url = "https://files.pythonhosted.org/packages/db/d9/c495884c6e548fce18a8f40568ff120bc3a4b7b99813081c8ac0c936fa64/watchdog-6.0.0-py3-none-win_amd64.whl", hash = "sha256:cbafb470cf848d93b5d013e2ecb245d4aa1c8fd0504e863ccefa32445359d680", size = 79070, upload-time = "2024-11-01T14:07:10.686Z" },
     { url = "https://files.pythonhosted.org/packages/33/e8/e40370e6d74ddba47f002a32919d91310d6074130fe4e17dabcafc15cbf1/watchdog-6.0.0-py3-none-win_ia64.whl", hash = "sha256:a1914259fa9e1454315171103c6a30961236f508b9b623eae470268bbcc6a22f", size = 79067, upload-time = "2024-11-01T14:07:11.845Z" },
+]
+
+[[package]]
+name = "wcwidth"
+version = "0.8.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/af/44/c833e6b746ffb654e9abacf7ad6c2480a9c8c42e9637c1ae849964fb4dde/wcwidth-0.8.0.tar.gz", hash = "sha256:68a882ff6d14e3d14e0cae590b96a0551be64ce4905408112a8254434a1bdf69", size = 1305357, upload-time = "2026-06-05T21:19:35.667Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fb/17/c68b6cbcfeadbf420b3c3edaf8fda51335bc9c38732adb2d3ba8984dc607/wcwidth-0.8.0-py3-none-any.whl", hash = "sha256:8c75e6099cefd197c4bcc67a486f70b5dbc68f997c05f34a811d853910450d64", size = 324935, upload-time = "2026-06-05T21:19:33.999Z" },
 ]
 
 [[package]]

@@ -82,6 +82,8 @@ docs = [
     "mkdocs-material[imaging]>=9.5.45",
     "mkdocs-glightbox>=0.4.0",
     "mkdocstrings-python>=1.12.2",
+    "mkdocs-llmstxt>=0.5.0",
+    "mkdocs-copy-to-llm>=0.2.10",
 ]
 
 # NOTE: Supply-chain safety net — only resolve packages published at least

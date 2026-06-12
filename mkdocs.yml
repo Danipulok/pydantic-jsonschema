@@ -135,6 +135,27 @@ plugins:
   - search:
       lang: en
   - glightbox
+  # LLM-friendly export: `/llms.txt`, `/llms-full.txt`, and per-page `.md` files.
+  - llmstxt:
+      markdown_description: >-
+        Convert JSON Schema definitions into Pydantic models with runtime validation.
+      full_output: llms-full.txt
+      sections:
+        Usage documentation:
+          - index.md
+          - install.md
+          - schema.md
+          - converters.md
+          - formats.md
+          - examples.md
+        API reference:
+          - api/*.md
+        Development:
+          - contributing.md
+          - changelog.md
+  # "Copy page as Markdown" split button (copy / open in ChatGPT / open in Claude).
+  - copy-to-llm:
+      button_hover_color: "var(--md-primary-fg-color)"
   - mkdocstrings:
       enabled: true
       default_handler: python
