@@ -5,7 +5,7 @@ All types can be used directly in Pydantic models or passed as format_validators
 to SchemaConverter.
 """
 
-from ._builtin import (
+from ._types import (
     UUID,
     Date,
     DateTime,

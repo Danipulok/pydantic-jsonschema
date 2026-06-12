@@ -478,15 +478,6 @@ wheels = [
 ]
 
 [[package]]
-name = "fqdn"
-version = "1.5.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/30/3e/a80a8c077fd798951169626cde3e239adeba7dab75deb3555716415bd9b0/fqdn-1.5.1.tar.gz", hash = "sha256:105ed3677e767fb5ca086a0c1f4bb66ebc3c100be518f0e0d755d9eae164d89f", size = 6015, upload-time = "2021-03-11T07:16:29.08Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/cf/58/8acf1b3e91c58313ce5cb67df61001fc9dcd21be4fadb76c1a2d540e09ed/fqdn-1.5.1-py3-none-any.whl", hash = "sha256:3a179af3761e4df6eb2e026ff9e1a3033d3587bf980a0b1b2e1e5d08d7358014", size = 9121, upload-time = "2021-03-11T07:16:28.351Z" },
-]
-
-[[package]]
 name = "ghp-import"
 version = "2.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1245,14 +1236,10 @@ dependencies = [
 [package.optional-dependencies]
 formats-all = [
     { name = "email-validator" },
-    { name = "fqdn" },
     { name = "pydantic-extra-types", extra = ["all"] },
-    { name = "rfc3986" },
 ]
 formats-base = [
     { name = "email-validator" },
-    { name = "fqdn" },
-    { name = "rfc3986" },
 ]
 formats-extra = [
     { name = "pydantic-extra-types", extra = ["all"] },
@@ -1300,13 +1287,9 @@ test = [
 requires-dist = [
     { name = "email-validator", marker = "extra == 'formats-all'", specifier = ">=2.0.0" },
     { name = "email-validator", marker = "extra == 'formats-base'", specifier = ">=2.0.0" },
-    { name = "fqdn", marker = "extra == 'formats-all'" },
-    { name = "fqdn", marker = "extra == 'formats-base'" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pydantic-extra-types", extras = ["all"], marker = "extra == 'formats-all'" },
     { name = "pydantic-extra-types", extras = ["all"], marker = "extra == 'formats-extra'" },
-    { name = "rfc3986", marker = "extra == 'formats-all'", specifier = ">=2.0.0" },
-    { name = "rfc3986", marker = "extra == 'formats-base'", specifier = ">=2.0.0" },
 ]
 provides-extras = ["formats-all", "formats-base", "formats-extra"]
 
@@ -1615,15 +1598,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ac/c3/e2a2b89f2d3e2179abd6d00ebd70bff6273f37fb3e0cc209f48b39d00cbf/requests-2.34.2.tar.gz", hash = "sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed", size = 142856, upload-time = "2026-05-14T19:25:27.735Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl", hash = "sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0", size = 73075, upload-time = "2026-05-14T19:25:26.443Z" },
-]
-
-[[package]]
-name = "rfc3986"
-version = "2.0.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/85/40/1520d68bfa07ab5a6f065a186815fb6610c86fe957bc065754e47f7b0840/rfc3986-2.0.0.tar.gz", hash = "sha256:97aacf9dbd4bfd829baad6e6309fa6573aaf1be3f6fa735c8ab05e46cecb261c", size = 49026, upload-time = "2022-01-10T00:52:30.832Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ff/9a/9afaade874b2fa6c752c36f1548f718b5b83af81ed9b76628329dab81c1b/rfc3986-2.0.0-py2.py3-none-any.whl", hash = "sha256:50b1502b60e289cb37883f3dfd34532b8873c7de9f49bb546641ce9cbd256ebd", size = 31326, upload-time = "2022-01-10T00:52:29.594Z" },
 ]
 
 [[package]]

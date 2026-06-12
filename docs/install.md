@@ -24,7 +24,7 @@ This installs the `pydantic_jsonschema` package with [`pydantic`](https://docs.p
 
 Pydantic JSON Schema has optional dependencies for `format` validation.
 
-Use `formats-base` for standard JSON Schema formats such as email, hostname, URI, and IRI:
+Use `formats-base` for email validation:
 
 === "uv"
 

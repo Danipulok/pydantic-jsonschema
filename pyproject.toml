@@ -42,8 +42,6 @@ Changelog = "https://github.com/Danipulok/pydantic-jsonschema/blob/main/docs/cha
 [project.optional-dependencies]
 formats-base = [
     "email-validator>=2.0.0",
-    "fqdn",
-    "rfc3986>=2.0.0",
 ]
 formats-extra = [
     "pydantic-extra-types[all]",
@@ -51,8 +49,6 @@ formats-extra = [
 formats-all = [
     # `formats-base`
     "email-validator>=2.0.0",
-    "fqdn",
-    "rfc3986>=2.0.0",
     # `formats-extra`
     "pydantic-extra-types[all]",
 ]
@@ -122,10 +118,6 @@ warn_return_any = true
 warn_unused_configs = true
 exclude = ["check_.*\\.py$", "mre_.*\\.py$", "pydantic_mre\\.py$"]
 
-[[tool.mypy.overrides]]
-module = ["fqdn", "fqdn.*", "rfc3986", "rfc3986.*"]
-ignore_missing_imports = true
-
 [tool.ruff]
 target-version = "py312"
 line-length = 100
@@ -145,6 +137,9 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [
     "S101",     # Use of `assert` detected
+]
+"tests/formats/test_uri.py" = [
+    "RUF001",   # Ambiguous unicode (intentional in IRI test data)
 ]
 "examples/*" = [
     "T201",     # Remove `print`

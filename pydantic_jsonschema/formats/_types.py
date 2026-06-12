@@ -1,8 +1,7 @@
 """Built-in JSON Schema format types.
 
-All format types are defined as Pydantic-compatible type aliases using Annotated.
-Users can use these types directly in their schemas or pass them as format_validators
-to SchemaConverter.
+All format types are defined as Pydantic-compatible type aliases using `Annotated`.
+These types can be used in schemas or passed as `format_validators` to `SchemaConverter`.
 """
 
 import uuid
@@ -12,8 +11,8 @@ from typing import Annotated
 
 from pydantic import BeforeValidator, EmailStr
 
-from pydantic_jsonschema.formats._validators import (
-    validate_hostname,
+from pydantic_jsonschema.formats._hostname import validate_hostname
+from pydantic_jsonschema.formats._uri import (
     validate_iri,
     validate_iri_reference,
     validate_uri,

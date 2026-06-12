@@ -9,11 +9,11 @@ applies.
 
 ## Install Optional Dependencies
 
-Format validator dependencies are optional. Install the group you need:
+For email validation and domain-specific types, install the appropriate extra:
 
 | Extra           | Use for                                      |
 |-----------------|----------------------------------------------|
-| `formats-base`  | Standard JSON Schema formats                 |
+| `formats-base`  | Email validation (`email-validator`)         |
 | `formats-extra` | Domain-specific `pydantic-extra-types` types |
 | `formats-all`   | Both groups                                  |
 
