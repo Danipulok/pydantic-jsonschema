@@ -254,24 +254,106 @@ class SchemaConverter:
         self._models_cache[cache_key] = model
         return model
 
-    @staticmethod
+    def _check_alias_target(
+        self,
+        defs: dict[str, Schema | Reference],
+        /,
+        *,
+        reference: Reference,
+        seen_names: list[str],
+    ) -> str:
+        """Validate a single alias step and return the target definition name.
+
+        :param defs: Raw `$defs` mapping.
+        :param reference: Alias reference to validate.
+        :param seen_names: Definition names already visited in the chain.
+        :returns: Target definition name.
+        :raises SchemaReferenceError: If the target is external, circular, or missing.
+        """
+        alias_name: str = seen_names[0]
+        local_ref_prefix: str = f"#/{_DEFS_KEY}/"
+
+        if not reference.ref.startswith(local_ref_prefix):
+            msg = (
+                f"Cannot resolve {_DEFS_KEY} alias `{alias_name}`: "
+                f"external reference `{reference.ref}`"
+            )
+            raise SchemaReferenceError(
+                message=msg,
+                path=seen_names.copy(),
+            )
+
+        target_name: str = reference.ref.removeprefix(local_ref_prefix)
+        if target_name in seen_names:
+            msg = f"Circular {_DEFS_KEY} alias chain: {' -> '.join([*seen_names, target_name])}"
+            raise SchemaReferenceError(
+                message=msg,
+                path=seen_names.copy(),
+            )
+
+        if target_name not in defs:
+            msg = (
+                f"Cannot resolve {_DEFS_KEY} alias `{alias_name}`: unknown target `{reference.ref}`"
+            )
+            raise SchemaReferenceError(
+                message=msg,
+                path=seen_names.copy(),
+            )
+
+        return target_name
+
+    def _resolve_def_alias(
+        self,
+        defs: dict[str, Schema | Reference],
+        /,
+        *,
+        name: str,
+    ) -> Schema:
+        """Resolve a `$defs` entry to a concrete schema, following alias chains.
+
+        :param defs: Raw `$defs` mapping.
+        :param name: Definition name to resolve.
+        :returns: Concrete schema for the definition.
+        :raises SchemaReferenceError: If an alias chain is circular, points to a
+            missing definition, or targets an external reference.
+        """
+        seen_names: list[str] = [name]
+        current: Schema | Reference = defs[name]
+
+        while isinstance(current, Reference):
+            target_name = self._check_alias_target(
+                defs,
+                reference=current,
+                seen_names=seen_names,
+            )
+            seen_names.append(target_name)
+            current = defs[target_name]
+
+        return current
+
     def _get_inline_defs(
+        self,
         schema: Schema,
         /,
     ) -> dict[Ref, Schema]:
         """Extract inline schema defs from `$defs` field.
 
+        `Reference` entries (def aliases) are resolved to their target schemas.
+
         :param schema: Schema to extract defs from.
         :returns: Mapping of reference paths to schemas.
+        :raises SchemaReferenceError: If a def alias cannot be resolved.
         """
         if schema.defs is MISSING:
             return {}
 
         result_defs: dict[Ref, Schema] = {}
-        for name, schema_def in schema.defs.items():
+        for name in schema.defs:
             ref_path = f"#/{_DEFS_KEY}/{name}"
-            # TODO: Handle `Reference` in `$defs` (def alias to another def).
-            result_defs[ref_path] = schema_def  # type: ignore[assignment]
+            result_defs[ref_path] = self._resolve_def_alias(
+                schema.defs,
+                name=name,
+            )
         return result_defs
 
     def _build_defs_cache(

@@ -501,6 +501,104 @@ class TestReferences:
         instance = model([{"name": "item1"}, {"name": "item2"}])  # type: ignore[call-arg]
         assert instance.model_dump() == snapshot([{"name": "item1"}, {"name": "item2"}])
 
+    def test_defs_alias_reference(self) -> None:
+        """Test `$defs` entry that is a `Reference` alias to another def."""
+        schema_raw: SchemaRaw = {
+            "$defs": {
+                "Address": {
+                    "type": "object",
+                    "properties": {
+                        "street": {"type": "string"},
+                    },
+                },
+                "Location": {"$ref": "#/$defs/Address"},
+            },
+            "type": "object",
+            "properties": {
+                "home": {"$ref": "#/$defs/Location"},
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(home={"street": "Main St"})
+        assert instance.model_dump() == snapshot(
+            {
+                "home": {"street": "Main St"},
+            }
+        )
+
+    def test_defs_alias_chain(self) -> None:
+        """Test `$defs` alias chain resolving through multiple references."""
+        schema_raw: SchemaRaw = {
+            "$defs": {
+                "Primary": {"$ref": "#/$defs/Secondary"},
+                "Secondary": {"$ref": "#/$defs/Target"},
+                "Target": {
+                    "type": "object",
+                    "properties": {
+                        "value": {"type": "integer"},
+                    },
+                },
+            },
+            "type": "object",
+            "properties": {
+                "field": {"$ref": "#/$defs/Primary"},
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(field={"value": 42})
+        assert instance.model_dump() == snapshot(
+            {
+                "field": {"value": 42},
+            }
+        )
+
+    def test_defs_alias_cycle_raises(self) -> None:
+        """Test circular `$defs` alias chain raises `SchemaReferenceError`."""
+        schema_raw: SchemaRaw = {
+            "$defs": {
+                "First": {"$ref": "#/$defs/Second"},
+                "Second": {"$ref": "#/$defs/First"},
+            },
+            "type": "object",
+            "properties": {},
+        }
+        schema = Schema.model_validate(schema_raw)
+
+        with pytest.raises(SchemaReferenceError, match=r"Circular \$defs alias chain"):
+            to_model(schema)
+
+    def test_defs_alias_unknown_target_raises(self) -> None:
+        """Test `$defs` alias pointing to a missing def raises `SchemaReferenceError`."""
+        schema_raw: SchemaRaw = {
+            "$defs": {
+                "Alias": {"$ref": "#/$defs/DoesNotExist"},
+            },
+            "type": "object",
+            "properties": {},
+        }
+        schema = Schema.model_validate(schema_raw)
+
+        with pytest.raises(SchemaReferenceError, match=r"unknown target"):
+            to_model(schema)
+
+    def test_defs_alias_external_ref_raises(self) -> None:
+        """Test `$defs` alias with external reference raises `SchemaReferenceError`."""
+        schema_raw: SchemaRaw = {
+            "$defs": {
+                "Alias": {"$ref": "https://example.com/schemas/address.json"},
+            },
+            "type": "object",
+            "properties": {},
+        }
+        schema = Schema.model_validate(schema_raw)
+
+        with pytest.raises(SchemaReferenceError, match=r"external reference"):
+            to_model(schema)
+
     def test_forward_ref_unresolved(self) -> None:
         """Test ForwardRef creation when reference isn't resolved yet."""
         schema_raw: SchemaRaw = {
