@@ -6,11 +6,10 @@ from pydantic_jsonschema.converters import (
     SchemaConverter,
     to_model,
 )
-from pydantic_jsonschema.types import DataType, JsonType, Reference, Schema
+from pydantic_jsonschema.types import DataType, Reference, Schema
 
 __all__ = [
     "DataType",
-    "JsonType",
     "Ref",
     "Reference",
     "Schema",

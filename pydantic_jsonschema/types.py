@@ -8,10 +8,6 @@ from pydantic_jsonschema._schema import (
 
 __all__ = [
     "DataType",
-    "JsonType",
     "Reference",
     "Schema",
 ]
-
-
-type JsonType = str | int | float | bool | None | list["JsonType"] | dict[str, "JsonType"]

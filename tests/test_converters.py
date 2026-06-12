@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Annotated, Any
 from uuid import UUID
 
 import pytest
-from pydantic import BaseModel, GetCoreSchemaHandler, ValidationError
+from pydantic import BaseModel, GetCoreSchemaHandler, JsonValue, ValidationError
 from pydantic.functional_validators import AfterValidator
 from pydantic_core import CoreSchema, core_schema
 
@@ -17,7 +17,7 @@ from pydantic_jsonschema import (
 from pydantic_jsonschema.exceptions import SchemaConversionError, SchemaReferenceError
 from pydantic_jsonschema.formats import UUID as UUID_FORMAT
 from pydantic_jsonschema.formats import DateTime, Email, IPv4, Uri
-from pydantic_jsonschema.types import JsonType, Schema
+from pydantic_jsonschema.types import Schema
 
 if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
@@ -852,8 +852,8 @@ class TestAdditionalPropertiesConfig:
 )
 def test_constraints(
     schema_property: dict[str, Any],
-    valid_value: JsonType,
-    invalid_value: JsonType,
+    valid_value: JsonValue,
+    invalid_value: JsonValue,
 ) -> None:
     """Test min/max constraints."""
     schema_raw: SchemaRaw = {"type": "object", "properties": {"field": schema_property}}

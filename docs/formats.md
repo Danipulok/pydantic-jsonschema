@@ -228,10 +228,10 @@ except ValidationError as er:
 ### Callable Validators
 
 ```python title="callable_validator.py"
-from pydantic_jsonschema import JsonType
+from pydantic import JsonValue
 
 
-def normalize_phone(value: JsonType) -> str:
+def normalize_phone(value: JsonValue) -> str:
     digits = "".join(character for character in str(value) if character.isdigit())
 
     if len(digits) != 10:
