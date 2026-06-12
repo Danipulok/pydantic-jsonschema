@@ -106,6 +106,7 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | `default`                                    | field default                               | omitted input uses default value    |
 | `minimum`, `maximum`, `multipleOf`           | numeric constraints                         | `ge`, `le`, `multiple_of`           |
 | `minLength`, `maxLength`                     | string length constraints                   | `min_length`, `max_length`          |
+| `pattern`                                    | string regex constraint                     | `pattern`                           |
 | `minItems`, `maxItems`                       | list length constraints                     | `min_length`, `max_length`          |
 | `format` with validators                     | configured format validation                | see [Format Validators](formats.md) |
 | `title`, `model_name`, `default_model_name`  | generated class name                        | `User`, `CustomUser`, `Model`       |

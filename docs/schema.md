@@ -214,6 +214,7 @@ Unknown keywords are preserved via `extra="allow"`.
 |--------------|-------------|-------------------------------------------------------------------------------------------------|
 | `min_length` | `minLength` | [validation §6.3.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.3.2) |
 | `max_length` | `maxLength` | [validation §6.3.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.3.1) |
+| `pattern`    | `pattern`   | [validation §6.3.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.3.3) |
 
 ### Array constraints
 

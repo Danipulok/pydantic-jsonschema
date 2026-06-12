@@ -105,6 +105,7 @@ class Schema(BaseModel):
     # Validation — string — validation §6.3
     min_length: int | MISSING = MISSING
     max_length: int | MISSING = MISSING
+    pattern: str | MISSING = MISSING
 
     # Validation — array — validation §6.4
     min_items: int | MISSING = MISSING

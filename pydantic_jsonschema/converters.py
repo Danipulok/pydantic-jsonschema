@@ -110,6 +110,7 @@ class _FieldKwargs(TypedDict, total=False):
     multiple_of: float | None
     min_length: int | None
     max_length: int | None
+    pattern: str | None
 
 
 class SchemaConverter:
@@ -678,6 +679,8 @@ class SchemaConverter:
             kwargs["lt"] = schema.exclusive_maximum
         if schema.multiple_of is not MISSING:
             kwargs["multiple_of"] = schema.multiple_of
+        if schema.pattern is not MISSING:
+            kwargs["pattern"] = schema.pattern
 
         min_length = self._get_min_length(schema)
         if min_length is not None:

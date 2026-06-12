@@ -211,6 +211,24 @@ class TestSchemaConstraints:
         dumped: dict[str, Any] = schema.model_dump()
         assert dumped == snapshot({"type": "array", "minItems": 1, "maxItems": 10})
 
+    def test_string_constraints(self) -> None:
+        """Test string validation fields, including `pattern`."""
+        schema = Schema(
+            type=DataType.STRING,
+            min_length=1,
+            max_length=20,
+            pattern="^[a-z]+$",
+        )
+        dumped: dict[str, Any] = schema.model_dump()
+        assert dumped == snapshot(
+            {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20,
+                "pattern": "^[a-z]+$",
+            }
+        )
+
 
 class TestSchemaMetadata:
     """Tests for metadata and annotation keywords."""

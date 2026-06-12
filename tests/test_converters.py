@@ -1324,6 +1324,12 @@ class TestConstraints:
                 "toolong",
                 id="string-max-length",
             ),
+            pytest.param(
+                {"type": "string", "pattern": "^[a-z]+-[0-9]+$"},
+                "order-42",
+                "ORDER-42",
+                id="string-pattern",
+            ),
         ],
     )
     def test_constraints(
