@@ -4,11 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.0.6] — 2026-06-12
+
+### Changed
+
+- remove `JsonType` alias in favor of `pydantic.JsonValue`
+- replace `BeforeValidator` with `AfterValidator` in format aliases
+
+### Other
+
+- remove `Ref` from public `__all__`
+
 ## [0.0.5] — 2026-06-12
 
 ### Changed
 
 - drop `formats-extra` extra in favor of direct `pydantic-extra-types` install
+
+### Documentation
+
+- add `0.0.5` release section
 
 ### Other
 
@@ -225,6 +240,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - add coverage tests and set `cov-fail-under`
 - add comprehensive test suite
 
+[0.0.6]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.5...v0.0.6>
 [0.0.5]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.4...v0.0.5>
 [0.0.4]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.3...v0.0.4>
 [0.0.3]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.2...v0.0.3>
