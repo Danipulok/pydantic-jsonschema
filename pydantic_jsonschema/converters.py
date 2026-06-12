@@ -75,7 +75,7 @@ class FormatValidator(Protocol):
     - Annotated type with validators (e.g., Annotated[int, AfterValidator(...)])
 
     Accepts any JSON Schema type: string, number, integer, boolean, null, array, object.
-    Called after Pydantic's standard validation.
+    Callables receive the raw input and run before Pydantic's standard validation.
 
     See:
     https://json-schema.org/draft/2020-12/json-schema-validation#section-7.1
@@ -85,11 +85,18 @@ class FormatValidator(Protocol):
     https://docs.pydantic.dev/latest/concepts/validators/#after-validators
     """
 
+    # NOTE: `value` must stay `Any`-typed: protocol parameters are contravariant,
+    # so narrowing it (e.g. to `JsonValue`) stops narrow user validators like
+    # `def validate_sku(value: str) -> str` from matching the protocol.
+    #
+    # Reproduce with `value: JsonValue`:
+    #   uv run mypy examples/custom_validators.py
+    #   # -> error: Dict entry 0 has incompatible type "str": "Callable[[str], str]"
     def __call__(
         self,
         value: PythonType,
     ) -> PythonType:
-        """Process the value after Pydantic's standard validation."""
+        """Process the raw value before Pydantic's standard validation."""
         ...
 
 
@@ -489,7 +496,7 @@ class SchemaConverter:
 
         :param ref: Reference path (e.g., "#/$defs/User").
         :returns: Pydantic model (from cache or generated).
-        :raises ReferenceError: If reference cannot be resolved.
+        :raises SchemaReferenceError: If reference cannot be resolved.
         """
         # Check if pre-built model exists
         if ref in self._refs:
@@ -504,16 +511,9 @@ class SchemaConverter:
                 path=self._resolution_path.copy(),
             )
 
-        # Check if already generated
+        # `_build_model` handles model caching by schema hash.
         schema = self._defs_cache[ref]
-        cache_key = self._hash_schema(schema)
-        if cache_key in self._models_cache:
-            return self._models_cache[cache_key]
-
-        # Generate model from schema
-        model = self._convert_nested_schema(schema)
-        self._models_cache[cache_key] = model
-        return model
+        return self._convert_nested_schema(schema)
 
     def _get_base_classes(
         self,
@@ -530,8 +530,8 @@ class SchemaConverter:
 
         # Convert each `allOf` schema to model
         base_models = []
-        for idx, sub_schema in enumerate(schema.all_of):
-            with self._track_path(f"allOf[{idx}]"):
+        for index, sub_schema in enumerate(schema.all_of):
+            with self._track_path(f"allOf[{index}]"):
                 if isinstance(sub_schema, Reference):
                     model = self._get_model(sub_schema.ref)
                 else:
