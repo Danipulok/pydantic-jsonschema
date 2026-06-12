@@ -68,7 +68,12 @@ test = [
     "pytest-examples>=0.0.18",
     # NOTE: Used in `docs/formats.md` examples, which are executed by `tests/test_docs.py`.
     #       Base package only — examples use `Color` and `PaymentCardNumber`, which need no extras.
-    "pydantic-extra-types",
+    #       `2.0.0`-`2.2.0` work but use deprecated `pydantic-core` APIs; clean from `2.3.0`.
+    #
+    # Reproduce on `2.2.0`:
+    #   uv run --with 'pydantic-extra-types==2.2.0' -m pytest tests/test_docs.py -q
+    #   # -> 35 passed, 4 warnings (`general_after_validator_function` is deprecated)
+    "pydantic-extra-types>=2.3.0",
     "inline-snapshot>=0.34.0",
 ]
 docs = [

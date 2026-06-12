@@ -1236,7 +1236,7 @@ dev = [
     { name = "mkdocstrings-python", specifier = ">=1.12.2" },
     { name = "mypy", specifier = ">=1.17.1" },
     { name = "pre-commit", specifier = ">=4.0.0" },
-    { name = "pydantic-extra-types" },
+    { name = "pydantic-extra-types", specifier = ">=2.3.0" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
     { name = "pytest-examples", specifier = ">=0.0.18" },
@@ -1258,7 +1258,7 @@ lint = [
 release = [{ name = "git-cliff", specifier = ">=2.0.0" }]
 test = [
     { name = "inline-snapshot", specifier = ">=0.34.0" },
-    { name = "pydantic-extra-types" },
+    { name = "pydantic-extra-types", specifier = ">=2.3.0" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
     { name = "pytest-examples", specifier = ">=0.0.18" },
