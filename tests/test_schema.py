@@ -17,13 +17,13 @@ class TestDataType:
     @pytest.mark.parametrize(
         ("member", "value"),
         [
-            (DataType.NULL, "null"),
-            (DataType.STRING, "string"),
-            (DataType.NUMBER, "number"),
-            (DataType.INTEGER, "integer"),
-            (DataType.BOOLEAN, "boolean"),
-            (DataType.ARRAY, "array"),
-            (DataType.OBJECT, "object"),
+            pytest.param(DataType.NULL, "null", id="null"),
+            pytest.param(DataType.STRING, "string", id="string"),
+            pytest.param(DataType.NUMBER, "number", id="number"),
+            pytest.param(DataType.INTEGER, "integer", id="integer"),
+            pytest.param(DataType.BOOLEAN, "boolean", id="boolean"),
+            pytest.param(DataType.ARRAY, "array", id="array"),
+            pytest.param(DataType.OBJECT, "object", id="object"),
         ],
     )
     def test_values(self, member: DataType, value: str) -> None:

@@ -1253,9 +1253,24 @@ class TestLiteralTypes:
     @pytest.mark.parametrize(
         ("schema_field", "valid_value", "invalid_value"),
         [
-            ({"enum": ["active", "inactive", "pending"]}, "active", "invalid"),
-            ({"const": "fixed_value"}, "fixed_value", "wrong_value"),
-            ({"const": None}, None, "not-null"),
+            pytest.param(
+                {"enum": ["active", "inactive", "pending"]},
+                "active",
+                "invalid",
+                id="enum",
+            ),
+            pytest.param(
+                {"const": "fixed_value"},
+                "fixed_value",
+                "wrong_value",
+                id="const",
+            ),
+            pytest.param(
+                {"const": None},
+                None,
+                "not-null",
+                id="const-null",
+            ),
         ],
     )
     def test_literal_types(
@@ -1285,25 +1300,29 @@ class TestConstraints:
     @pytest.mark.parametrize(
         ("schema_property", "valid_value", "invalid_value"),
         [
-            (
+            pytest.param(
                 {"type": "array", "items": {"type": "string"}, "minItems": 1},
                 ["tag1"],
                 [],
+                id="array-min-items",
             ),
-            (
+            pytest.param(
                 {"type": "array", "items": {"type": "string"}, "maxItems": 2},
                 ["tag1", "tag2"],
                 ["tag1", "tag2", "tag3"],
+                id="array-max-items",
             ),
-            (
+            pytest.param(
                 {"type": "string", "minLength": 3},
                 "abc",
                 "ab",
+                id="string-min-length",
             ),
-            (
+            pytest.param(
                 {"type": "string", "maxLength": 5},
                 "short",
                 "toolong",
+                id="string-max-length",
             ),
         ],
     )
