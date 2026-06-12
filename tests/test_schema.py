@@ -3,6 +3,7 @@
 from typing import Any
 
 import pytest
+from inline_snapshot import snapshot
 
 from pydantic_jsonschema._schema import DataType, Reference, Schema
 
@@ -40,7 +41,7 @@ class TestReference:
         """Test serialization uses `$ref` key."""
         ref = Reference(ref="#/$defs/User")
         dumped: dict[str, Any] = ref.model_dump()
-        assert dumped == {"$ref": "#/$defs/User"}
+        assert dumped == snapshot({"$ref": "#/$defs/User"})
 
     def test_json_by_alias(self) -> None:
         """Test JSON output uses `$ref` key."""
@@ -56,13 +57,13 @@ class TestSchema:
         """Test empty schema dumps to empty dict."""
         schema = Schema()
         dumped: dict[str, Any] = schema.model_dump()
-        assert dumped == {}
+        assert dumped == snapshot({})
 
     def test_simple_type(self) -> None:
         """Test single-type schema."""
         schema = Schema(type=DataType.STRING)
         dumped: dict[str, Any] = schema.model_dump()
-        assert dumped == {"type": "string"}
+        assert dumped == snapshot({"type": "string"})
 
     def test_alias_generator_camel_case(self) -> None:
         """Test that snake_case fields serialize to camelCase."""
@@ -75,7 +76,7 @@ class TestSchema:
         """Test that fields can be set using Python names."""
         schema = Schema(min_length=5, max_length=10)
         dumped: dict[str, Any] = schema.model_dump()
-        assert dumped == {"minLength": 5, "maxLength": 10}
+        assert dumped == snapshot({"minLength": 5, "maxLength": 10})
 
     def test_defs_alias(self) -> None:
         """Test `$defs` field with explicit alias."""
@@ -97,13 +98,15 @@ class TestSchema:
             exclusive_maximum=100,
         )
         dumped: dict[str, Any] = schema.model_dump()
-        assert dumped == {
-            "multipleOf": 0.5,
-            "minimum": 0,
-            "maximum": 100,
-            "exclusiveMinimum": 0,
-            "exclusiveMaximum": 100,
-        }
+        assert dumped == snapshot(
+            {
+                "multipleOf": 0.5,
+                "minimum": 0,
+                "maximum": 100,
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 100,
+            }
+        )
 
     def test_array_constraints(self) -> None:
         """Test array validation fields serialize to camelCase."""
@@ -113,7 +116,7 @@ class TestSchema:
             max_items=10,
         )
         dumped: dict[str, Any] = schema.model_dump()
-        assert dumped == {"type": "array", "minItems": 1, "maxItems": 10}
+        assert dumped == snapshot({"type": "array", "minItems": 1, "maxItems": 10})
 
     def test_nested_properties(self) -> None:
         """Test nested object with properties and required."""
@@ -125,11 +128,13 @@ class TestSchema:
             required=["name"],
         )
         dumped: dict[str, Any] = schema.model_dump()
-        assert dumped == {
-            "type": "object",
-            "properties": {"name": {"type": "string"}},
-            "required": ["name"],
-        }
+        assert dumped == snapshot(
+            {
+                "type": "object",
+                "properties": {"name": {"type": "string"}},
+                "required": ["name"],
+            }
+        )
 
     def test_additional_properties(self) -> None:
         """Test `additionalProperties` parsed from camelCase."""
@@ -168,30 +173,32 @@ class TestSchema:
             examples=["example1"],
         )
         dumped: dict[str, Any] = schema.model_dump()
-        assert dumped == {
-            "title": "User",
-            "description": "A user object",
-            "default": "test",
-            "examples": ["example1"],
-        }
+        assert dumped == snapshot(
+            {
+                "title": "User",
+                "description": "A user object",
+                "default": "test",
+                "examples": ["example1"],
+            }
+        )
 
     def test_enum_field(self) -> None:
         """Test `enum` field."""
         schema = Schema(enum=["a", "b", "c"])
         dumped: dict[str, Any] = schema.model_dump()
-        assert dumped == {"enum": ["a", "b", "c"]}
+        assert dumped == snapshot({"enum": ["a", "b", "c"]})
 
     def test_const_field(self) -> None:
         """Test `const` field."""
         schema = Schema(const="fixed")
         dumped: dict[str, Any] = schema.model_dump()
-        assert dumped == {"const": "fixed"}
+        assert dumped == snapshot({"const": "fixed"})
 
     def test_format_field(self) -> None:
         """Test `format` field."""
         schema = Schema(type=DataType.STRING, format="email")
         dumped: dict[str, Any] = schema.model_dump()
-        assert dumped == {"type": "string", "format": "email"}
+        assert dumped == snapshot({"type": "string", "format": "email"})
 
     def test_extra_fields_pass_through(self) -> None:
         """Test that unknown keywords are preserved via `extra="allow"`."""

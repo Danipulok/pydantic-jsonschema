@@ -69,6 +69,7 @@ test = [
     # NOTE: Used in `docs/formats.md` examples, which are executed by `tests/test_docs.py`.
     #       Base package only — examples use `Color` and `PaymentCardNumber`, which need no extras.
     "pydantic-extra-types",
+    "inline-snapshot>=0.34.0",
 ]
 docs = [
     "mike>=2.1.0",

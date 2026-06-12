@@ -1,6 +1,7 @@
 """Tests for exceptions."""
 
 import pytest
+from inline_snapshot import snapshot
 
 from pydantic_jsonschema.exceptions import (
     FormatValidationError,
@@ -27,12 +28,12 @@ class TestExceptions:
         error = SchemaReferenceError(message="Reference not found", path=["definitions", "User"])
         assert str(error)
         assert "Reference not found" in repr(error)
-        assert error.path == ["definitions", "User"]
+        assert error.path == snapshot(["definitions", "User"])
 
         with pytest.raises(SchemaReferenceError) as exc_info:
             raise error
         assert exc_info.value.message == "Reference not found"
-        assert exc_info.value.path == ["definitions", "User"]
+        assert exc_info.value.path == snapshot(["definitions", "User"])
 
     def test_exception_args_base(self) -> None:
         """Test that `args` contains message for base exception."""

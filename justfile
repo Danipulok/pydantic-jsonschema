@@ -52,6 +52,10 @@ test-all-python: install-all-python
 testcov: test
     uv run coverage html
 
+# Update `inline_snapshot` values in tests after behavior changes
+test-fix-snapshots:
+    uv run pytest --inline-snapshot=fix
+
 # Run pre-commit on all files
 precommit:
     uv run pre-commit run --all-files

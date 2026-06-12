@@ -2,6 +2,8 @@
 
 from typing import TYPE_CHECKING
 
+from inline_snapshot import snapshot
+
 from pydantic_jsonschema.types import DataType, Reference, Schema
 
 if TYPE_CHECKING:
@@ -77,7 +79,7 @@ class TestSchemaSerialization:
         schema = Schema()
         dumped: dict[str, object] = schema.model_dump()
 
-        assert dumped == {}
+        assert dumped == snapshot({})
 
 
 class TestReferenceSerialization:
@@ -106,6 +108,6 @@ class TestReferenceSerialization:
         ref = Reference.model_validate({"$ref": "#/$defs/Item"})
         dumped: dict[str, object] = ref.model_dump()
 
-        assert dumped == {"$ref": "#/$defs/Item"}
+        assert dumped == snapshot({"$ref": "#/$defs/Item"})
         assert "summary" not in dumped
         assert "description" not in dumped

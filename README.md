@@ -90,7 +90,7 @@ for field reference and usage examples.
 - [x] Remove `fqdn` and `rfc3986` dependencies
 - [x] Remove `email-validator` dependency
 - [ ] Logic fixes in schema conversion
-- [ ] Add `inline_snapshot` for tests
+- [x] Add `inline_snapshot` for tests
 - [ ] Configurable loading by type (inspired by [adaptix](https://github.com/reagento/adaptix))
 
 ## Acknowledgments

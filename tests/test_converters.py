@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Annotated, Any
 from uuid import UUID
 
 import pytest
+from inline_snapshot import snapshot
 from pydantic import BaseModel, GetCoreSchemaHandler, JsonValue, ValidationError
 from pydantic.functional_validators import AfterValidator
 from pydantic_core import CoreSchema, core_schema
@@ -42,16 +43,20 @@ class TestBasicConversion:
         model = to_model(schema)
 
         instance = model(name="Alice", age=30)
-        assert instance.model_dump() == {
-            "name": "Alice",
-            "age": 30,
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "name": "Alice",
+                "age": 30,
+            }
+        )
 
         instance = model(name="Bob")
-        assert instance.model_dump() == {
-            "name": "Bob",
-            "age": None,
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "name": "Bob",
+                "age": None,
+            }
+        )
 
         with pytest.raises(ValidationError):
             model(age=25)
@@ -71,9 +76,11 @@ class TestBasicConversion:
         model = to_model(schema)
 
         instance = model(tags=["python", "dev"])
-        assert instance.model_dump() == {
-            "tags": ["python", "dev"],
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "tags": ["python", "dev"],
+            }
+        )
 
     def test_nested_objects(self) -> None:
         """Test nested object schemas."""
@@ -92,9 +99,11 @@ class TestBasicConversion:
         model = to_model(schema)
 
         instance = model(user={"name": "Alice"})
-        assert instance.model_dump() == {
-            "user": {"name": "Alice"},
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "user": {"name": "Alice"},
+            }
+        )
 
     def test_deeply_nested_objects(self) -> None:
         """Test deeply nested object structures."""
@@ -118,13 +127,15 @@ class TestBasicConversion:
         model = to_model(schema)
 
         instance = model(level1={"level2": {"value": 42}})
-        assert instance.model_dump() == {
-            "level1": {
-                "level2": {
-                    "value": 42,
+        assert instance.model_dump() == snapshot(
+            {
+                "level1": {
+                    "level2": {
+                        "value": 42,
+                    },
                 },
-            },
-        }
+            }
+        )
 
     def test_schema_without_type(self) -> None:
         """Test schema without type accepts any value."""
@@ -138,14 +149,18 @@ class TestBasicConversion:
         model = to_model(schema)
 
         instance = model(anything="string")
-        assert instance.model_dump() == {
-            "anything": "string",
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "anything": "string",
+            }
+        )
 
         instance = model(anything=123)
-        assert instance.model_dump() == {
-            "anything": 123,
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "anything": 123,
+            }
+        )
 
 
 class TestReferences:
@@ -169,12 +184,14 @@ class TestReferences:
         model = to_model(schema)
 
         instance = model(address={"street": "Main St", "city": "NYC"})
-        assert instance.model_dump() == {
-            "address": {
-                "street": "Main St",
-                "city": "NYC",
-            },
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "address": {
+                    "street": "Main St",
+                    "city": "NYC",
+                },
+            }
+        )
 
     def test_defs_with_single_reference(self) -> None:
         """Test schema with `$defs` containing one definition."""
@@ -198,12 +215,14 @@ class TestReferences:
         model = to_model(schema)
 
         instance = model(home={"street": "Main St", "city": "NYC"})
-        assert instance.model_dump() == {
-            "home": {
-                "street": "Main St",
-                "city": "NYC",
-            },
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "home": {
+                    "street": "Main St",
+                    "city": "NYC",
+                },
+            }
+        )
 
     def test_defs_with_multiple_references(self) -> None:
         """Test schema with multiple `$defs`."""
@@ -244,11 +263,13 @@ class TestReferences:
             address={"street": "Main St"},
             employer={"name": "ACME Corp"},
         )
-        assert instance.model_dump() == {
-            "owner": {"name": "Alice", "age": 30},
-            "address": {"street": "Main St"},
-            "employer": {"name": "ACME Corp"},
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "owner": {"name": "Alice", "age": 30},
+                "address": {"street": "Main St"},
+                "employer": {"name": "ACME Corp"},
+            }
+        )
 
     def test_nested_ref_resolution(self) -> None:
         """Test nested reference resolution."""
@@ -277,12 +298,14 @@ class TestReferences:
         model = to_model(schema)
 
         instance = model(home={"street": "Main St", "city": {"name": "NYC"}})
-        assert instance.model_dump() == {
-            "home": {
-                "street": "Main St",
-                "city": {"name": "NYC"},
-            },
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "home": {
+                    "street": "Main St",
+                    "city": {"name": "NYC"},
+                },
+            }
+        )
 
     def test_invalid_reference_error(self) -> None:
         """Test invalid reference raises error."""
@@ -322,12 +345,14 @@ class TestReferences:
         model = to_model(schema)
 
         instance = model(contact={"email": "test@example.com", "phone": "123-456"})
-        assert instance.model_dump() == {
-            "contact": {
-                "email": "test@example.com",
-                "phone": "123-456",
-            },
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "contact": {
+                    "email": "test@example.com",
+                    "phone": "123-456",
+                },
+            }
+        )
 
     def test_reference_in_array(self) -> None:
         """Test reference in array items."""
@@ -353,12 +378,14 @@ class TestReferences:
         model = to_model(schema)
 
         instance = model(items=[{"name": "A", "value": 1}, {"name": "B", "value": 2}])
-        assert instance.model_dump() == {
-            "items": [
-                {"name": "A", "value": 1},
-                {"name": "B", "value": 2},
-            ],
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "items": [
+                    {"name": "A", "value": 1},
+                    {"name": "B", "value": 2},
+                ],
+            }
+        )
 
     def test_forward_ref_namespace(self) -> None:
         """Test forward reference namespace building."""
@@ -387,9 +414,11 @@ class TestReferences:
         model = to_model(schema)
 
         instance = model(featured={"title": "Test", "author": {"name": "Alice"}})
-        assert instance.model_dump() == {
-            "featured": {"title": "Test", "author": {"name": "Alice"}},
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "featured": {"title": "Test", "author": {"name": "Alice"}},
+            }
+        )
 
     def test_pre_built_refs(self) -> None:
         """Test pre-built refs in converter."""
@@ -414,9 +443,11 @@ class TestReferences:
         model = converter.convert_schema(schema)
 
         instance = model(address={"street": "Main St", "city": "NYC"})
-        assert instance.model_dump() == {
-            "address": {"street": "Main St", "city": "NYC"},
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "address": {"street": "Main St", "city": "NYC"},
+            }
+        )
 
     def test_model_generation_with_multiple_same_refs(self) -> None:
         """Test model generation with multiple references to same type."""
@@ -442,10 +473,12 @@ class TestReferences:
             field1={"value": "test1"},
             field2={"value": "test2"},
         )
-        assert instance.model_dump() == {
-            "field1": {"value": "test1"},
-            "field2": {"value": "test2"},
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "field1": {"value": "test1"},
+                "field2": {"value": "test2"},
+            }
+        )
 
     def test_direct_ref_access_in_array(self) -> None:
         """Test direct reference access in array items."""
@@ -465,7 +498,7 @@ class TestReferences:
         model = to_model(schema)
 
         instance = model([{"name": "item1"}, {"name": "item2"}])  # type: ignore[call-arg]
-        assert instance.model_dump() == [{"name": "item1"}, {"name": "item2"}]  # type: ignore[comparison-overlap]
+        assert instance.model_dump() == snapshot([{"name": "item1"}, {"name": "item2"}])
 
     def test_forward_ref_unresolved(self) -> None:
         """Test ForwardRef creation when reference isn't resolved yet."""
@@ -492,9 +525,11 @@ class TestReferences:
         model = to_model(schema)
 
         instance = model(items=["text", {"nested": "value"}])
-        assert instance.model_dump() == {
-            "items": ["text", {"nested": "value"}],
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "items": ["text", {"nested": "value"}],
+            }
+        )
 
 
 class TestComposition:
@@ -520,10 +555,12 @@ class TestComposition:
         model = to_model(schema)
 
         instance = model(name="Alice", age=30)
-        assert instance.model_dump() == {
-            "name": "Alice",
-            "age": 30,
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "name": "Alice",
+                "age": 30,
+            }
+        )
 
     def test_anyof_union(self) -> None:
         """Test anyOf creates Union types."""
@@ -542,10 +579,10 @@ class TestComposition:
         model = to_model(schema)
 
         instance = model(value="hello")
-        assert instance.model_dump() == {"value": "hello"}
+        assert instance.model_dump() == snapshot({"value": "hello"})
 
         instance = model(value=42)
-        assert instance.model_dump() == {"value": 42}
+        assert instance.model_dump() == snapshot({"value": 42})
 
     def test_oneof_union(self) -> None:
         """Test oneOf creates Union types."""
@@ -564,10 +601,10 @@ class TestComposition:
         model = to_model(schema)
 
         instance = model(value="text")
-        assert instance.model_dump() == {"value": "text"}
+        assert instance.model_dump() == snapshot({"value": "text"})
 
         instance = model(value=True)
-        assert instance.model_dump() == {"value": True}
+        assert instance.model_dump() == snapshot({"value": True})
 
     def test_allof_with_reference(self) -> None:
         """Test `allOf` with `$ref`."""
@@ -596,10 +633,12 @@ class TestComposition:
         model = to_model(schema)
 
         instance = model(id=1, name="Test")
-        assert instance.model_dump() == {
-            "id": 1,
-            "name": "Test",
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "id": 1,
+                "name": "Test",
+            }
+        )
 
     def test_root_model_with_allof(self) -> None:
         """Test RootModel with allOf."""
@@ -637,9 +676,11 @@ class TestComposition:
         model = to_model(schema)
 
         instance = model(combined={"a": "test", "b": 42})
-        assert instance.model_dump() == {
-            "combined": {"a": "test", "b": 42},
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "combined": {"a": "test", "b": 42},
+            }
+        )
 
     def test_complex_union_types(self) -> None:
         """Test complex union type scenarios."""
@@ -659,13 +700,13 @@ class TestComposition:
         model = to_model(schema)
 
         instance = model(multi_value="text")
-        assert instance.model_dump() == {"multi_value": "text"}
+        assert instance.model_dump() == snapshot({"multi_value": "text"})
 
         instance = model(multi_value=42)
-        assert instance.model_dump() == {"multi_value": 42}
+        assert instance.model_dump() == snapshot({"multi_value": 42})
 
         instance = model(multi_value=True)
-        assert instance.model_dump() == {"multi_value": True}
+        assert instance.model_dump() == snapshot({"multi_value": True})
 
 
 class TestExplicitDefaults:
@@ -683,7 +724,7 @@ class TestExplicitDefaults:
         model = to_model(schema)
 
         instance = model()
-        assert instance.model_dump() == {"status": "pending"}
+        assert instance.model_dump() == snapshot({"status": "pending"})
 
 
 @pytest.mark.parametrize(
@@ -724,9 +765,11 @@ class TestDictTypes:
         model = to_model(schema)
 
         instance = model(metadata={"count": 42, "total": 100})
-        assert instance.model_dump() == {
-            "metadata": {"count": 42, "total": 100},
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "metadata": {"count": 42, "total": 100},
+            }
+        )
 
     def test_dict_with_false_additional_properties(self) -> None:
         """Test object creation with additionalProperties: false."""
@@ -740,7 +783,7 @@ class TestDictTypes:
         model = to_model(schema)
 
         instance = model(data={})
-        assert instance.model_dump() == {"data": {}}
+        assert instance.model_dump() == snapshot({"data": {}})
 
         with pytest.raises(ValidationError):
             model(data={"extra": "field"})
@@ -760,9 +803,11 @@ class TestDictTypes:
         model = to_model(schema)
 
         instance = model(data={"a": 1, "b": "text", "c": [1, 2, 3]})
-        assert instance.model_dump() == {
-            "data": {"a": 1, "b": "text", "c": [1, 2, 3]},
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "data": {"a": 1, "b": "text", "c": [1, 2, 3]},
+            }
+        )
 
 
 class TestMultipleTypes:
@@ -780,13 +825,13 @@ class TestMultipleTypes:
         model = to_model(schema)
 
         instance = model(value="text")
-        assert instance.model_dump() == {"value": "text"}
+        assert instance.model_dump() == snapshot({"value": "text"})
 
         instance = model(value=42)
-        assert instance.model_dump() == {"value": 42}
+        assert instance.model_dump() == snapshot({"value": 42})
 
         instance = model(value=None)
-        assert instance.model_dump() == {"value": None}
+        assert instance.model_dump() == snapshot({"value": None})
 
 
 class TestAdditionalPropertiesConfig:
@@ -803,7 +848,7 @@ class TestAdditionalPropertiesConfig:
         model = to_model(schema)
 
         instance = model(name="Alice")
-        assert instance.model_dump() == {"name": "Alice"}
+        assert instance.model_dump() == snapshot({"name": "Alice"})
 
         with pytest.raises(ValidationError):
             model(name="Alice", extra="field")
@@ -819,10 +864,12 @@ class TestAdditionalPropertiesConfig:
         model = to_model(schema)
 
         instance = model(name="Alice", extra="allowed")
-        assert instance.model_dump() == {
-            "name": "Alice",
-            "extra": "allowed",
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "name": "Alice",
+                "extra": "allowed",
+            }
+        )
 
 
 @pytest.mark.parametrize(
@@ -890,7 +937,7 @@ class TestAnnotatedValidators:
         model = to_model(schema, format_validators={"positive": PositiveInt})
 
         instance = model(count=5)
-        assert instance.model_dump() == {"count": 5}
+        assert instance.model_dump() == snapshot({"count": 5})
 
         with pytest.raises(ValidationError, match="Must be positive"):
             model(count=-1)
@@ -918,10 +965,10 @@ class TestAnnotatedValidators:
         model = to_model(schema, format_validators={"doubled-even": DoubledEvenInt})
 
         instance = model(count=3)
-        assert instance.model_dump() == {"count": 6}
+        assert instance.model_dump() == snapshot({"count": 6})
 
         instance = model(count=4)
-        assert instance.model_dump() == {"count": 8}
+        assert instance.model_dump() == snapshot({"count": 8})
 
     def test_callable_validator(self) -> None:
         """Test callable function as validator."""
@@ -941,7 +988,7 @@ class TestAnnotatedValidators:
         model = to_model(schema, format_validators={"email-simple": validate_email_simple})  # type: ignore[dict-item]
 
         instance = model(email="test@example.com")
-        assert instance.model_dump() == {"email": "test@example.com"}
+        assert instance.model_dump() == snapshot({"email": "test@example.com"})
 
         with pytest.raises(ValidationError, match="Invalid email"):
             model(email="invalid")
@@ -978,7 +1025,7 @@ class TestAnnotatedValidators:
         )
 
         instance = model(count=5, code="ABC")
-        assert instance.model_dump() == {"count": 5, "code": "ABC"}
+        assert instance.model_dump() == snapshot({"count": 5, "code": "ABC"})
 
         with pytest.raises(ValidationError, match="Must be positive"):
             model(count=-1, code="ABC")
@@ -1024,9 +1071,11 @@ class TestAnnotatedValidators:
         model = to_model(schema, format_validators={"custom": CustomType})
 
         instance = model(field="custom:value")
-        assert instance.model_dump() == {
-            "field": "custom:value",
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "field": "custom:value",
+            }
+        )
 
     def test_native_python_types_as_validators(self) -> None:
         """Test native Python types (datetime, UUID, etc.) as format validators."""
@@ -1108,7 +1157,7 @@ class TestFieldInfoMetadata:
         model = to_model(schema)
 
         field_info: FieldInfo = model.model_fields["email"]
-        assert field_info.examples == ["user@example.com", "admin@example.com"]
+        assert field_info.examples == snapshot(["user@example.com", "admin@example.com"])
 
     def test_exclusive_minimum_and_maximum(self) -> None:
         """Test `exclusiveMinimum` and `exclusiveMaximum` map to `gt` and `lt`."""
@@ -1172,7 +1221,7 @@ class TestSchemaEdgeCases:
         model = to_model(schema)
 
         instance = model(["item1", "item2", "item3"])  # type: ignore[call-arg]
-        assert instance.model_dump() == ["item1", "item2", "item3"]  # type: ignore[comparison-overlap]
+        assert instance.model_dump() == snapshot(["item1", "item2", "item3"])
 
     def test_root_model_for_string_type(self) -> None:
         """Test RootModel creation for string type schemas."""
@@ -1230,10 +1279,12 @@ class TestSchemaEdgeCases:
         model = to_model(schema)
 
         instance = model(name="Alice", age=30)
-        assert instance.model_dump() == {
-            "name": "Alice",
-            "age": 30,
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "name": "Alice",
+                "age": 30,
+            }
+        )
 
     def test_allof_without_properties_multiple_bases(self) -> None:
         """Test allOf without properties with multiple base classes."""
@@ -1265,11 +1316,13 @@ class TestSchemaEdgeCases:
         model = to_model(schema)
 
         instance = model(name="Alice", age=30, email="alice@example.com")
-        assert instance.model_dump() == {
-            "name": "Alice",
-            "age": 30,
-            "email": "alice@example.com",
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "name": "Alice",
+                "age": 30,
+                "email": "alice@example.com",
+            }
+        )
 
     def test_anyof_with_null(self) -> None:
         """Test anyOf with null type."""
@@ -1288,10 +1341,10 @@ class TestSchemaEdgeCases:
         model = to_model(schema)
 
         instance = model(value="text")
-        assert instance.model_dump() == {"value": "text"}
+        assert instance.model_dump() == snapshot({"value": "text"})
 
         instance = model(value=None)
-        assert instance.model_dump() == {"value": None}
+        assert instance.model_dump() == snapshot({"value": None})
 
     def test_unique_items_array(self) -> None:
         """Test array with uniqueItems constraint."""
@@ -1309,9 +1362,11 @@ class TestSchemaEdgeCases:
         model = to_model(schema)
 
         instance = model(tags=["python", "coding", "dev"])
-        assert instance.model_dump() == {
-            "tags": ["python", "coding", "dev"],
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "tags": ["python", "coding", "dev"],
+            }
+        )
 
     def test_number_constraints(self) -> None:
         """Test number with min/max and multiple constraints."""
@@ -1330,7 +1385,7 @@ class TestSchemaEdgeCases:
         model = to_model(schema)
 
         instance = model(score=50.5)
-        assert instance.model_dump() == {"score": 50.5}
+        assert instance.model_dump() == snapshot({"score": 50.5})
 
         with pytest.raises(ValidationError):
             model(score=-1)
@@ -1356,11 +1411,13 @@ class TestSchemaEdgeCases:
         model = to_model(schema)
 
         instance = model(name="test", extra1=10, extra2=20)
-        assert instance.model_dump() == {
-            "name": "test",
-            "extra1": 10,
-            "extra2": 20,
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "name": "test",
+                "extra1": 10,
+                "extra2": 20,
+            }
+        )
 
     def test_property_names_pattern(self) -> None:
         """Test propertyNames with pattern."""
@@ -1375,10 +1432,12 @@ class TestSchemaEdgeCases:
         model = to_model(schema)
 
         instance = model(valid_name="test", another_name="value")
-        assert instance.model_dump() == {
-            "valid_name": "test",
-            "another_name": "value",
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "valid_name": "test",
+                "another_name": "value",
+            }
+        )
 
     def test_model_generation_with_uncached_ref(self) -> None:
         """Test model generation fallback when ref exists but model not yet cached.
@@ -1401,7 +1460,7 @@ class TestSchemaEdgeCases:
         model = converter.trigger_uncached_ref_scenario()
 
         instance = model(value="test")
-        assert instance.model_dump() == {"value": "test"}
+        assert instance.model_dump() == snapshot({"value": "test"})
 
     def test_schema_with_prebuilt_refs_no_defs(self) -> None:
         """Test converter with pre-built refs but no `$defs` in schema.
@@ -1428,9 +1487,11 @@ class TestSchemaEdgeCases:
         model = converter.convert_schema(schema)
 
         instance = model(address={"street": "Main St", "city": "NYC"})
-        assert instance.model_dump() == {
-            "address": {"street": "Main St", "city": "NYC"},
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "address": {"street": "Main St", "city": "NYC"},
+            }
+        )
 
     def test_array_items_with_ref_generation(self) -> None:
         """Test array with `$ref` in items triggers model generation."""
@@ -1456,12 +1517,14 @@ class TestSchemaEdgeCases:
         model = to_model(schema)
 
         instance = model(items=[{"id": 1, "name": "first"}, {"id": 2, "name": "second"}])
-        assert instance.model_dump() == {
-            "items": [
-                {"id": 1, "name": "first"},
-                {"id": 2, "name": "second"},
-            ],
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "items": [
+                    {"id": 1, "name": "first"},
+                    {"id": 2, "name": "second"},
+                ],
+            }
+        )
 
     def test_anyof_with_unresolved_forward_ref(self) -> None:
         """Test anyOf with forward reference to another def type."""
@@ -1495,14 +1558,18 @@ class TestSchemaEdgeCases:
         model = to_model(schema)
 
         instance = model(item={"a": "test", "other": {"b": 42}})
-        assert instance.model_dump() == {
-            "item": {"a": "test", "other": {"b": 42}},
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "item": {"a": "test", "other": {"b": 42}},
+            }
+        )
 
         instance = model(item={"a": "test", "other": None})
-        assert instance.model_dump() == {
-            "item": {"a": "test", "other": None},
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "item": {"a": "test", "other": None},
+            }
+        )
 
     def test_array_without_items_schema(self) -> None:
         """Test array without items schema accepts any element types."""
@@ -1516,9 +1583,11 @@ class TestSchemaEdgeCases:
         model = to_model(schema)
 
         instance = model(data=[1, "two", 3.0, True, None])
-        assert instance.model_dump() == {
-            "data": [1, "two", 3.0, True, None],
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "data": [1, "two", 3.0, True, None],
+            }
+        )
 
 
 class TestConverterCaching:
@@ -1610,9 +1679,11 @@ class TestSchemaFormatValidators:
         model = to_model(schema, format_validators={"email": Email})
 
         instance = model(email="alice@example.com")
-        assert instance.model_dump() == {
-            "email": "alice@example.com",
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "email": "alice@example.com",
+            }
+        )
 
         with pytest.raises(ValidationError):
             model(email="not-an-email")
@@ -1698,9 +1769,11 @@ class TestSchemaFormatValidators:
         model = to_model(schema, format_validators={"uri": Uri})
 
         instance = model(website="https://example.com")
-        assert instance.model_dump() == {
-            "website": "https://example.com",
-        }
+        assert instance.model_dump() == snapshot(
+            {
+                "website": "https://example.com",
+            }
+        )
 
         with pytest.raises(ValidationError):
             model(website="example.com")
