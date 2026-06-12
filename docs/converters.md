@@ -129,6 +129,8 @@ generated model's validation:
   `$ref` URLs are not fetched.
 - `pattern` is compiled by Pydantic's default Rust regex engine, which does not support
   ECMA-262 lookarounds — such patterns fail at model build time.
+- In a multi-type union (`{"type": ["object", "string"], "properties": {...}}`) the `object`
+  branch is validated as a plain `dict[str, Any]` — sibling `properties` are not applied.
 - `format` is metadata unless a matching entry is passed in `format_validators` — see
   [Format Validators](formats.md). Built-in aliases cover 13 of the 19 spec-defined formats;
   `idn-email`, `idn-hostname`, `uri-template`, `json-pointer`, `relative-json-pointer`, and

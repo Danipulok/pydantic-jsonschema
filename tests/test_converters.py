@@ -178,6 +178,26 @@ class TestBasicConversion:
         instance = model(value=None)
         assert instance.model_dump() == snapshot({"value": None})
 
+    def test_multiple_type_union_with_object(self) -> None:
+        """Test multi-type union including `object` still rejects unlisted types."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "value": {"type": ["object", "string"]},
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(value={"key": 1})
+        assert instance.model_dump() == snapshot({"value": {"key": 1}})
+
+        instance = model(value="text")
+        assert instance.model_dump() == snapshot({"value": "text"})
+
+        with pytest.raises(ValidationError):
+            model(value=42)
+
     def test_array_without_items_schema(self) -> None:
         """Test array without items schema accepts any element types."""
         schema_raw: SchemaRaw = {

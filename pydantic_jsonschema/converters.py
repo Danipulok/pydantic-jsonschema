@@ -47,6 +47,11 @@ _PYDANTIC_DEFAULT_MISSING: Final[Ellipsis] = ...  # type: ignore[valid-type]
 # See: https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.4
 _DEFS_KEY: Final[str] = "$defs"
 
+# NOTE: `ARRAY` / `OBJECT` entries are only reachable from multi-type unions
+# (`{"type": ["object", "string"]}`) — single `array` / `object` schemas are handled
+# by `_type_annotation` before the mapping is consulted.
+# `OBJECT` must not map to `Any`: `Union[Any, str]` collapses to `Any`,
+# and the union stops rejecting anything.
 _DATA_TYPE_ANNOTATION_MAPPING: Final[dict[DataType, type]] = {
     DataType.NULL: NoneType,
     DataType.STRING: str,
@@ -54,7 +59,7 @@ _DATA_TYPE_ANNOTATION_MAPPING: Final[dict[DataType, type]] = {
     DataType.INTEGER: int,
     DataType.BOOLEAN: bool,
     DataType.ARRAY: list[Any],
-    DataType.OBJECT: Any,
+    DataType.OBJECT: dict[str, Any],
 }
 
 # Type aliases
