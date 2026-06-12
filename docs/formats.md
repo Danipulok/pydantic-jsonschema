@@ -9,13 +9,11 @@ applies.
 
 ## Install Optional Dependencies
 
-For email validation and domain-specific types, install the appropriate extra:
+For domain-specific types, install the appropriate extra:
 
 | Extra           | Use for                                      |
 |-----------------|----------------------------------------------|
-| `formats-base`  | Email validation (`email-validator`)         |
 | `formats-extra` | Domain-specific `pydantic-extra-types` types |
-| `formats-all`   | Both groups                                  |
 
 See [Installation](install.md#optional-dependencies) for the install commands.
 
@@ -227,7 +225,7 @@ except ValidationError as er:
 | Validator form   | Example                    | Behavior                                                       |
 |------------------|----------------------------|----------------------------------------------------------------|
 | Callable         | `{"sku": validate_sku}`    | Called before Pydantic type validation                         |
-| Pydantic type    | `{"email": EmailStr}`      | Replaces the generated annotation                              |
+| Pydantic type    | `{"url": HttpUrl}`         | Replaces the generated annotation                              |
 | `Annotated` type | `{"price": PositivePrice}` | Replaces the generated annotation and preserves its validators |
 
 ### Callable Validators
@@ -252,12 +250,11 @@ format_validators = {"phone": normalize_phone}
 ### Pydantic Types
 
 ```python title="pydantic_type_validator.py"
-from pydantic import EmailStr, HttpUrl
+from pydantic import HttpUrl
 from pydantic_extra_types.color import Color
 
 format_validators = {
     "color": Color,
-    "email": EmailStr,
     "url": HttpUrl,
 }
 ```

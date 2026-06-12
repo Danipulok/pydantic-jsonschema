@@ -40,16 +40,7 @@ Issues = "https://github.com/Danipulok/pydantic-jsonschema/issues"
 Changelog = "https://github.com/Danipulok/pydantic-jsonschema/blob/main/docs/changelog.md"
 
 [project.optional-dependencies]
-formats-base = [
-    "email-validator>=2.0.0",
-]
 formats-extra = [
-    "pydantic-extra-types[all]",
-]
-formats-all = [
-    # `formats-base`
-    "email-validator>=2.0.0",
-    # `formats-extra`
     "pydantic-extra-types[all]",
 ]
 

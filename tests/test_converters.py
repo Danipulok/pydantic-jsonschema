@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Annotated, Any
 from uuid import UUID
 
 import pytest
-from pydantic import BaseModel, EmailStr, GetCoreSchemaHandler, ValidationError
+from pydantic import BaseModel, GetCoreSchemaHandler, ValidationError
 from pydantic.functional_validators import AfterValidator
 from pydantic_core import CoreSchema, core_schema
 
@@ -1045,7 +1045,7 @@ class TestAnnotatedValidators:
             schema,
             format_validators={
                 "date-time": datetime,
-                "email": EmailStr,
+                "email": Email,
                 "uuid": UUID_FORMAT,
                 "ipv4": IPv4Address,
             },
@@ -1053,7 +1053,7 @@ class TestAnnotatedValidators:
 
         annotations = model.model_fields
         assert annotations["created_at"].annotation is datetime
-        assert annotations["email"].annotation is EmailStr
+        assert annotations["email"].annotation is str
         assert annotations["id"].annotation is UUID
         assert annotations["ip"].annotation is IPv4Address
 

@@ -22,21 +22,7 @@ This installs the `pydantic_jsonschema` package with [`pydantic`](https://docs.p
 
 ## Optional dependencies
 
-Pydantic JSON Schema has optional dependencies for `format` validation.
-
-Use `formats-base` for email validation:
-
-=== "uv"
-
-    ```bash
-    uv add 'pydantic-jsonschema[formats-base]'
-    ```
-
-=== "pip"
-
-    ```bash
-    pip install 'pydantic-jsonschema[formats-base]'
-    ```
+Pydantic JSON Schema has optional dependencies for domain-specific `format` types.
 
 Use `formats-extra` for domain-specific formats such as payment cards, phone numbers, colors,
 country codes, and MAC addresses:
@@ -51,20 +37,6 @@ country codes, and MAC addresses:
 
     ```bash
     pip install 'pydantic-jsonschema[formats-extra]'
-    ```
-
-To install both groups:
-
-=== "uv"
-
-    ```bash
-    uv add 'pydantic-jsonschema[formats-all]'
-    ```
-
-=== "pip"
-
-    ```bash
-    pip install 'pydantic-jsonschema[formats-all]'
     ```
 
 See [Format Validators](formats.md) for supported formats and usage examples.
