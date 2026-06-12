@@ -711,7 +711,7 @@ class SchemaConverter:
                 union_args.append(self._schema_to_annotation(sub_schema))
         return union_args
 
-    def _schema_to_annotation(  # noqa: C901, PLR0911, PLR0912
+    def _schema_to_annotation(
         self,
         schema: Schema | Reference,
         /,
@@ -721,24 +721,63 @@ class SchemaConverter:
         :param schema: Schema to convert.
         :returns: Type annotation.
         """
-        # Handle Reference
         if isinstance(schema, Reference):
-            # Check if reference can be resolved
-            if schema.ref in self._refs or schema.ref in self._defs_cache:
-                return self._get_model(schema.ref)
-
-            # Return `ForwardRef` if not yet resolved
-            return ForwardRef(sanitize_identifier(schema.ref))
+            return self._reference_annotation(schema)
 
         # `enum` / `const` -> `Literal`:
         if schema.enum is not MISSING or schema.const is not MISSING:
-            values = schema.enum if schema.enum is not MISSING else (schema.const,)
-            literal_type = Literal[tuple(values)]  # type: ignore[valid-type]
-            return cast("type", literal_type)
+            return self._literal_annotation(schema)
 
+        # `anyOf` / `oneOf` / `allOf` -> union or nested model:
+        composition_annotation = self._composition_annotation(schema)
+        if composition_annotation is not None:
+            return composition_annotation
+
+        # `type` -> Python type (or `Any` when absent):
+        return self._type_annotation(schema)
+
+    def _reference_annotation(
+        self,
+        reference: Reference,
+        /,
+    ) -> type | ForwardRef:
+        """Resolve a reference to a model, or defer it via `ForwardRef`.
+
+        :param reference: Reference to resolve.
+        :returns: Resolved model or `ForwardRef` for later resolution.
+        """
+        if reference.ref in self._refs or reference.ref in self._defs_cache:
+            return self._get_model(reference.ref)
+
+        return ForwardRef(sanitize_identifier(reference.ref))
+
+    @staticmethod
+    def _literal_annotation(
+        schema: Schema,
+        /,
+    ) -> type:
+        """Convert `enum` / `const` to a `Literal` annotation.
+
+        :param schema: Schema with `enum` or `const` set.
+        :returns: `Literal` annotation.
+        """
+        values = schema.enum if schema.enum is not MISSING else (schema.const,)
+        literal_type = Literal[tuple(values)]  # type: ignore[valid-type]
+        return cast("type", literal_type)
+
+    def _composition_annotation(
+        self,
+        schema: Schema,
+        /,
+    ) -> type | None:
+        """Convert `anyOf` / `oneOf` / `allOf` composition to an annotation.
+
+        :param schema: Schema to convert.
+        :returns: Annotation, or `None` if the schema has no composition keyword.
+        """
         # `anyOf` -> `Union`:
         if schema.any_of is not MISSING:
-            union_args: list[type | ForwardRef] = self._union_args(schema.any_of, kind="anyOf")
+            union_args = self._union_args(schema.any_of, kind="anyOf")
             union_annotation = Union[tuple(union_args)]  # type: ignore[valid-type]  # noqa: UP007
             return cast("type", union_annotation)
 
@@ -752,7 +791,18 @@ class SchemaConverter:
         if schema.all_of is not MISSING:
             return self._convert_nested_schema(schema)
 
-        # `array` -> list:
+        return None
+
+    def _type_annotation(
+        self,
+        schema: Schema,
+        /,
+    ) -> type:
+        """Convert the `type` keyword to a Python type annotation.
+
+        :param schema: Schema to convert.
+        :returns: Type annotation (`Any` when `type` is absent).
+        """
         if schema.type == DataType.ARRAY:
             item_type: type | ForwardRef = Any
             if schema.items is not MISSING:
@@ -761,31 +811,41 @@ class SchemaConverter:
             list_annotation = list[item_type]  # type: ignore[valid-type]
             return cast("type", list_annotation)
 
-        # `object` -> `dict` / `BaseModel`:
         if schema.type == DataType.OBJECT:
-            if schema.properties is not MISSING:
-                return self._convert_nested_schema(schema)
+            return self._object_annotation(schema)
 
-            if schema.additional_properties is False:
-                return self._convert_nested_schema(schema)
-
-            if isinstance(schema.additional_properties, (Schema, Reference)):
-                with self._track_path("additionalProperties"):
-                    value_annotation = self._schema_to_annotation(schema.additional_properties)
-                    dict_annotation = dict[str, value_annotation]  # type: ignore[valid-type]
-                    return cast("type", dict_annotation)
-
-            return dict[str, Any]
-
-        # Handle basic types
         if schema.type is not MISSING:
             if isinstance(schema.type, DataType):
                 return _DATA_TYPE_ANNOTATION_MAPPING[schema.type]
             union_args = [_DATA_TYPE_ANNOTATION_MAPPING[data_type] for data_type in schema.type]
-            union_annotation = Union[tuple(union_args)]  # noqa: UP007
+            union_annotation = Union[tuple(union_args)]  # type: ignore[valid-type]  # noqa: UP007
             return cast("type", union_annotation)
 
         return Any
+
+    def _object_annotation(
+        self,
+        schema: Schema,
+        /,
+    ) -> type:
+        """Convert an object schema to a model or typed dict annotation.
+
+        :param schema: Object schema to convert.
+        :returns: Generated model or `dict[str, ...]` annotation.
+        """
+        if schema.properties is not MISSING:
+            return self._convert_nested_schema(schema)
+
+        if schema.additional_properties is False:
+            return self._convert_nested_schema(schema)
+
+        if isinstance(schema.additional_properties, (Schema, Reference)):
+            with self._track_path("additionalProperties"):
+                value_annotation = self._schema_to_annotation(schema.additional_properties)
+                dict_annotation = dict[str, value_annotation]  # type: ignore[valid-type]
+                return cast("type", dict_annotation)
+
+        return dict[str, Any]
 
     @staticmethod
     def _get_field_default(
