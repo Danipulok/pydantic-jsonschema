@@ -469,24 +469,16 @@ class SchemaConverter:
 
         # Rebuild all models with forward refs
         forward_refs = self._get_forward_refs_namespace()
-        for schema_def in defs.values():
-            cache_key = self._hash_schema(schema_def)
-            # Model is guaranteed to be in cache after `_convert_nested_schema above`
-            model = self._models_cache[cache_key]
-            # Model is guaranteed to be in `forward_refs` as it was just added
-            model.model_rebuild(_types_namespace=forward_refs)
+        for ref in defs:
+            self._get_model(ref).model_rebuild(_types_namespace=forward_refs)
 
     def _get_forward_refs_namespace(self) -> dict[str, type[BaseModel]]:
         """Get namespace for forward reference resolution."""
-        namespace: dict[str, type[BaseModel]] = {}
+        namespace: dict[str, type[BaseModel]] = {
+            sanitize_identifier(ref): self._get_model(ref) for ref in self._defs_cache
+        }
 
-        # Add models from defs cache
-        # Models are guaranteed to be in cache after `_build_defs_cache`
-        for ref, schema in self._defs_cache.items():
-            cache_key = self._hash_schema(schema)
-            namespace[sanitize_identifier(ref)] = self._models_cache[cache_key]
-
-        # Add pre-built ref models
+        # Pre-built ref models take precedence over generated ones.
         for ref, model in self._refs.items():
             namespace[sanitize_identifier(ref)] = model
 
