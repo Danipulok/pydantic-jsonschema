@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.0.3] — 2026-06-12
+
+### Changed
+
+- replace `fqdn` and `rfc3986` deps with built-in validators
+
+### Documentation
+
+- add comments explaining template workarounds for markdownlint
+- add manual GitHub Release and docs deploy steps
+- add `just changelog` step to release flow
+
+### Fixed
+
+- fix `cliff.toml` template for valid markdown output
+- update `setup-just` SHA to v4
+
 ## [0.0.2] — 2026-06-11
 
 ### Added
@@ -183,5 +200,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - add coverage tests and set `cov-fail-under`
 - add comprehensive test suite
 
+[0.0.3]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.2...0.0.3>
 [0.0.2]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.1...v0.0.2>
 [0.0.1]: <https://github.com/Danipulok/pydantic-jsonschema/releases/tag/v0.0.1>
