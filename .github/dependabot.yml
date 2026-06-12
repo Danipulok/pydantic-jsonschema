@@ -1,0 +1,25 @@
+# Automated dependency update PRs.
+# NOTE: Python resolution still respects `tool.uv.exclude-newer` ("7 days"),
+# so Dependabot PRs only land versions older than the supply-chain cutoff.
+version: 2
+
+updates:
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # Single weekly PR for all Python dependency bumps instead of one PR each.
+      python-dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # Single weekly PR for all action SHA bumps.
+      github-actions:
+        patterns:
+          - "*"
