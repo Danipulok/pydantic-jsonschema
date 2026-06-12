@@ -1,11 +1,14 @@
 """Tests for `_schema.py` JSON Schema models."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from inline_snapshot import snapshot
 
 from pydantic_jsonschema._schema import DataType, Reference, Schema
+
+if TYPE_CHECKING:
+    from tests.conftest import SchemaRaw
 
 
 class TestDataType:
@@ -30,7 +33,7 @@ class TestDataType:
 
 
 class TestReference:
-    """Tests for `Reference` model."""
+    """Tests for `Reference` parsing and serialization."""
 
     def test_model_validate(self) -> None:
         """Test parsing from JSON Schema `$ref` dict."""
@@ -50,14 +53,8 @@ class TestReference:
         assert json_str == snapshot('{"$ref":"#/$defs/User"}')
 
 
-class TestSchema:
-    """Tests for `Schema` model."""
-
-    def test_empty_schema(self) -> None:
-        """Test empty schema dumps to empty dict."""
-        schema = Schema()
-        dumped: dict[str, Any] = schema.model_dump()
-        assert dumped == snapshot({})
+class TestSchemaTypes:
+    """Tests for the `type` keyword parsing."""
 
     def test_simple_type(self) -> None:
         """Test single-type schema."""
@@ -65,62 +62,30 @@ class TestSchema:
         dumped: dict[str, Any] = schema.model_dump()
         assert dumped == snapshot({"type": "string"})
 
-    def test_alias_generator_camel_case(self) -> None:
-        """Test that snake_case fields serialize to camelCase."""
-        schema = Schema.model_validate({"allOf": [{"$ref": "#/$defs/Base"}]})
-        dumped: dict[str, Any] = schema.model_dump()
-        assert dumped == snapshot({"allOf": [{"$ref": "#/$defs/Base"}]})
+    def test_multi_type(self) -> None:
+        """Test `type` as a list of types."""
+        schema = Schema.model_validate({"type": ["string", "null"]})
+        assert schema.model_dump() == snapshot({"type": [DataType.STRING, DataType.NULL]})
 
-    def test_populate_by_name(self) -> None:
-        """Test that fields can be set using Python names."""
-        schema = Schema(min_length=5, max_length=10)
-        dumped: dict[str, Any] = schema.model_dump()
-        assert dumped == snapshot({"minLength": 5, "maxLength": 10})
-
-    def test_defs_alias(self) -> None:
-        """Test `$defs` field with explicit alias."""
-        raw: dict[str, Any] = {
-            "$defs": {"User": {"type": "object"}},
-        }
-        schema = Schema.model_validate(raw)
-        dumped: dict[str, Any] = schema.model_dump()
-        assert dumped == snapshot(
+    def test_items_field(self) -> None:
+        """Test `items` parsed as nested `Schema`."""
+        schema = Schema.model_validate(
             {
-                "$defs": {
-                    "User": {"type": DataType.OBJECT},
-                },
+                "type": "array",
+                "items": {"type": "string"},
+            }
+        )
+        assert isinstance(schema.items, Schema)
+        assert schema.model_dump() == snapshot(
+            {
+                "type": DataType.ARRAY,
+                "items": {"type": DataType.STRING},
             }
         )
 
-    def test_numeric_constraints(self) -> None:
-        """Test numeric validation fields serialize to camelCase."""
-        schema = Schema(
-            multiple_of=0.5,
-            minimum=0,
-            maximum=100,
-            exclusive_minimum=0,
-            exclusive_maximum=100,
-        )
-        dumped: dict[str, Any] = schema.model_dump()
-        assert dumped == snapshot(
-            {
-                "multipleOf": 0.5,
-                "minimum": 0,
-                "maximum": 100,
-                "exclusiveMinimum": 0,
-                "exclusiveMaximum": 100,
-            }
-        )
 
-    def test_array_constraints(self) -> None:
-        """Test array validation fields serialize to camelCase."""
-        schema = Schema(
-            type=DataType.ARRAY,
-            min_items=1,
-            max_items=10,
-        )
-        dumped: dict[str, Any] = schema.model_dump()
-        assert dumped == snapshot({"type": "array", "minItems": 1, "maxItems": 10})
+class TestSchemaObjects:
+    """Tests for object-related keywords."""
 
     def test_nested_properties(self) -> None:
         """Test nested object with properties and required."""
@@ -155,7 +120,32 @@ class TestSchema:
             }
         )
 
-    def test_composition_any_of(self) -> None:
+    def test_defs_alias(self) -> None:
+        """Test `$defs` field with explicit alias."""
+        raw: dict[str, Any] = {
+            "$defs": {"User": {"type": "object"}},
+        }
+        schema = Schema.model_validate(raw)
+        dumped: dict[str, Any] = schema.model_dump()
+        assert dumped == snapshot(
+            {
+                "$defs": {
+                    "User": {"type": DataType.OBJECT},
+                },
+            }
+        )
+
+
+class TestSchemaComposition:
+    """Tests for `allOf` / `anyOf` / `oneOf` composition keywords."""
+
+    def test_all_of(self) -> None:
+        """Test `allOf` parsed and serialized back to camelCase."""
+        schema = Schema.model_validate({"allOf": [{"$ref": "#/$defs/Base"}]})
+        dumped: dict[str, Any] = schema.model_dump()
+        assert dumped == snapshot({"allOf": [{"$ref": "#/$defs/Base"}]})
+
+    def test_any_of(self) -> None:
         """Test `anyOf` composition."""
         schema = Schema.model_validate(
             {
@@ -171,7 +161,7 @@ class TestSchema:
             }
         )
 
-    def test_composition_one_of(self) -> None:
+    def test_one_of(self) -> None:
         """Test `oneOf` composition."""
         schema = Schema.model_validate(
             {
@@ -186,6 +176,44 @@ class TestSchema:
                 ],
             }
         )
+
+
+class TestSchemaConstraints:
+    """Tests for numeric / array constraint keywords."""
+
+    def test_numeric_constraints(self) -> None:
+        """Test numeric validation fields serialize to camelCase."""
+        schema = Schema(
+            multiple_of=0.5,
+            minimum=0,
+            maximum=100,
+            exclusive_minimum=0,
+            exclusive_maximum=100,
+        )
+        dumped: dict[str, Any] = schema.model_dump()
+        assert dumped == snapshot(
+            {
+                "multipleOf": 0.5,
+                "minimum": 0,
+                "maximum": 100,
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 100,
+            }
+        )
+
+    def test_array_constraints(self) -> None:
+        """Test array validation fields serialize to camelCase."""
+        schema = Schema(
+            type=DataType.ARRAY,
+            min_items=1,
+            max_items=10,
+        )
+        dumped: dict[str, Any] = schema.model_dump()
+        assert dumped == snapshot({"type": "array", "minItems": 1, "maxItems": 10})
+
+
+class TestSchemaMetadata:
+    """Tests for metadata and annotation keywords."""
 
     def test_metadata_fields(self) -> None:
         """Test metadata fields: `title`, `description`, `default`, `examples`."""
@@ -229,23 +257,71 @@ class TestSchema:
         dumped: dict[str, Any] = schema.model_dump()
         assert dumped == snapshot({"type": DataType.STRING, "x-custom": True})
 
-    def test_items_field(self) -> None:
-        """Test `items` parsed as nested `Schema`."""
-        schema = Schema.model_validate(
-            {
-                "type": "array",
-                "items": {"type": "string"},
-            }
+
+class TestSchemaSerialization:
+    """Tests for dump behavior: aliases and unset-field stripping."""
+
+    def test_empty_schema(self) -> None:
+        """Test empty schema dumps to empty dict."""
+        schema = Schema()
+        dumped: dict[str, Any] = schema.model_dump()
+        assert dumped == snapshot({})
+
+    def test_populate_by_name(self) -> None:
+        """Test that fields can be set using Python names."""
+        schema = Schema(min_length=5, max_length=10)
+        dumped: dict[str, Any] = schema.model_dump()
+        assert dumped == snapshot({"minLength": 5, "maxLength": 10})
+
+    def test_only_set_fields_dumped(self) -> None:
+        """Test that only explicitly provided fields appear in dump."""
+        schema = Schema(
+            type=DataType.OBJECT,
+            description="A user object",
         )
-        assert isinstance(schema.items, Schema)
-        assert schema.model_dump() == snapshot(
+        dumped: dict[str, Any] = schema.model_dump()
+        assert dumped == snapshot(
             {
-                "type": DataType.ARRAY,
-                "items": {"type": DataType.STRING},
+                "type": DataType.OBJECT,
+                "description": "A user object",
             }
         )
 
-    def test_multi_type(self) -> None:
-        """Test `type` as a list of types."""
-        schema = Schema.model_validate({"type": ["string", "null"]})
-        assert schema.model_dump() == snapshot({"type": [DataType.STRING, DataType.NULL]})
+    def test_nested_unset_stripping(self) -> None:
+        """Test that unset fields are stripped recursively in nested schemas."""
+        schema = Schema(
+            type=DataType.OBJECT,
+            properties={
+                "name": Schema(type=DataType.STRING),
+                "age": Schema(type=DataType.INTEGER, minimum=0),
+            },
+        )
+        dumped: dict[str, Any] = schema.model_dump()
+        assert dumped == snapshot(
+            {
+                "type": DataType.OBJECT,
+                "properties": {
+                    "name": {"type": DataType.STRING},
+                    "age": {"type": DataType.INTEGER, "minimum": 0.0},
+                },
+            }
+        )
+
+    def test_model_validate_roundtrip(self) -> None:
+        """Test that `Schema` roundtrips through `model_validate` without adding unset fields."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+            },
+            "required": ["name"],
+        }
+        schema = Schema.model_validate(schema_raw)
+        dumped: dict[str, Any] = schema.model_dump()
+        assert dumped == snapshot(
+            {
+                "type": DataType.OBJECT,
+                "properties": {"name": {"type": DataType.STRING}},
+                "required": ["name"],
+            }
+        )
