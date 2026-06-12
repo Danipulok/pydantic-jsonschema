@@ -1,16 +1,11 @@
 """Public API for the pydantic_jsonschema package."""
 
 from pydantic_jsonschema._version import __version__
-from pydantic_jsonschema.converters import (
-    Ref,
-    SchemaConverter,
-    to_model,
-)
+from pydantic_jsonschema.converters import SchemaConverter, to_model
 from pydantic_jsonschema.types import DataType, Reference, Schema
 
 __all__ = [
     "DataType",
-    "Ref",
     "Reference",
     "Schema",
     "SchemaConverter",
