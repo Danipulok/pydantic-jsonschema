@@ -158,6 +158,44 @@ class TestBasicConversion:
             }
         )
 
+    def test_multiple_type_union(self) -> None:
+        """Test schema with multiple types."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "value": {"type": ["string", "integer", "null"]},
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(value="text")
+        assert instance.model_dump() == snapshot({"value": "text"})
+
+        instance = model(value=42)
+        assert instance.model_dump() == snapshot({"value": 42})
+
+        instance = model(value=None)
+        assert instance.model_dump() == snapshot({"value": None})
+
+    def test_array_without_items_schema(self) -> None:
+        """Test array without items schema accepts any element types."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "data": {"type": "array"},
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(data=[1, "two", 3.0, True, None])
+        assert instance.model_dump() == snapshot(
+            {
+                "data": [1, "two", 3.0, True, None],
+            }
+        )
+
 
 class TestReferences:
     """Tests for `$defs` and `$ref` support."""
@@ -625,9 +663,94 @@ class TestReferences:
             }
         )
 
+    def test_defs_in_nested_schema_raises_error(self) -> None:
+        """Test that `$defs` in nested schemas raises `SchemaConversionError`."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "nested": {
+                    "type": "object",
+                    "$defs": {
+                        "SomeType": {"type": "string"},
+                    },
+                    "properties": {
+                        "field": {"type": "string"},
+                    },
+                },
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+
+        with pytest.raises(SchemaConversionError, match=r"\$defs is only allowed in root schema"):
+            to_model(schema)
+
+    def test_schema_with_prebuilt_refs_no_defs(self) -> None:
+        """Test converter with pre-built refs but no `$defs` in schema.
+
+        This ensures the forward reference namespace building works correctly
+        when there are no schema definitions to process (empty defs cache).
+        """
+
+        class CustomAddress(BaseModel):
+            street: str
+            city: str
+
+        # Schema without `$defs`, but will use pre-built ref.
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "address": {"$ref": "#/$defs/CustomAddress"},
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+
+        # Create converter with pre-built ref for CustomAddress
+        converter = SchemaConverter(refs={"#/$defs/CustomAddress": CustomAddress})
+        model = converter.convert_schema(schema)
+
+        instance = model(address={"street": "Main St", "city": "NYC"})
+        assert instance.model_dump() == snapshot(
+            {
+                "address": {"street": "Main St", "city": "NYC"},
+            }
+        )
+
+    def test_array_items_with_ref_generation(self) -> None:
+        """Test array with `$ref` in items triggers model generation."""
+        schema_raw: SchemaRaw = {
+            "$defs": {
+                "Item": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer"},
+                        "name": {"type": "string"},
+                    },
+                },
+            },
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {"$ref": "#/$defs/Item"},
+                },
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(items=[{"id": 1, "name": "first"}, {"id": 2, "name": "second"}])
+        assert instance.model_dump() == snapshot(
+            {
+                "items": [
+                    {"id": 1, "name": "first"},
+                    {"id": 2, "name": "second"},
+                ],
+            }
+        )
+
 
 class TestComposition:
-    """Tests for allOf, anyOf, oneOf."""
+    """Tests for `allOf` / `anyOf` / `oneOf` composition keywords."""
 
     def test_allof_composition(self) -> None:
         """Test allOf composition."""
@@ -656,6 +779,133 @@ class TestComposition:
             }
         )
 
+    def test_allof_with_reference(self) -> None:
+        """Test `allOf` with `$ref`."""
+        schema_raw: SchemaRaw = {
+            "$defs": {
+                "BaseMixin": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer"},
+                    },
+                    "required": ["id"],
+                },
+            },
+            "type": "object",
+            "allOf": [
+                {"$ref": "#/$defs/BaseMixin"},
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                    },
+                },
+            ],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(id=1, name="Test")
+        assert instance.model_dump() == snapshot(
+            {
+                "id": 1,
+                "name": "Test",
+            }
+        )
+
+    def test_allof_in_property(self) -> None:
+        """Test allOf in property annotation."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "combined": {
+                    "allOf": [
+                        {
+                            "type": "object",
+                            "properties": {"a": {"type": "string"}},
+                        },
+                        {
+                            "type": "object",
+                            "properties": {"b": {"type": "integer"}},
+                        },
+                    ],
+                },
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(combined={"a": "test", "b": 42})
+        assert instance.model_dump() == snapshot(
+            {
+                "combined": {"a": "test", "b": 42},
+            }
+        )
+
+    def test_allof_without_properties_single_base(self) -> None:
+        """Test allOf without properties with single base class."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "allOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "age": {"type": "integer"},
+                    },
+                    "required": ["name"],
+                },
+            ],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(name="Alice", age=30)
+        assert instance.model_dump() == snapshot(
+            {
+                "name": "Alice",
+                "age": 30,
+            }
+        )
+
+    def test_allof_without_properties_multiple_bases(self) -> None:
+        """Test allOf without properties with multiple base classes."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "allOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                    },
+                    "required": ["name"],
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "age": {"type": "integer"},
+                    },
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "email": {"type": "string"},
+                    },
+                },
+            ],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(name="Alice", age=30, email="alice@example.com")
+        assert instance.model_dump() == snapshot(
+            {
+                "name": "Alice",
+                "age": 30,
+                "email": "alice@example.com",
+            }
+        )
+
     def test_anyof_union(self) -> None:
         """Test anyOf creates Union types."""
         schema_raw: SchemaRaw = {
@@ -677,6 +927,99 @@ class TestComposition:
 
         instance = model(value=42)
         assert instance.model_dump() == snapshot({"value": 42})
+
+    def test_complex_union_types(self) -> None:
+        """Test complex union type scenarios."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "multi_value": {
+                    "anyOf": [
+                        {"type": "string"},
+                        {"type": "integer"},
+                        {"type": "boolean"},
+                    ],
+                },
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(multi_value="text")
+        assert instance.model_dump() == snapshot({"multi_value": "text"})
+
+        instance = model(multi_value=42)
+        assert instance.model_dump() == snapshot({"multi_value": 42})
+
+        instance = model(multi_value=True)
+        assert instance.model_dump() == snapshot({"multi_value": True})
+
+    def test_anyof_with_null(self) -> None:
+        """Test anyOf with null type."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "anyOf": [
+                        {"type": "string"},
+                        {"type": "null"},
+                    ],
+                },
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(value="text")
+        assert instance.model_dump() == snapshot({"value": "text"})
+
+        instance = model(value=None)
+        assert instance.model_dump() == snapshot({"value": None})
+
+    def test_anyof_with_unresolved_forward_ref(self) -> None:
+        """Test anyOf with forward reference to another def type."""
+        schema_raw: SchemaRaw = {
+            "$defs": {
+                "TypeA": {
+                    "type": "object",
+                    "properties": {
+                        "a": {"type": "string"},
+                        "other": {
+                            "anyOf": [
+                                {"$ref": "#/$defs/TypeB"},
+                                {"type": "null"},
+                            ],
+                        },
+                    },
+                },
+                "TypeB": {
+                    "type": "object",
+                    "properties": {
+                        "b": {"type": "integer"},
+                    },
+                },
+            },
+            "type": "object",
+            "properties": {
+                "item": {"$ref": "#/$defs/TypeA"},
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(item={"a": "test", "other": {"b": 42}})
+        assert instance.model_dump() == snapshot(
+            {
+                "item": {"a": "test", "other": {"b": 42}},
+            }
+        )
+
+        instance = model(item={"a": "test", "other": None})
+        assert instance.model_dump() == snapshot(
+            {
+                "item": {"a": "test", "other": None},
+            }
+        )
 
     def test_oneof_union(self) -> None:
         """Test oneOf creates Union types."""
@@ -785,39 +1128,62 @@ class TestComposition:
             }
         )
 
-    def test_allof_with_reference(self) -> None:
-        """Test `allOf` with `$ref`."""
+
+class TestRootModels:
+    """Tests for `RootModel` creation from non-object root schemas."""
+
+    def test_root_model_for_array_type(self) -> None:
+        """Test RootModel creation for array type schemas."""
         schema_raw: SchemaRaw = {
-            "$defs": {
-                "BaseMixin": {
-                    "type": "object",
-                    "properties": {
-                        "id": {"type": "integer"},
-                    },
-                    "required": ["id"],
-                },
-            },
-            "type": "object",
-            "allOf": [
-                {"$ref": "#/$defs/BaseMixin"},
-                {
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string"},
-                    },
-                },
-            ],
+            "type": "array",
+            "items": {"type": "string"},
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
 
-        instance = model(id=1, name="Test")
-        assert instance.model_dump() == snapshot(
-            {
-                "id": 1,
-                "name": "Test",
-            }
-        )
+        instance = model(["item1", "item2", "item3"])  # type: ignore[call-arg]
+        assert instance.model_dump() == snapshot(["item1", "item2", "item3"])
+
+    def test_root_model_for_string_type(self) -> None:
+        """Test RootModel creation for string type schemas."""
+        schema_raw: SchemaRaw = {
+            "type": "string",
+            "minLength": 5,
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model("hello world")  # type: ignore[call-arg]
+        assert instance.model_dump() == snapshot("hello world")
+
+        with pytest.raises(ValidationError):
+            model("hi")  # type: ignore[call-arg]
+
+        # Root value has no "absent" concept -> required.
+        with pytest.raises(ValidationError):
+            model()
+
+    def test_root_model_for_integer_type(self) -> None:
+        """Test RootModel creation for integer type schemas."""
+        schema_raw: SchemaRaw = {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        valid_value = 42
+        instance = model(valid_value)  # type: ignore[call-arg]
+        assert instance.model_dump() == valid_value  # type: ignore[comparison-overlap]
+
+        invalid_value = -1
+        with pytest.raises(ValidationError):
+            model(invalid_value)  # type: ignore[call-arg]
+
+        invalid_value = 101
+        with pytest.raises(ValidationError):
+            model(invalid_value)  # type: ignore[call-arg]
 
     def test_root_model_with_allof(self) -> None:
         """Test RootModel with allOf."""
@@ -832,135 +1198,185 @@ class TestComposition:
         instance = model("hello world")  # type: ignore[call-arg]
         assert instance.model_dump() == snapshot("hello world")
 
-    def test_allof_in_property(self) -> None:
-        """Test allOf in property annotation."""
+    def test_root_additional_properties_typed_validation(self) -> None:
+        """Test root object with schema-valued `additionalProperties` validates value types."""
         schema_raw: SchemaRaw = {
             "type": "object",
-            "properties": {
-                "combined": {
-                    "allOf": [
-                        {
-                            "type": "object",
-                            "properties": {"a": {"type": "string"}},
-                        },
-                        {
-                            "type": "object",
-                            "properties": {"b": {"type": "integer"}},
-                        },
-                    ],
-                },
-            },
+            "additionalProperties": {"type": "integer"},
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
 
-        instance = model(combined={"a": "test", "b": 42})
+        instance = model({"count": 42, "total": 100})  # type: ignore[call-arg]
         assert instance.model_dump() == snapshot(
             {
-                "combined": {"a": "test", "b": 42},
-            }
-        )
-
-    def test_complex_union_types(self) -> None:
-        """Test complex union type scenarios."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "multi_value": {
-                    "anyOf": [
-                        {"type": "string"},
-                        {"type": "integer"},
-                        {"type": "boolean"},
-                    ],
-                },
-            },
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        instance = model(multi_value="text")
-        assert instance.model_dump() == snapshot({"multi_value": "text"})
-
-        instance = model(multi_value=42)
-        assert instance.model_dump() == snapshot({"multi_value": 42})
-
-        instance = model(multi_value=True)
-        assert instance.model_dump() == snapshot({"multi_value": True})
-
-
-class TestExplicitDefaults:
-    """Tests for explicit default values in schemas."""
-
-    def test_explicit_default_preserved(self) -> None:
-        """Test that explicit default value is used when field is omitted."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "status": {"type": "string", "default": "pending"},
-            },
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        instance = model()
-        assert instance.model_dump() == snapshot({"status": "pending"})
-
-    def test_optional_field_without_default_is_omitted(self) -> None:
-        """Optional field without explicit default is absent from dumps and JSON Schema."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "value": {"type": "integer"},
-            },
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        assert model().model_dump() == snapshot({})
-        assert model(value=42).model_dump() == snapshot({"value": 42})
-        assert model.model_json_schema() == snapshot(
-            {
-                "additionalProperties": True,
-                "properties": {"value": {"title": "Value", "type": "integer"}},
-                "title": "Model",
-                "type": "object",
+                "count": 42,
+                "total": 100,
             }
         )
 
         with pytest.raises(ValidationError):
-            model(value="not-an-integer")
+            model({"count": "not-an-integer"})  # type: ignore[call-arg]
+
+    def test_root_additional_properties_with_ref(self) -> None:
+        """Test root object with `$ref`-valued `additionalProperties`."""
+        schema_raw: SchemaRaw = {
+            "$defs": {
+                "Item": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                    },
+                },
+            },
+            "type": "object",
+            "additionalProperties": {"$ref": "#/$defs/Item"},
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model({"first": {"name": "A"}, "second": {"name": "B"}})  # type: ignore[call-arg]
+        assert instance.model_dump() == snapshot(
+            {
+                "first": {"name": "A"},
+                "second": {"name": "B"},
+            }
+        )
+
+        with pytest.raises(ValidationError):
+            model({"first": "not-an-item"})  # type: ignore[call-arg]
 
 
-@pytest.mark.parametrize(
-    ("schema_field", "valid_value", "invalid_value"),
-    [
-        ({"enum": ["active", "inactive", "pending"]}, "active", "invalid"),
-        ({"const": "fixed_value"}, "fixed_value", "wrong_value"),
-        ({"const": None}, None, "not-null"),
-    ],
-)
-def test_literal_types(
-    schema_field: dict[str, Any],
-    valid_value: str | None,
-    invalid_value: str,
-) -> None:
-    """Test enum and const conversion to Literal."""
-    schema_raw: SchemaRaw = {
-        "type": "object",
-        "properties": {"field": schema_field},
-    }
-    schema = Schema.model_validate(schema_raw)
-    model = to_model(schema)
+class TestLiteralTypes:
+    """Tests for `enum` / `const` conversion to `Literal`."""
 
-    instance = model(field=valid_value)
-    assert instance.model_dump() == {"field": valid_value}
+    @pytest.mark.parametrize(
+        ("schema_field", "valid_value", "invalid_value"),
+        [
+            ({"enum": ["active", "inactive", "pending"]}, "active", "invalid"),
+            ({"const": "fixed_value"}, "fixed_value", "wrong_value"),
+            ({"const": None}, None, "not-null"),
+        ],
+    )
+    def test_literal_types(
+        self,
+        schema_field: dict[str, Any],
+        valid_value: str | None,
+        invalid_value: str,
+    ) -> None:
+        """Test enum and const conversion to Literal."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {"field": schema_field},
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
 
-    with pytest.raises(ValidationError):
-        model(field=invalid_value)
+        instance = model(field=valid_value)
+        assert instance.model_dump() == {"field": valid_value}
+
+        with pytest.raises(ValidationError):
+            model(field=invalid_value)
 
 
-class TestDictTypes:
-    """Tests for dict and additionalProperties."""
+class TestConstraints:
+    """Tests for value constraint keywords."""
+
+    @pytest.mark.parametrize(
+        ("schema_property", "valid_value", "invalid_value"),
+        [
+            (
+                {"type": "array", "items": {"type": "string"}, "minItems": 1},
+                ["tag1"],
+                [],
+            ),
+            (
+                {"type": "array", "items": {"type": "string"}, "maxItems": 2},
+                ["tag1", "tag2"],
+                ["tag1", "tag2", "tag3"],
+            ),
+            (
+                {"type": "string", "minLength": 3},
+                "abc",
+                "ab",
+            ),
+            (
+                {"type": "string", "maxLength": 5},
+                "short",
+                "toolong",
+            ),
+        ],
+    )
+    def test_constraints(
+        self,
+        schema_property: dict[str, Any],
+        valid_value: JsonValue,
+        invalid_value: JsonValue,
+    ) -> None:
+        """Test min/max constraints."""
+        schema_raw: SchemaRaw = {"type": "object", "properties": {"field": schema_property}}
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(field=valid_value)
+        assert instance.model_dump() == {"field": valid_value}
+
+        with pytest.raises(ValidationError):
+            model(field=invalid_value)
+
+    def test_number_constraints(self) -> None:
+        """Test number with min/max and multiple constraints."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "score": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "multipleOf": 0.5,
+                },
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(score=50.5)
+        assert instance.model_dump() == snapshot({"score": 50.5})
+
+        with pytest.raises(ValidationError):
+            model(score=-1)
+
+        with pytest.raises(ValidationError):
+            model(score=101)
+
+        with pytest.raises(ValidationError):
+            model(score=50.3)
+
+    def test_unique_items_array(self) -> None:
+        """Test array with uniqueItems constraint."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "tags": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "uniqueItems": True,
+                },
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(tags=["python", "coding", "dev"])
+        assert instance.model_dump() == snapshot(
+            {
+                "tags": ["python", "coding", "dev"],
+            }
+        )
+
+
+class TestAdditionalProperties:
+    """Tests for `additionalProperties` handling."""
 
     def test_dict_with_additional_properties_schema(self) -> None:
         """Test dict with typed additionalProperties."""
@@ -1018,34 +1434,6 @@ class TestDictTypes:
             }
         )
 
-
-class TestMultipleTypes:
-    """Tests for schemas with multiple types."""
-
-    def test_multiple_type_union(self) -> None:
-        """Test schema with multiple types."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "value": {"type": ["string", "integer", "null"]},
-            },
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        instance = model(value="text")
-        assert instance.model_dump() == snapshot({"value": "text"})
-
-        instance = model(value=42)
-        assert instance.model_dump() == snapshot({"value": 42})
-
-        instance = model(value=None)
-        assert instance.model_dump() == snapshot({"value": None})
-
-
-class TestAdditionalPropertiesConfig:
-    """Tests for additionalProperties configuration."""
-
     def test_additional_properties_forbid(self) -> None:
         """Test that additionalProperties: false forbids extra fields."""
         schema_raw: SchemaRaw = {
@@ -1080,51 +1468,95 @@ class TestAdditionalPropertiesConfig:
             }
         )
 
+    def test_additional_properties_with_schema(self) -> None:
+        """Test additionalProperties with schema definition."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+            },
+            "additionalProperties": {
+                "type": "integer",
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
 
-@pytest.mark.parametrize(
-    ("schema_property", "valid_value", "invalid_value"),
-    [
-        (
-            {"type": "array", "items": {"type": "string"}, "minItems": 1},
-            ["tag1"],
-            [],
-        ),
-        (
-            {"type": "array", "items": {"type": "string"}, "maxItems": 2},
-            ["tag1", "tag2"],
-            ["tag1", "tag2", "tag3"],
-        ),
-        (
-            {"type": "string", "minLength": 3},
-            "abc",
-            "ab",
-        ),
-        (
-            {"type": "string", "maxLength": 5},
-            "short",
-            "toolong",
-        ),
-    ],
-)
-def test_constraints(
-    schema_property: dict[str, Any],
-    valid_value: JsonValue,
-    invalid_value: JsonValue,
-) -> None:
-    """Test min/max constraints."""
-    schema_raw: SchemaRaw = {"type": "object", "properties": {"field": schema_property}}
-    schema = Schema.model_validate(schema_raw)
-    model = to_model(schema)
+        instance = model(name="test", extra1=10, extra2=20)
+        assert instance.model_dump() == snapshot(
+            {
+                "name": "test",
+                "extra1": 10,
+                "extra2": 20,
+            }
+        )
 
-    instance = model(field=valid_value)
-    assert instance.model_dump() == {"field": valid_value}
+    def test_property_names_pattern(self) -> None:
+        """Test propertyNames with pattern."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "propertyNames": {
+                "pattern": "^[a-z_]+$",
+            },
+            "additionalProperties": {"type": "string"},
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
 
-    with pytest.raises(ValidationError):
-        model(field=invalid_value)
+        instance = model({"valid_name": "test", "another_name": "value"})  # type: ignore[call-arg]
+        assert instance.model_dump() == snapshot(
+            {
+                "valid_name": "test",
+                "another_name": "value",
+            }
+        )
 
 
-class TestAnnotatedValidators:
-    """Tests for Annotated type validators support."""
+class TestDefaults:
+    """Tests for field default handling."""
+
+    def test_explicit_default_preserved(self) -> None:
+        """Test that explicit default value is used when field is omitted."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string", "default": "pending"},
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model()
+        assert instance.model_dump() == snapshot({"status": "pending"})
+
+    def test_optional_field_without_default_is_omitted(self) -> None:
+        """Optional field without explicit default is absent from dumps and JSON Schema."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "value": {"type": "integer"},
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        assert model().model_dump() == snapshot({})
+        assert model(value=42).model_dump() == snapshot({"value": 42})
+        assert model.model_json_schema() == snapshot(
+            {
+                "additionalProperties": True,
+                "properties": {"value": {"title": "Value", "type": "integer"}},
+                "title": "Model",
+                "type": "object",
+            }
+        )
+
+        with pytest.raises(ValidationError):
+            model(value="not-an-integer")
+
+
+class TestFormatValidators:
+    """Tests for `format_validators` support: custom validators and built-in aliases."""
 
     def test_annotated_validator_basic(self) -> None:
         """Test basic Annotated type as validator."""
@@ -1326,601 +1758,6 @@ class TestAnnotatedValidators:
         assert isinstance(instance.id, UUID)  # type: ignore[attr-defined]
         assert isinstance(instance.ip, IPv4Address)  # type: ignore[attr-defined]
 
-
-class TestFieldInfoMetadata:
-    """Tests for JSON Schema metadata passed through to Pydantic `FieldInfo`."""
-
-    def test_title_and_description(self) -> None:
-        """Test `title` and `description` propagate to `FieldInfo`."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "title": "Full Name",
-                    "description": "The user's full legal name.",
-                },
-            },
-            "required": ["name"],
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        field_info: FieldInfo = model.model_fields["name"]
-        assert field_info.title == "Full Name"
-        assert field_info.description == "The user's full legal name."
-
-    def test_examples(self) -> None:
-        """Test `examples` propagate to `FieldInfo`."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "examples": ["user@example.com", "admin@example.com"],
-                },
-            },
-            "required": ["email"],
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        field_info: FieldInfo = model.model_fields["email"]
-        assert field_info.examples == snapshot(["user@example.com", "admin@example.com"])
-
-    def test_exclusive_minimum_and_maximum(self) -> None:
-        """Test `exclusiveMinimum` and `exclusiveMaximum` map to `gt` and `lt`."""
-        exclusive_min: int = 0
-        exclusive_max: int = 100
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "score": {
-                    "type": "number",
-                    "exclusiveMinimum": exclusive_min,
-                    "exclusiveMaximum": exclusive_max,
-                },
-            },
-            "required": ["score"],
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        field_info: FieldInfo = model.model_fields["score"]
-        assert field_info.metadata == snapshot([Gt(gt=0.0), Lt(lt=100.0)])
-
-
-class TestSchemaEdgeCases:
-    """Tests for edge cases in schema conversion."""
-
-    def test_defs_in_nested_schema_raises_error(self) -> None:
-        """Test that `$defs` in nested schemas raises `SchemaConversionError`."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "nested": {
-                    "type": "object",
-                    "$defs": {
-                        "SomeType": {"type": "string"},
-                    },
-                    "properties": {
-                        "field": {"type": "string"},
-                    },
-                },
-            },
-        }
-        schema = Schema.model_validate(schema_raw)
-
-        with pytest.raises(SchemaConversionError, match=r"\$defs is only allowed in root schema"):
-            to_model(schema)
-
-    def test_root_model_for_array_type(self) -> None:
-        """Test RootModel creation for array type schemas."""
-        schema_raw: SchemaRaw = {
-            "type": "array",
-            "items": {"type": "string"},
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        instance = model(["item1", "item2", "item3"])  # type: ignore[call-arg]
-        assert instance.model_dump() == snapshot(["item1", "item2", "item3"])
-
-    def test_root_model_for_string_type(self) -> None:
-        """Test RootModel creation for string type schemas."""
-        schema_raw: SchemaRaw = {
-            "type": "string",
-            "minLength": 5,
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        instance = model("hello world")  # type: ignore[call-arg]
-        assert instance.model_dump() == snapshot("hello world")
-
-        with pytest.raises(ValidationError):
-            model("hi")  # type: ignore[call-arg]
-
-        # Root value has no "absent" concept -> required.
-        with pytest.raises(ValidationError):
-            model()
-
-    def test_root_model_for_integer_type(self) -> None:
-        """Test RootModel creation for integer type schemas."""
-        schema_raw: SchemaRaw = {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 100,
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        valid_value = 42
-        instance = model(valid_value)  # type: ignore[call-arg]
-        assert instance.model_dump() == valid_value  # type: ignore[comparison-overlap]
-
-        invalid_value = -1
-        with pytest.raises(ValidationError):
-            model(invalid_value)  # type: ignore[call-arg]
-
-        invalid_value = 101
-        with pytest.raises(ValidationError):
-            model(invalid_value)  # type: ignore[call-arg]
-
-    def test_allof_without_properties_single_base(self) -> None:
-        """Test allOf without properties with single base class."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "allOf": [
-                {
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string"},
-                        "age": {"type": "integer"},
-                    },
-                    "required": ["name"],
-                },
-            ],
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        instance = model(name="Alice", age=30)
-        assert instance.model_dump() == snapshot(
-            {
-                "name": "Alice",
-                "age": 30,
-            }
-        )
-
-    def test_allof_without_properties_multiple_bases(self) -> None:
-        """Test allOf without properties with multiple base classes."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "allOf": [
-                {
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string"},
-                    },
-                    "required": ["name"],
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "age": {"type": "integer"},
-                    },
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "email": {"type": "string"},
-                    },
-                },
-            ],
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        instance = model(name="Alice", age=30, email="alice@example.com")
-        assert instance.model_dump() == snapshot(
-            {
-                "name": "Alice",
-                "age": 30,
-                "email": "alice@example.com",
-            }
-        )
-
-    def test_anyof_with_null(self) -> None:
-        """Test anyOf with null type."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "anyOf": [
-                        {"type": "string"},
-                        {"type": "null"},
-                    ],
-                },
-            },
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        instance = model(value="text")
-        assert instance.model_dump() == snapshot({"value": "text"})
-
-        instance = model(value=None)
-        assert instance.model_dump() == snapshot({"value": None})
-
-    def test_unique_items_array(self) -> None:
-        """Test array with uniqueItems constraint."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "tags": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "uniqueItems": True,
-                },
-            },
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        instance = model(tags=["python", "coding", "dev"])
-        assert instance.model_dump() == snapshot(
-            {
-                "tags": ["python", "coding", "dev"],
-            }
-        )
-
-    def test_number_constraints(self) -> None:
-        """Test number with min/max and multiple constraints."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "score": {
-                    "type": "number",
-                    "minimum": 0,
-                    "maximum": 100,
-                    "multipleOf": 0.5,
-                },
-            },
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        instance = model(score=50.5)
-        assert instance.model_dump() == snapshot({"score": 50.5})
-
-        with pytest.raises(ValidationError):
-            model(score=-1)
-
-        with pytest.raises(ValidationError):
-            model(score=101)
-
-        with pytest.raises(ValidationError):
-            model(score=50.3)
-
-    def test_additional_properties_with_schema(self) -> None:
-        """Test additionalProperties with schema definition."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-            },
-            "additionalProperties": {
-                "type": "integer",
-            },
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        instance = model(name="test", extra1=10, extra2=20)
-        assert instance.model_dump() == snapshot(
-            {
-                "name": "test",
-                "extra1": 10,
-                "extra2": 20,
-            }
-        )
-
-    def test_property_names_pattern(self) -> None:
-        """Test propertyNames with pattern."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "propertyNames": {
-                "pattern": "^[a-z_]+$",
-            },
-            "additionalProperties": {"type": "string"},
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        instance = model({"valid_name": "test", "another_name": "value"})  # type: ignore[call-arg]
-        assert instance.model_dump() == snapshot(
-            {
-                "valid_name": "test",
-                "another_name": "value",
-            }
-        )
-
-    def test_root_additional_properties_typed_validation(self) -> None:
-        """Test root object with schema-valued `additionalProperties` validates value types."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "additionalProperties": {"type": "integer"},
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        instance = model({"count": 42, "total": 100})  # type: ignore[call-arg]
-        assert instance.model_dump() == snapshot(
-            {
-                "count": 42,
-                "total": 100,
-            }
-        )
-
-        with pytest.raises(ValidationError):
-            model({"count": "not-an-integer"})  # type: ignore[call-arg]
-
-    def test_root_additional_properties_with_ref(self) -> None:
-        """Test root object with `$ref`-valued `additionalProperties`."""
-        schema_raw: SchemaRaw = {
-            "$defs": {
-                "Item": {
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string"},
-                    },
-                },
-            },
-            "type": "object",
-            "additionalProperties": {"$ref": "#/$defs/Item"},
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        instance = model({"first": {"name": "A"}, "second": {"name": "B"}})  # type: ignore[call-arg]
-        assert instance.model_dump() == snapshot(
-            {
-                "first": {"name": "A"},
-                "second": {"name": "B"},
-            }
-        )
-
-        with pytest.raises(ValidationError):
-            model({"first": "not-an-item"})  # type: ignore[call-arg]
-
-    def test_model_generation_with_uncached_ref(self) -> None:
-        """Test model generation fallback when ref exists but model not yet cached.
-
-        This tests the fallback path in _get_model through a controlled scenario
-        using a custom converter subclass that simulates the uncached state.
-        """
-
-        class TestableConverter(SchemaConverter):
-            """Converter that allows testing of model generation fallback."""
-
-            def trigger_uncached_ref_scenario(self) -> type[BaseModel]:
-                """Simulate scenario where ref exists in defs_cache but model not cached."""
-                test_schema = Schema(type="object", properties={"value": Schema(type="string")})
-                ref = "#/$defs/TestType"
-                self._defs_cache[ref] = test_schema
-                return self._get_model(ref)
-
-        converter = TestableConverter()
-        model = converter.trigger_uncached_ref_scenario()
-
-        instance = model(value="test")
-        assert instance.model_dump() == snapshot({"value": "test"})
-
-    def test_schema_with_prebuilt_refs_no_defs(self) -> None:
-        """Test converter with pre-built refs but no `$defs` in schema.
-
-        This ensures the forward reference namespace building works correctly
-        when there are no schema definitions to process (empty defs cache).
-        """
-
-        class CustomAddress(BaseModel):
-            street: str
-            city: str
-
-        # Schema without `$defs`, but will use pre-built ref.
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "address": {"$ref": "#/$defs/CustomAddress"},
-            },
-        }
-        schema = Schema.model_validate(schema_raw)
-
-        # Create converter with pre-built ref for CustomAddress
-        converter = SchemaConverter(refs={"#/$defs/CustomAddress": CustomAddress})
-        model = converter.convert_schema(schema)
-
-        instance = model(address={"street": "Main St", "city": "NYC"})
-        assert instance.model_dump() == snapshot(
-            {
-                "address": {"street": "Main St", "city": "NYC"},
-            }
-        )
-
-    def test_array_items_with_ref_generation(self) -> None:
-        """Test array with `$ref` in items triggers model generation."""
-        schema_raw: SchemaRaw = {
-            "$defs": {
-                "Item": {
-                    "type": "object",
-                    "properties": {
-                        "id": {"type": "integer"},
-                        "name": {"type": "string"},
-                    },
-                },
-            },
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {"$ref": "#/$defs/Item"},
-                },
-            },
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        instance = model(items=[{"id": 1, "name": "first"}, {"id": 2, "name": "second"}])
-        assert instance.model_dump() == snapshot(
-            {
-                "items": [
-                    {"id": 1, "name": "first"},
-                    {"id": 2, "name": "second"},
-                ],
-            }
-        )
-
-    def test_anyof_with_unresolved_forward_ref(self) -> None:
-        """Test anyOf with forward reference to another def type."""
-        schema_raw: SchemaRaw = {
-            "$defs": {
-                "TypeA": {
-                    "type": "object",
-                    "properties": {
-                        "a": {"type": "string"},
-                        "other": {
-                            "anyOf": [
-                                {"$ref": "#/$defs/TypeB"},
-                                {"type": "null"},
-                            ],
-                        },
-                    },
-                },
-                "TypeB": {
-                    "type": "object",
-                    "properties": {
-                        "b": {"type": "integer"},
-                    },
-                },
-            },
-            "type": "object",
-            "properties": {
-                "item": {"$ref": "#/$defs/TypeA"},
-            },
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        instance = model(item={"a": "test", "other": {"b": 42}})
-        assert instance.model_dump() == snapshot(
-            {
-                "item": {"a": "test", "other": {"b": 42}},
-            }
-        )
-
-        instance = model(item={"a": "test", "other": None})
-        assert instance.model_dump() == snapshot(
-            {
-                "item": {"a": "test", "other": None},
-            }
-        )
-
-    def test_array_without_items_schema(self) -> None:
-        """Test array without items schema accepts any element types."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "data": {"type": "array"},
-            },
-        }
-        schema = Schema.model_validate(schema_raw)
-        model = to_model(schema)
-
-        instance = model(data=[1, "two", 3.0, True, None])
-        assert instance.model_dump() == snapshot(
-            {
-                "data": [1, "two", 3.0, True, None],
-            }
-        )
-
-
-class TestConverterCaching:
-    """Tests for model caching in converter."""
-
-    def test_same_schema_returns_cached_model(self) -> None:
-        """Test that converting the same schema twice returns cached model."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-            },
-        }
-
-        converter = SchemaConverter()
-        schema1 = Schema.model_validate(schema_raw)
-        schema2 = Schema.model_validate(schema_raw)
-
-        model1 = converter.convert_schema(schema1)
-        model2 = converter.convert_schema(schema2)
-
-        assert model1 is model2
-
-    def test_different_schemas_return_different_models(self) -> None:
-        """Test that different schemas return different models."""
-        schema_raw1 = {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-            },
-        }
-
-        schema_raw2 = {
-            "type": "object",
-            "properties": {
-                "age": {"type": "integer"},
-            },
-        }
-
-        converter = SchemaConverter()
-        schema1 = Schema.model_validate(schema_raw1)
-        schema2 = Schema.model_validate(schema_raw2)
-
-        model1 = converter.convert_schema(schema1)
-        model2 = converter.convert_schema(schema2)
-
-        assert model1 is not model2
-
-    def test_ref_model_cached_in_get_model(self) -> None:
-        """Test that `_get_model` properly caches resolved reference models."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "$defs": {
-                "User": {
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string"},
-                        "age": {"type": "integer"},
-                    },
-                    "required": ["name"],
-                },
-            },
-            "properties": {
-                "user1": {"$ref": "#/$defs/User"},
-                "user2": {"$ref": "#/$defs/User"},
-            },
-        }
-
-        converter = SchemaConverter()
-        schema = Schema.model_validate(schema_raw)
-        model = converter.convert_schema(schema)
-
-        assert model.model_fields["user1"].annotation is model.model_fields["user2"].annotation
-
-
-class TestSchemaFormatValidators:
-    """Tests for built-in SchemaFormat validators with to_model."""
-
     def test_schema_format_email(self) -> None:
         """Test SchemaFormat EMAIL validator with to_model."""
         schema_raw: SchemaRaw = {
@@ -2087,3 +1924,162 @@ class TestSchemaFormatValidators:
                 "ip": IPv4Address("192.168.1.1"),
             }
         )
+
+
+class TestFieldInfoMetadata:
+    """Tests for JSON Schema metadata passed through to Pydantic `FieldInfo`."""
+
+    def test_title_and_description(self) -> None:
+        """Test `title` and `description` propagate to `FieldInfo`."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "title": "Full Name",
+                    "description": "The user's full legal name.",
+                },
+            },
+            "required": ["name"],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        field_info: FieldInfo = model.model_fields["name"]
+        assert field_info.title == "Full Name"
+        assert field_info.description == "The user's full legal name."
+
+    def test_examples(self) -> None:
+        """Test `examples` propagate to `FieldInfo`."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "examples": ["user@example.com", "admin@example.com"],
+                },
+            },
+            "required": ["email"],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        field_info: FieldInfo = model.model_fields["email"]
+        assert field_info.examples == snapshot(["user@example.com", "admin@example.com"])
+
+    def test_exclusive_minimum_and_maximum(self) -> None:
+        """Test `exclusiveMinimum` and `exclusiveMaximum` map to `gt` and `lt`."""
+        exclusive_min: int = 0
+        exclusive_max: int = 100
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "score": {
+                    "type": "number",
+                    "exclusiveMinimum": exclusive_min,
+                    "exclusiveMaximum": exclusive_max,
+                },
+            },
+            "required": ["score"],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        field_info: FieldInfo = model.model_fields["score"]
+        assert field_info.metadata == snapshot([Gt(gt=0.0), Lt(lt=100.0)])
+
+
+class TestConverterCaching:
+    """Tests for model caching in converter."""
+
+    def test_same_schema_returns_cached_model(self) -> None:
+        """Test that converting the same schema twice returns cached model."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+            },
+        }
+
+        converter = SchemaConverter()
+        schema1 = Schema.model_validate(schema_raw)
+        schema2 = Schema.model_validate(schema_raw)
+
+        model1 = converter.convert_schema(schema1)
+        model2 = converter.convert_schema(schema2)
+
+        assert model1 is model2
+
+    def test_different_schemas_return_different_models(self) -> None:
+        """Test that different schemas return different models."""
+        schema_raw1 = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+            },
+        }
+
+        schema_raw2 = {
+            "type": "object",
+            "properties": {
+                "age": {"type": "integer"},
+            },
+        }
+
+        converter = SchemaConverter()
+        schema1 = Schema.model_validate(schema_raw1)
+        schema2 = Schema.model_validate(schema_raw2)
+
+        model1 = converter.convert_schema(schema1)
+        model2 = converter.convert_schema(schema2)
+
+        assert model1 is not model2
+
+    def test_ref_model_cached_in_get_model(self) -> None:
+        """Test that `_get_model` properly caches resolved reference models."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "$defs": {
+                "User": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "age": {"type": "integer"},
+                    },
+                    "required": ["name"],
+                },
+            },
+            "properties": {
+                "user1": {"$ref": "#/$defs/User"},
+                "user2": {"$ref": "#/$defs/User"},
+            },
+        }
+
+        converter = SchemaConverter()
+        schema = Schema.model_validate(schema_raw)
+        model = converter.convert_schema(schema)
+
+        assert model.model_fields["user1"].annotation is model.model_fields["user2"].annotation
+
+    def test_model_generation_with_uncached_ref(self) -> None:
+        """Test model generation fallback when ref exists but model not yet cached.
+
+        This tests the fallback path in _get_model through a controlled scenario
+        using a custom converter subclass that simulates the uncached state.
+        """
+
+        class TestableConverter(SchemaConverter):
+            """Converter that allows testing of model generation fallback."""
+
+            def trigger_uncached_ref_scenario(self) -> type[BaseModel]:
+                """Simulate scenario where ref exists in defs_cache but model not cached."""
+                test_schema = Schema(type="object", properties={"value": Schema(type="string")})
+                ref = "#/$defs/TestType"
+                self._defs_cache[ref] = test_schema
+                return self._get_model(ref)
+
+        converter = TestableConverter()
+        model = converter.trigger_uncached_ref_scenario()
+
+        instance = model(value="test")
+        assert instance.model_dump() == snapshot({"value": "test"})
