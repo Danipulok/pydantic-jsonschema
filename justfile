@@ -190,6 +190,7 @@ ci-test:
 
 # Build package and check metadata in CI
 ci-build:
+    rm -rf dist/
     uv build
     uvx twine check dist/*
 
