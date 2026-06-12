@@ -733,9 +733,14 @@ class TestExplicitDefaults:
     [
         ({"enum": ["active", "inactive", "pending"]}, "active", "invalid"),
         ({"const": "fixed_value"}, "fixed_value", "wrong_value"),
+        ({"const": None}, None, "not-null"),
     ],
 )
-def test_literal_types(schema_field: dict[str, Any], valid_value: str, invalid_value: str) -> None:
+def test_literal_types(
+    schema_field: dict[str, Any],
+    valid_value: str | None,
+    invalid_value: str,
+) -> None:
     """Test enum and const conversion to Literal."""
     schema_raw: SchemaRaw = {
         "type": "object",
