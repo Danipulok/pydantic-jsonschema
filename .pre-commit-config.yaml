@@ -58,3 +58,11 @@ repos:
         language: system
         always_run: true
         pass_filenames: false
+
+      - id: docs-build
+        name: Docs
+        entry: just
+        args: [docs-build]
+        language: system
+        always_run: true
+        pass_filenames: false
