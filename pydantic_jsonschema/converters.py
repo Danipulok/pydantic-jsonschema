@@ -226,31 +226,45 @@ class SchemaConverter:
     ) -> type[BaseModel]:
         """Build Pydantic model from schema (common logic for root and nested).
 
+        Models are cached by schema hash, so each schema is built at most once.
+
         :param schema: Schema to convert.
         :param model_name: Name for the generated model.
         :returns: Pydantic model class.
         """
-        # Check if model already cached
         cache_key = self._hash_schema(schema)
         if cache_key in self._models_cache:
             return self._models_cache[cache_key]
 
-        # Determine model name
         title: str = schema.title if schema.title is not MISSING else ""
         name: str = model_name or sanitize_identifier(title) or self._default_model_name
 
+        model = self._create_model(schema, model_name=name)
+        self._models_cache[cache_key] = model
+        return model
+
+    def _create_model(
+        self,
+        schema: Schema,
+        /,
+        *,
+        model_name: str,
+    ) -> type[BaseModel]:
+        """Pick the model flavor for the schema and build it.
+
+        :param schema: Schema to convert.
+        :param model_name: Name for the generated model.
+        :returns: Pydantic model class.
+        """
         # Handle `allOf` composition -> base classes
         base_classes = self._get_base_classes(schema)
 
-        # Handle non-object types -> RootModel
+        # Non-object types -> `RootModel`.
         if schema.type != DataType.OBJECT:
-            model = self._create_root_model(
-                schema,
-                model_name=name,
-                base_classes=base_classes,
-            )
-            self._models_cache[cache_key] = model
-            return model
+            # `allOf` base already wraps the value (e.g. a string `RootModel`).
+            if schema.all_of is not MISSING and base_classes:
+                return base_classes[0]
+            return self._create_root_model(schema, model_name=model_name)
 
         # Root object without `properties` but with schema-valued `additionalProperties`
         # -> `RootModel[dict[str, ...]]`, so values are validated the same way as in
@@ -260,47 +274,66 @@ class SchemaConverter:
             and schema.all_of is MISSING
             and isinstance(schema.additional_properties, (Schema, Reference))
         ):
-            model = self._create_root_model(
-                schema,
-                model_name=name,
-                base_classes=base_classes,
-            )
-            self._models_cache[cache_key] = model
-            return model
+            return self._create_root_model(schema, model_name=model_name)
 
-        # Handle `allOf` without properties -> combined base class
+        # `allOf` without own properties -> combined base class
         if schema.all_of is not MISSING and schema.properties is MISSING:
-            # Single base class
-            if len(base_classes) == 1:
-                self._models_cache[cache_key] = base_classes[0]
-                return base_classes[0]
+            return self._combine_base_classes(base_classes, model_name=model_name)
 
-            # Create combined base class
-            created_model = type(name, base_classes, {"__module__": __name__})
-            model = cast("type[BaseModel]", created_model)
-            self._models_cache[cache_key] = model
-            return model
+        return self._create_object_model(
+            schema,
+            model_name=model_name,
+            base_classes=base_classes,
+        )
 
-        # Build fields from properties
+    @staticmethod
+    def _combine_base_classes(
+        base_classes: tuple[type[BaseModel], ...],
+        /,
+        *,
+        model_name: str,
+    ) -> type[BaseModel]:
+        """Combine `allOf` base classes into a single model.
+
+        :param base_classes: Models generated from `allOf` sub-schemas.
+        :param model_name: Name for the combined model.
+        :returns: The single base as-is, or a new class inheriting all bases.
+        """
+        if len(base_classes) == 1:
+            return base_classes[0]
+
+        created_model = type(model_name, base_classes, {"__module__": __name__})
+        return cast("type[BaseModel]", created_model)
+
+    def _create_object_model(
+        self,
+        schema: Schema,
+        /,
+        *,
+        model_name: str,
+        base_classes: tuple[type[BaseModel], ...],
+    ) -> type[BaseModel]:
+        """Create a model with fields from an object schema.
+
+        :param schema: Object schema to convert.
+        :param model_name: Name for the generated model.
+        :param base_classes: Base classes from `allOf` composition.
+        :returns: Pydantic model class.
+        """
         fields = self._build_fields(schema)
-
-        # Configure model (extra fields, etc)
         model_config = self._build_model_config(schema)
 
-        # Create model
         # For some reason, `create_model` "accepts" `fields` values as `tuple[str, Any]`,
         # when in reality it accepts `tuple[type, FieldInfo]`
         created_model = create_model(  # type: ignore[call-overload]
-            name,
+            model_name,
             __config__=model_config,
             __doc__=schema.description if schema.description is not MISSING else None,
             __base__=base_classes,
             __module__=__name__,
             **fields,
         )
-        model = cast("type[BaseModel]", created_model)
-        self._models_cache[cache_key] = model
-        return model
+        return cast("type[BaseModel]", created_model)
 
     def _check_alias_target(
         self,
@@ -513,12 +546,13 @@ class SchemaConverter:
         /,
         *,
         model_name: str,
-        base_classes: tuple[type[BaseModel], ...],
     ) -> type[BaseModel]:
-        """Create RootModel for non-object schemas."""
-        if schema.all_of is not MISSING and base_classes:
-            return base_classes[0]
+        """Create `RootModel` wrapping the schema's value annotation.
 
+        :param schema: Schema describing the root value.
+        :param model_name: Name for the generated model.
+        :returns: `RootModel` subclass.
+        """
         field = self._schema_to_field(schema)
 
         created_model = type(
