@@ -1,3 +1,5 @@
+# --- General ---
+
 # Default recipe to display help information
 default:
     @just --list
@@ -5,6 +7,8 @@ default:
 # Check that `uv` is installed
 _check-uv:
     @uv --version > /dev/null || echo "Please install uv: https://docs.astral.sh/uv/getting-started/installation"
+
+# --- Setup ---
 
 # Install the package, dependencies, and pre-commit for local development
 install: _check-uv
@@ -21,6 +25,8 @@ install-all-python:
 sync: _check-uv
     uv sync --all-extras --all-packages
 
+# --- Code quality ---
+
 # Format code
 format:
     uv run ruff format
@@ -33,6 +39,15 @@ lint:
     uv run mypy .
     uv run codespell
     npx --yes markdownlint-cli2
+
+# Run pre-commit on all files
+precommit:
+    uv run pre-commit run --all-files
+
+# Run all checks
+all: format lint test docs-build
+
+# --- Tests ---
 
 # Run tests and show coverage report
 test:
@@ -56,12 +71,7 @@ testcov: test
 test-fix-snapshots:
     uv run pytest --inline-snapshot=fix
 
-# Run pre-commit on all files
-precommit:
-    uv run pre-commit run --all-files
-
-# Run all checks
-all: format lint test docs-build
+# --- Documentation ---
 
 # Format documentation examples
 docs-format:
@@ -99,30 +109,18 @@ docs-list:
 docs-delete version:
     uv run mike delete --push {{version}}
 
-# Clean up generated files
-clean:
-    rm -rf .pytest_cache
-    rm -rf .ruff_cache
-    rm -rf .mypy_cache
-    rm -rf .coverage
-    rm -rf htmlcov
-    rm -rf site
-    find . -type d -name __pycache__ -exec rm -rf {} +
-    find . -type f -name "*.pyc" -delete
+# --- Release ---
 
-# Validate release version format
-_check-release-version version:
+# Generate `docs/changelog.md` from git history via `git-cliff`
+changelog tag="":
     #!/usr/bin/env bash
     set -euo pipefail
-    version="{{version}}"
-    if [[ "$version" == v* ]]; then
-        printf 'Release version must not start with `v`: %s\n' "$version" >&2
-        exit 2
+    if [[ -n "{{tag}}" ]]; then
+        uv run git-cliff --tag "{{tag}}" -o docs/changelog.md
+    else
+        uv run git-cliff -o docs/changelog.md
     fi
-    if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+((a|b|rc)[0-9]+)?$ ]]; then
-        printf 'Release version must look like `0.0.1`, `1.0.0b1`, or `1.0.0rc1`: %s\n' "$version" >&2
-        exit 2
-    fi
+    printf '%s\n' "$(< docs/changelog.md)" > docs/changelog.md
 
 # Tag a release and push (triggers `release.yml` workflow)
 release version: (_check-release-version version)
@@ -156,22 +154,33 @@ release-auto version: (_check-release-version version)
     fi
     just release "$version"
 
-# Generate `docs/changelog.md` from git history via `git-cliff`
-changelog tag="":
+# Validate release version format
+_check-release-version version:
     #!/usr/bin/env bash
     set -euo pipefail
-    if [[ -n "{{tag}}" ]]; then
-        uv run git-cliff --tag "{{tag}}" -o docs/changelog.md
-    else
-        uv run git-cliff -o docs/changelog.md
+    version="{{version}}"
+    if [[ "$version" == v* ]]; then
+        printf 'Release version must not start with `v`: %s\n' "$version" >&2
+        exit 2
     fi
-    printf '%s\n' "$(< docs/changelog.md)" > docs/changelog.md
+    if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+((a|b|rc)[0-9]+)?$ ]]; then
+        printf 'Release version must look like `0.0.1`, `1.0.0b1`, or `1.0.0rc1`: %s\n' "$version" >&2
+        exit 2
+    fi
 
-# --- CI recipes (no `pre-commit`, no interactive tools) ---
+# --- CI (no `pre-commit`, no interactive tools) ---
 
 # Install dependencies for CI
 ci-install: _check-uv
     uv sync --frozen --all-extras --all-packages
+
+# Install docs dependencies for CI
+ci-install-docs: _check-uv
+    uv sync --group docs
+
+# Install release dependencies for CI
+ci-install-release: _check-uv
+    uv sync --group release
 
 # Run linting in CI
 ci-lint:
@@ -197,22 +206,27 @@ ci-build:
 # Build documentation in CI
 ci-docs-build: docs-build
 
+# Deploy versioned documentation and update `latest` alias in CI
+ci-docs-deploy version: _ci-configure-git (docs-deploy-version version) (docs-alias version "latest") (docs-set-default "latest")
+
+# Generate release notes for CI
+ci-release-notes output:
+    uv run --no-sync git-cliff --latest --strip header -o {{output}}
+
 # Configure git identity for CI commits
 _ci-configure-git:
     git config user.name 'github-actions[bot]'
     git config user.email 'github-actions[bot]@users.noreply.github.com'
 
-# Deploy versioned documentation and update `latest` alias in CI
-ci-docs-deploy version: _ci-configure-git (docs-deploy-version version) (docs-alias version "latest") (docs-set-default "latest")
+# --- Maintenance ---
 
-# Install docs dependencies for CI
-ci-install-docs: _check-uv
-    uv sync --group docs
-
-# Install release dependencies for CI
-ci-install-release: _check-uv
-    uv sync --group release
-
-# Generate release notes for CI
-ci-release-notes output:
-    uv run --no-sync git-cliff --latest --strip header -o {{output}}
+# Clean up generated files
+clean:
+    rm -rf .pytest_cache
+    rm -rf .ruff_cache
+    rm -rf .mypy_cache
+    rm -rf .coverage
+    rm -rf htmlcov
+    rm -rf site
+    find . -type d -name __pycache__ -exec rm -rf {} +
+    find . -type f -name "*.pyc" -delete
