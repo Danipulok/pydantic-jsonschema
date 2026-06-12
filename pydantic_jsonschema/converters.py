@@ -468,7 +468,17 @@ class SchemaConverter:
             # Convert and cache nested models
             self._convert_nested_schema(schema_def)
 
-        # Rebuild all models with forward refs
+        self._rebuild_def_models(defs)
+
+    def _rebuild_def_models(
+        self,
+        defs: dict[Ref, Schema],
+        /,
+    ) -> None:
+        """Re-resolve `ForwardRef` annotations in def models.
+
+        :param defs: Definitions whose models should be rebuilt.
+        """
         forward_refs = self._get_forward_refs_namespace()
         for ref in defs:
             self._get_model(ref).model_rebuild(_types_namespace=forward_refs)
