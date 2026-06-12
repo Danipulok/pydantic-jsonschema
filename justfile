@@ -193,6 +193,17 @@ ci-build:
     uv build
     uvx twine check dist/*
 
+# Build documentation in CI
+ci-docs-build: docs-build
+
+# Configure git identity for CI commits
+_ci-configure-git:
+    git config user.name 'github-actions[bot]'
+    git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+# Deploy versioned documentation and update `latest` alias in CI
+ci-docs-deploy version: _ci-configure-git (docs-deploy-version version) (docs-alias version "latest") (docs-set-default "latest")
+
 # Install docs dependencies for CI
 ci-install-docs: _check-uv
     uv sync --group docs
