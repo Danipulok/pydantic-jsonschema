@@ -15,11 +15,13 @@ from typing import (
     ForwardRef,
     Literal,
     Protocol,
+    TypedDict,
     Union,
     cast,
     get_origin,
 )
 
+import annotated_types
 from pydantic import BaseModel, BeforeValidator, ConfigDict, RootModel, create_model
 from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.fields import FieldInfo
@@ -89,6 +91,25 @@ class FormatValidator(Protocol):
     ) -> PythonType:
         """Process the value after Pydantic's standard validation."""
         ...
+
+
+class _FieldKwargs(TypedDict, total=False):
+    """Subset of Pydantic `FieldInfo` kwargs produced from JSON Schema constraints.
+
+    Field names and types mirror `pydantic.fields._FromFieldInfoInputs`.
+    See: https://github.com/pydantic/pydantic/blob/v2.13.4/pydantic/fields.py#L50
+    """
+
+    examples: list[Any] | None
+    title: str | None
+    description: str | None
+    ge: annotated_types.SupportsGe | None
+    gt: annotated_types.SupportsGt | None
+    le: annotated_types.SupportsLe | None
+    lt: annotated_types.SupportsLt | None
+    multiple_of: float | None
+    min_length: int | None
+    max_length: int | None
 
 
 class SchemaConverter:
@@ -593,7 +614,7 @@ class SchemaConverter:
 
         return config
 
-    def _schema_to_field(  # noqa: C901
+    def _schema_to_field(
         self,
         schema: Schema,
         /,
@@ -620,8 +641,27 @@ class SchemaConverter:
         # Determine default value
         default = self._get_field_default(schema, is_required=is_required)
 
-        # Build kwargs, only including fields that are explicitly set
-        kwargs: dict[str, Any] = {}
+        # `MISSING` must be part of the annotation for Pydantic to accept it as default.
+        if default is MISSING:
+            valid_annotation = valid_annotation | MISSING
+
+        return FieldInfo(
+            annotation=valid_annotation,
+            default=default,
+            **self._build_field_kwargs(schema),
+        )
+
+    def _build_field_kwargs(  # noqa: C901
+        self,
+        schema: Schema,
+        /,
+    ) -> _FieldKwargs:
+        """Build `FieldInfo` kwargs, only including constraints that are explicitly set.
+
+        :param schema: Schema to extract constraints and metadata from.
+        :returns: Keyword arguments for `FieldInfo`.
+        """
+        kwargs: _FieldKwargs = {}
         if schema.examples is not MISSING:
             kwargs["examples"] = schema.examples
         if schema.title is not MISSING:
@@ -647,11 +687,7 @@ class SchemaConverter:
         if max_length is not None:
             kwargs["max_length"] = max_length
 
-        return FieldInfo(
-            annotation=valid_annotation,
-            default=default,
-            **kwargs,
-        )
+        return kwargs
 
     def _union_args(
         self,
@@ -767,8 +803,15 @@ class SchemaConverter:
         if schema.default is not MISSING:
             return schema.default
 
-        # Field is not required and has no default
-        return None
+        # Root model values (`is_required=None`) have no "absent" concept:
+        # a bare `{"type": "string"}` root schema always validates a value.
+        if is_required is None:
+            return _PYDANTIC_DEFAULT_MISSING
+
+        # Optional field without explicit default -> `MISSING` sentinel, so the
+        # field is omitted from dumps instead of carrying a fabricated `None`
+        # default that would not even validate against the annotation.
+        return MISSING
 
     @staticmethod
     def _get_min_length(

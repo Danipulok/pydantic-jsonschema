@@ -52,12 +52,7 @@ class TestBasicConversion:
         )
 
         instance = model(name="Bob")
-        assert instance.model_dump() == snapshot(
-            {
-                "name": "Bob",
-                "age": None,
-            }
-        )
+        assert instance.model_dump() == snapshot({"name": "Bob"})
 
         with pytest.raises(ValidationError):
             model(age=25)
@@ -910,6 +905,31 @@ class TestExplicitDefaults:
         instance = model()
         assert instance.model_dump() == snapshot({"status": "pending"})
 
+    def test_optional_field_without_default_is_omitted(self) -> None:
+        """Optional field without explicit default is absent from dumps and JSON Schema."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {
+                "value": {"type": "integer"},
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        assert model().model_dump() == snapshot({})
+        assert model(value=42).model_dump() == snapshot({"value": 42})
+        assert model.model_json_schema() == snapshot(
+            {
+                "additionalProperties": True,
+                "properties": {"value": {"title": "Value", "type": "integer"}},
+                "title": "Model",
+                "type": "object",
+            }
+        )
+
+        with pytest.raises(ValidationError):
+            model(value="not-an-integer")
+
 
 @pytest.mark.parametrize(
     ("schema_field", "valid_value", "invalid_value"),
@@ -1420,6 +1440,10 @@ class TestSchemaEdgeCases:
 
         with pytest.raises(ValidationError):
             model("hi")  # type: ignore[call-arg]
+
+        # Root value has no "absent" concept -> required.
+        with pytest.raises(ValidationError):
+            model()
 
     def test_root_model_for_integer_type(self) -> None:
         """Test RootModel creation for integer type schemas."""

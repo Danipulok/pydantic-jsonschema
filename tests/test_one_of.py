@@ -140,7 +140,6 @@ class TestOneOfJsonSchema:
                 "additionalProperties": True,
                 "properties": {
                     "value": {
-                        "default": None,
                         "oneOf": [{"type": "integer"}, {"type": "number"}],
                         "title": "Value",
                     }
