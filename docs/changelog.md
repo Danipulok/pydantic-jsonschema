@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.0.10] — 2026-06-17
+
+### Added
+
+- add remaining spec-defined format types (#3)
+
+### Build
+
+- bump the python-dependencies group across 1 directory with 2 updates (#2)
+- bump the github-actions group across 1 directory with 2 updates (#1)
+
 ## [0.0.9] — 2026-06-12
 
 ### Changed
@@ -15,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Documentation
 
+- add `0.0.9` release section
 - add `llms.txt` export and copy-page-as-Markdown button
 - note unvalidated extras with `properties` + schema `additionalProperties`
 
@@ -327,6 +339,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - add coverage tests and set `cov-fail-under`
 - add comprehensive test suite
 
+[0.0.10]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.9...v0.0.10>
 [0.0.9]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.8...v0.0.9>
 [0.0.8]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.7...v0.0.8>
 [0.0.7]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.6...v0.0.7>
