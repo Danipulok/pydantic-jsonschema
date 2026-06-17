@@ -10,13 +10,19 @@ from pydantic_jsonschema.formats import (
     Duration,
     Email,
     Hostname,
+    IdnEmail,
+    IdnHostname,
     IPv4,
     IPv6,
     Iri,
     IriReference,
+    JsonPointer,
+    Regex,
+    RelativeJsonPointer,
     Time,
     Uri,
     UriReference,
+    UriTemplate,
 )
 
 
@@ -585,6 +591,217 @@ class TestIriReference:
 
         class Model(BaseModel):
             value: IriReference
+
+        with pytest.raises(ValidationError):
+            Model(value=value)
+
+
+class TestIdnHostname:
+    """Test `IdnHostname` format type."""
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "münchen.de",
+            "example.com",
+        ],
+    )
+    def test_valid(self, value: str) -> None:
+        """Valid internationalized hostname is accepted."""
+
+        class Model(BaseModel):
+            value: IdnHostname
+
+        assert Model(value=value).value == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "a..b.com",
+            "a_b.com",
+        ],
+    )
+    def test_invalid(self, value: str) -> None:
+        """Invalid internationalized hostname is rejected."""
+
+        class Model(BaseModel):
+            value: IdnHostname
+
+        with pytest.raises(ValidationError):
+            Model(value=value)
+
+
+class TestIdnEmail:
+    """Test `IdnEmail` format type."""
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "user@münchen.de",
+            "alice@example.com",
+        ],
+    )
+    def test_valid(self, value: str) -> None:
+        """Valid internationalized email is accepted."""
+
+        class Model(BaseModel):
+            value: IdnEmail
+
+        assert Model(value=value).value == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "no-at-sign",
+            "user@a..b.com",
+        ],
+    )
+    def test_invalid(self, value: str) -> None:
+        """Invalid internationalized email is rejected."""
+
+        class Model(BaseModel):
+            value: IdnEmail
+
+        with pytest.raises(ValidationError):
+            Model(value=value)
+
+
+class TestJsonPointer:
+    """Test `JsonPointer` format type."""
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "",
+            "/foo/0",
+        ],
+    )
+    def test_valid(self, value: str) -> None:
+        """Valid JSON Pointer is accepted."""
+
+        class Model(BaseModel):
+            value: JsonPointer
+
+        assert Model(value=value).value == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "foo",
+            "/~2",
+        ],
+    )
+    def test_invalid(self, value: str) -> None:
+        """Invalid JSON Pointer is rejected."""
+
+        class Model(BaseModel):
+            value: JsonPointer
+
+        with pytest.raises(ValidationError):
+            Model(value=value)
+
+
+class TestRelativeJsonPointer:
+    """Test `RelativeJsonPointer` format type."""
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "0",
+            "1/foo",
+            "0#",
+        ],
+    )
+    def test_valid(self, value: str) -> None:
+        """Valid Relative JSON Pointer is accepted."""
+
+        class Model(BaseModel):
+            value: RelativeJsonPointer
+
+        assert Model(value=value).value == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "01",
+            "#",
+        ],
+    )
+    def test_invalid(self, value: str) -> None:
+        """Invalid Relative JSON Pointer is rejected."""
+
+        class Model(BaseModel):
+            value: RelativeJsonPointer
+
+        with pytest.raises(ValidationError):
+            Model(value=value)
+
+
+class TestUriTemplate:
+    """Test `UriTemplate` format type."""
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            r"http://example.com/~{username}/",
+            r"{?q,lang}",
+        ],
+    )
+    def test_valid(self, value: str) -> None:
+        """Valid URI Template is accepted."""
+
+        class Model(BaseModel):
+            value: UriTemplate
+
+        assert Model(value=value).value == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            r"{var",
+            r"{}",
+        ],
+    )
+    def test_invalid(self, value: str) -> None:
+        """Invalid URI Template is rejected."""
+
+        class Model(BaseModel):
+            value: UriTemplate
+
+        with pytest.raises(ValidationError):
+            Model(value=value)
+
+
+class TestRegex:
+    """Test `Regex` format type."""
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "^[a-z]+$",
+            "(a|b)*",
+        ],
+    )
+    def test_valid(self, value: str) -> None:
+        """Valid regular expression is accepted."""
+
+        class Model(BaseModel):
+            value: Regex
+
+        assert Model(value=value).value == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "[a-z",
+            "*invalid",
+        ],
+    )
+    def test_invalid(self, value: str) -> None:
+        """Invalid regular expression is rejected."""
+
+        class Model(BaseModel):
+            value: Regex
 
         with pytest.raises(ValidationError):
             Model(value=value)

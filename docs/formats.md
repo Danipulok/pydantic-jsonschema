@@ -66,21 +66,32 @@ except ValidationError as er:
 The `pydantic_jsonschema.formats` module exports aliases that can be passed to
 `format_validators`.
 
-| JSON Schema `format` | Alias          | Validates                                                    |
-|----------------------|----------------|--------------------------------------------------------------|
-| `email`              | `Email`        | Email addresses                                              |
-| `hostname`           | `Hostname`     | RFC 1123 hostnames, including single labels like `localhost` |
-| `uri`                | `Uri`          | Absolute URIs with a scheme                                  |
-| `uri-reference`      | `UriReference` | Absolute or relative URI references                          |
-| `iri`                | `Iri`          | Absolute internationalized URIs                              |
-| `iri-reference`      | `IriReference` | Absolute or relative internationalized URI references        |
-| `date`               | `Date`         | Dates                                                        |
-| `time`               | `Time`         | Times                                                        |
-| `date-time`          | `DateTime`     | Date-time values                                             |
-| `duration`           | `Duration`     | Durations                                                    |
-| `uuid`               | `UUID`         | UUID values                                                  |
-| `ipv4`               | `IPv4`         | IPv4 addresses                                               |
-| `ipv6`               | `IPv6`         | IPv6 addresses                                               |
+| JSON Schema `format`    | Alias                 | Validates                                                    |
+|-------------------------|-----------------------|--------------------------------------------------------------|
+| `email`                 | `Email`               | Email addresses                                              |
+| `idn-email`             | `IdnEmail`            | Internationalized email addresses (RFC 6531)                 |
+| `hostname`              | `Hostname`            | RFC 1123 hostnames, including single labels like `localhost` |
+| `idn-hostname`          | `IdnHostname`         | Internationalized hostnames (RFC 5890)                       |
+| `uri`                   | `Uri`                 | Absolute URIs with a scheme                                  |
+| `uri-reference`         | `UriReference`        | Absolute or relative URI references                          |
+| `iri`                   | `Iri`                 | Absolute internationalized URIs                              |
+| `iri-reference`         | `IriReference`        | Absolute or relative internationalized URI references        |
+| `uri-template`          | `UriTemplate`         | URI Templates (RFC 6570)                                     |
+| `date`                  | `Date`                | Dates                                                        |
+| `time`                  | `Time`                | Times                                                        |
+| `date-time`             | `DateTime`            | Date-time values                                             |
+| `duration`              | `Duration`            | Durations                                                    |
+| `uuid`                  | `UUID`                | UUID values                                                  |
+| `ipv4`                  | `IPv4`                | IPv4 addresses                                               |
+| `ipv6`                  | `IPv6`                | IPv6 addresses                                               |
+| `json-pointer`          | `JsonPointer`         | JSON Pointers (RFC 6901)                                     |
+| `relative-json-pointer` | `RelativeJsonPointer` | Relative JSON Pointers                                       |
+| `regex`                 | `Regex`               | Regular expressions                                          |
+
+!!! note "Differences from the specification"
+
+    `idn-hostname` / `idn-email` convert domains via the stdlib IDNA 2003 codec, which is slightly more permissive than the IDNA 2008 tables referenced by the spec.
+    `regex` compiles with Python `re`, a close superset of the ECMA-262 dialect the spec requires.
 
 ```python title="provided_formats.py"
 from pydantic_jsonschema import Schema, to_model

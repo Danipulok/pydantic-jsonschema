@@ -1,15 +1,19 @@
-"""Tests for email format validator.
+"""Tests for email format validators.
 
 See: https://www.rfc-editor.org/rfc/rfc5321#section-4.1.2
 See: https://www.rfc-editor.org/rfc/rfc5322#section-3.4.1
+See: https://www.rfc-editor.org/rfc/rfc6531#section-3.3
 
 Test data derived from the `email-validator` library (Unlicense):
 https://github.com/JoshData/python-email-validator/blob/7394682aa73a2fb3eff9a53061d6db8340b9e964/tests/test_syntax.py
+
+IDN test data derived from the JSON Schema Test Suite (MIT):
+https://github.com/json-schema-org/JSON-Schema-Test-Suite/blob/fe8c2f0de2041943975932b6bf4bd882625b6cfb/tests/draft2020-12/optional/format/idn-email.json
 """
 
 import pytest
 
-from pydantic_jsonschema.formats._email import validate_email
+from pydantic_jsonschema.formats._email import validate_email, validate_idn_email
 
 
 class TestValidEmails:
@@ -201,3 +205,93 @@ class TestInvalidEmails:
         """Characters outside atext set are rejected in unquoted local part."""
         with pytest.raises(ValueError, match="Invalid email format"):
             validate_email(value)
+
+
+class TestValidIdnEmails:
+    """Valid internationalized email addresses per RFC 6531."""
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "user@münchen.de",
+            "δοκιμή@example.com",
+            "用户@例え.jp",
+            "пользователь@пример.испытание",
+            "실례@실례.테스트",
+        ],
+    )
+    def test_unicode_addresses(self, value: str) -> None:
+        """Non-ASCII local parts and domains are accepted."""
+        assert validate_idn_email(value) == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "alice@example.com",
+            "user+tag@domain.org",
+            "joe.bloggs@example.com",
+        ],
+    )
+    def test_ascii_addresses_also_valid(self, value: str) -> None:
+        """Plain ASCII addresses are valid IDN emails."""
+        assert validate_idn_email(value) == value
+
+
+class TestInvalidIdnEmails:
+    """Invalid internationalized email addresses per RFC 6531."""
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "no-at-sign",
+            "2962",
+            "user@@example.com",
+            "@example.com",
+            "user@",
+        ],
+    )
+    def test_structure_rejected(self, value: str) -> None:
+        """Missing/duplicated `@` and empty parts are rejected."""
+        with pytest.raises(ValueError, match="Invalid IDN email format"):
+            validate_idn_email(value)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            ".user@example.com",
+            "user.@example.com",
+            "user..name@example.com",
+            "user name@münchen.de",
+        ],
+    )
+    def test_invalid_local_rejected(self, value: str) -> None:
+        """Dots rules and forbidden ASCII characters still apply to the local part."""
+        with pytest.raises(ValueError, match="Invalid IDN email format"):
+            validate_idn_email(value)
+
+    def test_local_too_long_in_octets(self) -> None:
+        """RFC 6531 keeps the 64-octet limit, counted in UTF-8 bytes."""
+        # 33 two-byte characters = 66 octets > 64.
+        with pytest.raises(ValueError, match="Invalid IDN email format"):
+            validate_idn_email("ю" * 33 + "@example.com")
+
+    def test_total_too_long_in_octets(self) -> None:
+        """RFC 6531 keeps the 254-octet total limit, counted in UTF-8 bytes."""
+        # Local: 64 octets (valid alone); domain: 253 chars (valid alone);
+        # total: 64 + 1 + 253 = 318 octets > 254.
+        local: str = "ю" * 32
+        domain: str = "b" * 63 + "." + "c" * 63 + "." + "d" * 63 + "." + "e" * 61
+        with pytest.raises(ValueError, match="Invalid IDN email format"):
+            validate_idn_email(f"{local}@{domain}")
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "user@a..b.com",
+            "user@a_b.com",
+        ],
+    )
+    def test_invalid_domain_rejected(self, value: str) -> None:
+        """Domain part must be a valid IDN hostname."""
+        with pytest.raises(ValueError, match="Invalid IDN email format"):
+            validate_idn_email(value)

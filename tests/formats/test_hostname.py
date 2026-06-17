@@ -1,15 +1,24 @@
-"""Tests for hostname format validator.
+"""Tests for hostname format validators.
 
 See: https://www.rfc-editor.org/rfc/rfc1123#section-2.1
 See: https://www.rfc-editor.org/rfc/rfc1035#section-2.3.4
+See: https://www.rfc-editor.org/rfc/rfc5890#section-2.3.2.3
 
 Test data derived from the `fqdn` library (MPL-2.0):
 https://github.com/ypcrts/fqdn/blob/e893170fb465f928e41605946b2258646ba70d04/tests/test_fqdn.py
+
+IDN test data derived from the JSON Schema Test Suite (MIT):
+https://github.com/json-schema-org/JSON-Schema-Test-Suite/blob/fe8c2f0de2041943975932b6bf4bd882625b6cfb/tests/draft2020-12/optional/format/idn-hostname.json
+
+NOTE: Suite cases that exercise IDNA 2008 contextual rules (CONTEXTO middle dot /
+      keraia / geresh, ZWJ-virama checks, leading combining marks, punycode
+      well-formedness) are excluded: `validate_idn_hostname` uses the stdlib
+      IDNA 2003 codec, which accepts them (documented difference from the spec).
 """
 
 import pytest
 
-from pydantic_jsonschema.formats._hostname import validate_hostname
+from pydantic_jsonschema.formats._hostname import validate_hostname, validate_idn_hostname
 
 
 class TestValidHostnames:
@@ -181,3 +190,154 @@ class TestInvalidHostnames:
         """Control characters are not valid in hostnames."""
         with pytest.raises(ValueError, match="Invalid hostname format"):
             validate_hostname(value)
+
+
+class TestValidIdnHostnames:
+    """Valid internationalized hostnames per RFC 5890."""
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "münchen.de",
+            "bücher.example",
+            "ПРИМЕР.испытание",
+            "例え.jp",
+            "실례.테스트",
+            "ßς་〇",
+        ],
+    )
+    def test_unicode_hostnames(self, value: str) -> None:
+        """Non-ASCII hostnames convertible to punycode are accepted."""
+        assert validate_idn_hostname(value) == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "example.com",
+            "localhost",
+            "sub.example.com",
+            "hostname",
+            "host-name",
+            "h0stn4me",
+            "1host",
+            "hostnam3",
+            "xn--ihqwcrb4cv8a8dqg056pqjye",
+        ],
+    )
+    def test_ascii_hostnames_also_valid(self, value: str) -> None:
+        """Plain ASCII hostnames (including punycode) are valid IDN hostnames."""
+        assert validate_idn_hostname(value) == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "l·l",
+            "α͵β",
+            "א׳ב",
+            "א״ב",
+            "・ぁ",
+            "・ァ",
+            "・丈",
+            "क्‍ष",
+            "क्‌ष",
+        ],
+    )
+    def test_contextual_characters_with_valid_context(self, value: str) -> None:
+        """CONTEXTO/CONTEXTJ characters in their valid context are accepted."""
+        assert validate_idn_hostname(value) == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "a.b",
+            "a。b",
+            "a．b",
+            "a｡b",
+        ],
+    )
+    def test_unicode_label_separators(self, value: str) -> None:
+        """Ideographic/fullwidth/halfwidth full stops separate labels."""
+        assert validate_idn_hostname(value) == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "ب٠ب",
+            "۰0",
+        ],
+    )
+    def test_unmixed_digit_scripts(self, value: str) -> None:
+        """Arabic-Indic digits unmixed with Extended Arabic-Indic digits."""
+        assert validate_idn_hostname(value) == value
+
+
+class TestInvalidIdnHostnames:
+    """Invalid internationalized hostnames per RFC 5890."""
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "",
+            "a..b.com",
+            ".",
+            "。",
+            "．",
+            "｡",
+            ".example",
+            "。example",
+            "．example",
+            "｡example",
+        ],
+    )
+    def test_empty_labels_rejected(self, value: str) -> None:
+        """Empty hostnames, lone separators, and leading separators are rejected."""
+        with pytest.raises(ValueError, match="Invalid IDN hostname format"):
+            validate_idn_hostname(value)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "ü" * 64 + ".com",
+            (
+                "실실실실실실실실실실실실실실실실실실실실실실실실실실실실실실실실실실실실실"
+                "실실실실실실실실실실실실실실실례례테스트례례례례례례례례례례례례례례례례례"
+                "테스트례례례례례례례례례례례례례례례례례례례테스트례례례례례례례례례례례례"
+                "테스트례례실례.테스트"
+            ),
+        ],
+    )
+    def test_label_too_long_after_encoding(self, value: str) -> None:
+        """Label exceeding 63 octets after punycode conversion is rejected."""
+        with pytest.raises(ValueError, match="Invalid IDN hostname format"):
+            validate_idn_hostname(value)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "a_b.com",
+            "-leading.com",
+            "trailing-.com",
+            "-hello",
+            "hello-",
+            "-hello-",
+            "-> $1.00 <--",
+        ],
+    )
+    def test_std3_rules_rejected(self, value: str) -> None:
+        """ASCII form must satisfy regular hostname rules."""
+        with pytest.raises(ValueError, match="Invalid IDN hostname format"):
+            validate_idn_hostname(value)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "ـߺ",
+            "A׳ב",
+            "A״ב",
+            "ب٠۰",
+        ],
+    )
+    def test_nameprep_prohibited_rejected(self, value: str) -> None:
+        """Characters and mixes rejected by nameprep/bidi checks."""
+        with pytest.raises(ValueError, match="Invalid IDN hostname format"):
+            validate_idn_hostname(value)

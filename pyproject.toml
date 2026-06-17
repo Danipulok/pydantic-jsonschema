@@ -142,6 +142,9 @@ ignore = [
 "tests/*" = [
     "S101",     # Use of `assert` detected
 ]
+"tests/formats/test_hostname.py" = [
+    "RUF001",   # Ambiguous unicode (intentional in IDN hostname test data)
+]
 "tests/formats/test_uri.py" = [
     "RUF001",   # Ambiguous unicode (intentional in IRI test data)
 ]
