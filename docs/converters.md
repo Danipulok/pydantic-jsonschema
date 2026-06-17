@@ -133,10 +133,9 @@ generated model's validation:
   branch is validated as a plain `dict[str, Any]` — sibling `properties` are not applied.
 - On objects that declare both `properties` and a schema-valued `additionalProperties`,
   extra fields are accepted (`extra="allow"`) but their values are not validated against the `additionalProperties` schema.
-- `format` is metadata unless a matching entry is passed in `format_validators` — see
-  [Format Validators](formats.md). Built-in aliases cover 13 of the 19 spec-defined formats;
-  `idn-email`, `idn-hostname`, `uri-template`, `json-pointer`, `relative-json-pointer`, and
-  `regex` are not built in yet.
+- `format` is metadata unless a matching entry is passed in `format_validators` — see [Format Validators](formats.md).
+  Built-in aliases cover all 19 spec-defined formats;
+  `idn-*` formats use the stdlib IDNA 2003 codec and `regex` uses the Python `re` dialect (see the differences from the specification in [Format Validators](formats.md)).
 
 ## Common Conversions
 

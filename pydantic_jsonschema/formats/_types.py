@@ -11,14 +11,20 @@ from typing import Annotated
 
 from pydantic import AfterValidator
 
-from pydantic_jsonschema.formats._email import validate_email
-from pydantic_jsonschema.formats._hostname import validate_hostname
+from pydantic_jsonschema.formats._email import validate_email, validate_idn_email
+from pydantic_jsonschema.formats._hostname import validate_hostname, validate_idn_hostname
+from pydantic_jsonschema.formats._json_pointer import (
+    validate_json_pointer,
+    validate_relative_json_pointer,
+)
+from pydantic_jsonschema.formats._regex import validate_regex
 from pydantic_jsonschema.formats._uri import (
     validate_iri,
     validate_iri_reference,
     validate_uri,
     validate_uri_reference,
 )
+from pydantic_jsonschema.formats._uri_template import validate_uri_template
 
 __all__ = [
     "UUID",
@@ -29,11 +35,17 @@ __all__ = [
     "Hostname",
     "IPv4",
     "IPv6",
+    "IdnEmail",
+    "IdnHostname",
     "Iri",
     "IriReference",
+    "JsonPointer",
+    "Regex",
+    "RelativeJsonPointer",
     "Time",
     "Uri",
     "UriReference",
+    "UriTemplate",
 ]
 
 # Date/Time formats (Pydantic native support)
@@ -44,8 +56,11 @@ Duration = timedelta
 
 # String formats
 Email = Annotated[str, AfterValidator(validate_email)]
+IdnEmail = Annotated[str, AfterValidator(validate_idn_email)]
 Hostname = Annotated[str, AfterValidator(validate_hostname)]
+IdnHostname = Annotated[str, AfterValidator(validate_idn_hostname)]
 UUID = uuid.UUID
+Regex = Annotated[str, AfterValidator(validate_regex)]
 
 # IP formats (Pydantic native support)
 IPv4 = IPv4Address
@@ -56,3 +71,8 @@ Uri = Annotated[str, AfterValidator(validate_uri)]
 UriReference = Annotated[str, AfterValidator(validate_uri_reference)]
 Iri = Annotated[str, AfterValidator(validate_iri)]
 IriReference = Annotated[str, AfterValidator(validate_iri_reference)]
+UriTemplate = Annotated[str, AfterValidator(validate_uri_template)]
+
+# JSON Pointer formats
+JsonPointer = Annotated[str, AfterValidator(validate_json_pointer)]
+RelativeJsonPointer = Annotated[str, AfterValidator(validate_relative_json_pointer)]
