@@ -95,8 +95,8 @@ for field reference and usage examples.
 
 ## Acknowledgments
 
-- [vgavro](https://github.com/vgavro) — initial library idea, guidance, and ongoing support
-- [bodlan](https://github.com/bodlan) — contributions to documentation and conversion logic
+- [vgavro](https://github.com/vgavro) — initial library idea and early guidance
+- [bodlan](https://github.com/bodlan) — early documentation review and feedback
 
 ## License
 
