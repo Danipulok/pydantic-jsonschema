@@ -152,7 +152,7 @@ release-auto version: (_check-release-version version)
     just changelog "v$version"
     if [[ -n "$(git status --porcelain docs/changelog.md)" ]]; then
         git add docs/changelog.md
-        git commit -m "docs(changelog): add \`$version\` release section"
+        git commit -m "chore(version): update to \`$version\`"
     fi
     just release "$version"
 
