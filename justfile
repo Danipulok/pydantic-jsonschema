@@ -17,9 +17,10 @@ install: _check-uv
 
 # Install and synchronize an interpreter for every supported python version
 install-all-python:
-    UV_PROJECT_ENVIRONMENT=.venv312 uv sync --python 3.12 --frozen --all-extras --all-packages
-    UV_PROJECT_ENVIRONMENT=.venv313 uv sync --python 3.13 --frozen --all-extras --all-packages
-    UV_PROJECT_ENVIRONMENT=.venv314 uv sync --python 3.14 --frozen --all-extras --all-packages
+    UV_PROJECT_ENVIRONMENT=.venv312 uv sync --python 3.12 --frozen --no-default-groups --group test
+    UV_PROJECT_ENVIRONMENT=.venv313 uv sync --python 3.13 --frozen --no-default-groups --group test
+    UV_PROJECT_ENVIRONMENT=.venv314 uv sync --python 3.14 --frozen --no-default-groups --group test
+    UV_PROJECT_ENVIRONMENT=.venv315 uv sync --python 3.15 --frozen --no-default-groups --group test
 
 # Update local packages and `uv.lock`
 sync: _check-uv
@@ -57,9 +58,10 @@ test:
 
 # Run tests for every supported python version and show combined coverage report
 test-all-python: install-all-python
-    UV_PROJECT_ENVIRONMENT=.venv312 uv run --python 3.12 --all-extras --all-packages coverage run -p -m pytest
-    UV_PROJECT_ENVIRONMENT=.venv313 uv run --python 3.13 --all-extras --all-packages coverage run -p -m pytest
-    UV_PROJECT_ENVIRONMENT=.venv314 uv run --python 3.14 --all-extras --all-packages coverage run -p -m pytest
+    UV_PROJECT_ENVIRONMENT=.venv312 uv run --python 3.12 --no-default-groups --group test coverage run -p -m pytest
+    UV_PROJECT_ENVIRONMENT=.venv313 uv run --python 3.13 --no-default-groups --group test coverage run -p -m pytest
+    UV_PROJECT_ENVIRONMENT=.venv314 uv run --python 3.14 --no-default-groups --group test coverage run -p -m pytest
+    UV_PROJECT_ENVIRONMENT=.venv315 uv run --python 3.15 --no-default-groups --group test coverage run -p -m pytest
     uv run coverage combine
     uv run coverage report
 
@@ -173,6 +175,10 @@ _check-release-version version:
 # Install dependencies for CI
 ci-install: _check-uv
     uv sync --frozen --all-extras --all-packages
+
+# Install test dependencies only for CI (skips the `docs` group: `Pillow` has no Python 3.15 wheel)
+ci-install-test: _check-uv
+    uv sync --frozen --no-default-groups --group test
 
 # Install docs dependencies for CI
 ci-install-docs: _check-uv

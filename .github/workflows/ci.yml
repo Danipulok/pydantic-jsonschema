@@ -37,10 +37,16 @@ jobs:
   test:
     name: Test Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
+    # `UV_PYTHON` pins `uv` to the matrix interpreter — otherwise `uv` skips prereleases
+    # (like the `3.15` beta) and silently picks a stable one. `UV_NO_SYNC` keeps `uv run`
+    # on the test-only env from `ci-install-test` (no `docs` group: `Pillow` has no 3.15 wheel).
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
+      UV_NO_SYNC: "1"
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13", "3.14"]
+        python-version: ["3.12", "3.13", "3.14", "3.15"]
 
     steps:
       - name: Checkout
@@ -50,6 +56,7 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
 
       - name: Install `uv`
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
@@ -58,7 +65,7 @@ jobs:
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
 
       - name: Install dependencies
-        run: just ci-install
+        run: just ci-install-test
 
       - name: Run tests with coverage
         run: just ci-test
