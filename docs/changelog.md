@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.0.11] — 2026-06-18
+
+### Added
+
+- map discriminated `oneOf` to Pydantic tagged unions (#4)
+
+### Build
+
+- add `OS Independent`, `Python 3 :: Only`, and code-generator classifiers
+- test against `Python 3.15` beta
+
+### Other
+
+- rework with a summary and absolute contributing link
+- use `chore(version)` message for changelog commit
+- scope `Protocol` exclude pattern to class declarations
+
+### Testing
+
+- make `$ref` cache identity check version-stable
+
 ## [0.0.10] — 2026-06-17
 
 ### Added
@@ -14,6 +35,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - bump the python-dependencies group across 1 directory with 2 updates (#2)
 - bump the github-actions group across 1 directory with 2 updates (#1)
+
+### Documentation
+
+- add `0.0.10` release section
 
 ## [0.0.9] — 2026-06-12
 
@@ -339,6 +364,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - add coverage tests and set `cov-fail-under`
 - add comprehensive test suite
 
+[0.0.11]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.10...v0.0.11>
 [0.0.10]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.9...v0.0.10>
 [0.0.9]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.8...v0.0.9>
 [0.0.8]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.7...v0.0.8>
