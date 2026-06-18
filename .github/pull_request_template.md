@@ -1,18 +1,21 @@
-## Description
+Closes #<!-- issue number, or remove this line -->
 
-<!-- What changed, why it changed, and how it was tested. -->
+# Summary
 
-Closes #<issue>
+<!-- One or two sentences, written for a human: what does this PR do, and why? -->
 
-## Type of change
+## What changed
 
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Breaking change
-- [ ] Documentation
-- [ ] Refactoring
-- [ ] Performance
+<!-- The notable bits — key changes, design decisions, anything a reviewer should look at first. -->
 
-## Checklist
+## How it was tested
 
-- [ ] I followed the contribution guide in [`docs/contributing.md`](../docs/contributing.md)
+<!-- `just all`? New tests? Manual steps? Tell us how you know it works. -->
+
+## Notes
+
+<!-- Optional: trade-offs, follow-ups, screenshots, open questions. Delete if empty. -->
+
+---
+
+- [ ] I followed the [contribution guide](https://danipulok.github.io/pydantic-jsonschema/contributing/)
