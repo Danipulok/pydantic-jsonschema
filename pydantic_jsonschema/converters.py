@@ -22,7 +22,7 @@ from typing import (
 )
 
 import annotated_types
-from pydantic import BaseModel, BeforeValidator, ConfigDict, RootModel, create_model
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, RootModel, create_model
 from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.fields import FieldInfo
 
@@ -46,6 +46,8 @@ _PYDANTIC_DEFAULT_MISSING: Final[Ellipsis] = ...  # type: ignore[valid-type]
 # JSON Schema 2020-12 definitions key
 # See: https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.4
 _DEFS_KEY: Final[str] = "$defs"
+# A discriminated union needs at least two members for Pydantic to tag-dispatch.
+_MIN_DISCRIMINATED_UNION_MEMBERS: Final[int] = 2
 
 # NOTE: `ARRAY` / `OBJECT` entries are only reachable from multi-type unions
 # (`{"type": ["object", "string"]}`) — single `array` / `object` schemas are handled
@@ -70,6 +72,7 @@ type AnnotationType = Any  # `type`, `Annotated`, `Union`, `Literal`, `ForwardRe
 type PythonType = Any  # Anything that Pydantic supports
 type FieldKindType = Literal["required", "optional", "root"]  # How a field is used in a model
 type FormatValidatorType = FormatValidator | type  # `FormatValidator` or `Annotated`
+type TagType = str | int | None  # Scalar discriminator tag value (`bool` is an `int`)
 
 
 class FormatValidator(Protocol):
@@ -824,17 +827,142 @@ class SchemaConverter:
             union_annotation = Union[tuple(union_args)]  # type: ignore[valid-type]  # noqa: UP007
             return cast("type", union_annotation)
 
-        # `oneOf` -> union of branches + exactly-one-branch validation:
+        # `oneOf` -> discriminated union or exactly-one-branch validation:
         if schema.one_of is not MISSING:
-            one_of_validator = OneOf(branches=self._union_args(schema.one_of, kind="oneOf"))
-            self._one_of_validators.append(one_of_validator)
-            return cast("type", one_of_validator.as_annotation())
+            return self._one_of_annotation(schema)
 
         # `allOf` -> nested model:
         if schema.all_of is not MISSING:
             return self._convert_nested_schema(schema)
 
         return None
+
+    def _one_of_annotation(
+        self,
+        schema: Schema,
+        /,
+    ) -> type:
+        """Convert a `oneOf` composition to an annotation.
+
+        When all branches are object schemas tagged by a shared discriminator
+        property, the union maps to a native Pydantic discriminated (tagged) union
+        via `Field(discriminator=...)`:
+        Pydantic routes to a single branch by the tag value instead of probing
+        every branch, which is faster and yields branch-specific errors.
+
+        Otherwise it falls back to the `OneOf` wrap-validator,
+        which enforces exactly-one-branch semantics by probing.
+
+        :param schema: Schema with `oneOf` set.
+        :returns: Discriminated `Union` annotation or `OneOf`-wrapped union.
+        """
+        union_args = self._union_args(schema.one_of, kind="oneOf")
+        discriminator = self._discriminator_property(schema.one_of)
+
+        # A discriminated union needs >= 2 concrete members to introspect the tag field.
+        # Unresolved `ForwardRef` branches keep the `OneOf` lazy path.
+        if (
+            discriminator is not None
+            and len(union_args) >= _MIN_DISCRIMINATED_UNION_MEMBERS
+            and not any(isinstance(arg, ForwardRef) for arg in union_args)
+        ):
+            union_annotation = Union[tuple(union_args)]  # type: ignore[valid-type]  # noqa: UP007
+            discriminated = Annotated[union_annotation, Field(discriminator=discriminator)]  # type: ignore[valid-type]
+            return cast("type", discriminated)
+
+        one_of_validator = OneOf(branches=union_args)
+        self._one_of_validators.append(one_of_validator)
+        return cast("type", one_of_validator.as_annotation())
+
+    def _discriminator_property(
+        self,
+        one_of_schemas: list[Schema | Reference],
+        /,
+    ) -> str | None:
+        """Find the property that tags every `oneOf` branch with a distinct constant.
+
+        A property qualifies as a discriminator when, in *every* branch, it is a required
+        property whose schema is a single constant (`const` or single-value `enum`),
+        and its constant value is distinct across branches.
+
+        :param one_of_schemas: Sub-schemas of the `oneOf` composition.
+        :returns: The discriminator property name, or `None` when zero or more than
+            one property qualifies (ambiguous discriminators stay on the `OneOf` path).
+        """
+        branch_count: int = len(one_of_schemas)
+
+        # Collect each branch's tag value per property name.
+        tags_by_property: dict[str, list[TagType]] = {}
+        for branch in one_of_schemas:
+            branch_schema = self._resolve_branch_schema(branch)
+            if branch_schema is None or branch_schema.properties is MISSING:
+                return None
+
+            for name, tag in self._branch_tag_values(branch_schema).items():
+                tags_by_property.setdefault(name, []).append(tag)
+
+        # A discriminator tags every branch (count of tags == branch count)
+        # with a distinct value (count of unique tags == branch count).
+        qualified: list[str] = [
+            name
+            for name, tags in tags_by_property.items()
+            if len(tags) == branch_count == len(set(tags))
+        ]
+
+        # Exactly one qualifying property keeps promotion predictable.
+        if len(qualified) != 1:
+            return None
+        return qualified[0]
+
+    def _resolve_branch_schema(
+        self,
+        branch: Schema | Reference,
+        /,
+    ) -> Schema | None:
+        """Resolve a `oneOf` branch to a concrete object schema, if known.
+
+        :param branch: A `oneOf` sub-schema or reference.
+        :returns: The inline schema, the cached schema for a local `$ref`, or `None`
+            when the reference can't be introspected (external / forward / pre-built).
+        """
+        if isinstance(branch, Reference):
+            return self._defs_cache.get(branch.ref)
+        return branch
+
+    @staticmethod
+    def _branch_tag_values(
+        schema: Schema,
+        /,
+    ) -> dict[str, TagType]:
+        """Map each required single-constant property of a branch to its tag value.
+
+        Only scalar constants (`str` / `int` / `bool` / `None`) are eligible tags —
+        they are the hashable, `Literal`-compatible values Pydantic accepts as discriminators.
+
+        :param schema: Object branch schema.
+        :returns: Mapping of property name to its constant tag value.
+        """
+        required: set[str] = set(schema.required) if schema.required is not MISSING else set()
+        tags: dict[str, TagType] = {}
+        for name, prop in schema.properties.items():
+            if name not in required or isinstance(prop, Reference):
+                continue
+
+            if prop.const is not MISSING:
+                tag = prop.const
+            elif prop.enum is not MISSING and len(prop.enum) == 1:
+                tag = prop.enum[0]
+            else:
+                continue
+
+            # NOTE: Only scalar tags are accepted. `_discriminator_property` puts these
+            # values in a `set()` to check distinctness across branches, so a non-hashable
+            # `const` (array/object) would crash. `float` is excluded on purpose:
+            # float-equality discrimination is fragile, so such unions fall back to `OneOf`.
+            if isinstance(tag, (str, int, NoneType)):
+                tags[name] = tag
+
+        return tags
 
     def _type_annotation(
         self,

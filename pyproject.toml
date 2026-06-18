@@ -142,6 +142,9 @@ ignore = [
 "tests/*" = [
     "S101",     # Use of `assert` detected
 ]
+"tests/test_converters.py" = [
+    "E501",     # Long lines in `inline_snapshot` literals (Pydantic error messages)
+]
 "tests/formats/test_hostname.py" = [
     "RUF001",   # Ambiguous unicode (intentional in IDN hostname test data)
 ]
@@ -173,5 +176,5 @@ skip_covered = true # Omit fully covered files from report output
 show_missing = true # Show line numbers of missing coverage in report
 precision = 2       # Number of decimal places in coverage percentages
 exclude_lines = [
-    "\\(Protocol\\):$",     # Do not count Protocol definitions
+    "\\(Protocol\\):$",     # It's impossible to test `Protocol`
 ]

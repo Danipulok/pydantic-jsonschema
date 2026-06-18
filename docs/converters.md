@@ -93,7 +93,7 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | `{"enum": [...]}`                            | `Literal[...]`                              | `Literal["draft", "published"]`     |
 | `{"const": "active"}`                        | single-value `Literal[...]`                 | `Literal["active"]`                 |
 | `anyOf`                                      | union annotation                            | `str` or `int`                      |
-| `oneOf`                                      | union with exactly-one-branch validation    | ambiguous matches rejected          |
+| `oneOf`                                      | discriminated or exactly-one-branch union   | tagged union or ambiguous rejected  |
 | `allOf`                                      | generated model inheritance or nested model | combined Pydantic model             |
 | nested object property                       | nested generated model                      | `post.author.name`                  |
 | property with `$ref: "#/$defs/Person"`       | model generated from `$defs.Person`         | shared `Person` field type          |
@@ -316,6 +316,72 @@ except ValidationError as er:
 
 print(Model.model_json_schema()["properties"]["value"]["oneOf"])
 #> [{'type': 'integer'}, {'type': 'number'}]
+```
+
+### Discriminated `oneOf`
+
+When every `oneOf` branch is an object schema tagged by a shared property — a required field
+whose value is a single constant (`const` or single-value `enum`) with a distinct value per
+branch — the union maps to a native Pydantic
+[discriminated union](https://docs.pydantic.dev/latest/concepts/unions/#discriminated-unions)
+via `Field(discriminator=...)`.
+
+Pydantic then routes to a single branch by the tag value instead of probing every branch:
+validation is faster and errors point at the selected branch rather than reporting an
+ambiguous match. When the branches do not form a tagged union, the converter falls back to
+the exactly-one-branch validator above.
+
+```python title="discriminated_one_of.py"
+from pydantic import ValidationError
+
+from pydantic_jsonschema import Schema, to_model
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "pet": {
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "title": "Cat",
+                        "properties": {
+                            "type": {"const": "cat"},
+                            "meow": {"type": "boolean"},
+                        },
+                        "required": ["type", "meow"],
+                    },
+                    {
+                        "type": "object",
+                        "title": "Dog",
+                        "properties": {
+                            "type": {"const": "dog"},
+                            "bark": {"type": "boolean"},
+                        },
+                        "required": ["type", "bark"],
+                    },
+                ]
+            }
+        },
+    }
+)
+
+Model = to_model(schema)
+
+pet = Model(pet={"type": "cat", "meow": True}).pet
+# the `cat` tag routed to the generated `Cat` model
+print(type(pet).__name__)
+#> Cat
+
+try:
+    # `fish` matches no branch tag -> rejected by the discriminator
+    Model(pet={"type": "fish"})
+except ValidationError as er:
+    print(er.errors()[0]["type"])
+    #> union_tag_invalid
+
+print(Model.model_json_schema()["properties"]["pet"]["oneOf"])
+#> [{'$ref': '#/$defs/Cat'}, {'$ref': '#/$defs/Dog'}]
 ```
 
 ## Nested Objects
