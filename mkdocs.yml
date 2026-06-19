@@ -154,9 +154,16 @@ plugins:
         Development:
           - contributing.md
           - changelog.md
-  # "Copy page as Markdown" split button (copy / open in ChatGPT / open in Claude).
+  # "Copy page as Markdown" split button (copy / view / open in ChatGPT / open in Claude).
   - copy-to-llm:
       button_hover_color: "var(--md-primary-fg-color)"
+      buttons:
+        copy_page: true
+        view_as_markdown: true
+        open_in_chatgpt: true
+        open_in_claude: true
+        # Niche — a Markdown link to the page is rarely what readers want.
+        copy_markdown_link: false
   - mkdocstrings:
       enabled: true
       default_handler: python

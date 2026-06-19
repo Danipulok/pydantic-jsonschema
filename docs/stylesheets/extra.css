@@ -98,3 +98,10 @@
 .md-content__inner {
   padding-bottom: 3em;
 }
+
+/* De-duplicate code-block copy buttons: `mkdocs-copy-to-llm` adds its own per-block
+   button next to Material's built-in code-copy. Keep Material's (plain copy) and hide
+   the copy-to-llm one; its page-level "copy / open in LLM" buttons stay. */
+.copy-to-llm-code {
+  display: none;
+}
