@@ -121,11 +121,12 @@ plugins = [
 strict = true
 warn_return_any = true
 warn_unused_configs = true
-exclude = ["check_.*\\.py$", "mre_.*\\.py$", "pydantic_mre\\.py$"]
+files = ["pydantic_jsonschema", "tests", "examples"]
 
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+include = ["pydantic_jsonschema/**/*.py", "tests/**/*.py", "examples/**/*.py"]
 
 [tool.ruff.lint]
 select = ["ALL"]
