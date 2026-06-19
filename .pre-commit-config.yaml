@@ -7,6 +7,9 @@ repos:
       - id: check-ast
       - id: check-case-conflict
       - id: check-docstring-first
+        # `_types.py` uses PEP 224 attribute docstrings (strings after `type X = ...`),
+        # which this hook misreads as a second module docstring.
+        exclude: ^pydantic_jsonschema/formats/_types\.py$
       - id: check-executables-have-shebangs
       - id: check-json
       - id: check-shebang-scripts-are-executable
