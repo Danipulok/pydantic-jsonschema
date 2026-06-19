@@ -1,5 +1,7 @@
 """Tests for format type aliases exported from `pydantic_jsonschema.formats`."""
 
+import datetime as dt
+
 import pytest
 from pydantic import BaseModel, JsonValue, ValidationError
 
@@ -42,7 +44,7 @@ class TestDateTime:
         class Model(BaseModel):
             value: DateTime
 
-        assert isinstance(Model(value=value).value, DateTime)
+        assert isinstance(Model(value=value).value, dt.datetime)
 
     @pytest.mark.parametrize(
         "value",
@@ -78,7 +80,7 @@ class TestTime:
         class Model(BaseModel):
             value: Time
 
-        assert isinstance(Model(value=value).value, Time)
+        assert isinstance(Model(value=value).value, dt.time)
 
     @pytest.mark.parametrize(
         "value",
@@ -113,7 +115,7 @@ class TestDate:
         class Model(BaseModel):
             value: Date
 
-        assert isinstance(Model(value=value).value, Date)
+        assert isinstance(Model(value=value).value, dt.date)
 
     @pytest.mark.parametrize(
         "value",
@@ -149,7 +151,7 @@ class TestDuration:
         class Model(BaseModel):
             value: Duration
 
-        assert isinstance(Model(value=value).value, Duration)
+        assert isinstance(Model(value=value).value, dt.timedelta)
 
     @pytest.mark.parametrize(
         "value",

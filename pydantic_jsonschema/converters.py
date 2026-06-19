@@ -15,6 +15,7 @@ from typing import (
     ForwardRef,
     Literal,
     Protocol,
+    TypeAliasType,
     TypedDict,
     Union,
     cast,
@@ -71,7 +72,9 @@ type FormatName = str  # Format name like "date-time", "uuid"
 type AnnotationType = Any  # `type`, `Annotated`, `Union`, `Literal`, `ForwardRef`, etc.
 type PythonType = Any  # Anything that Pydantic supports
 type FieldKindType = Literal["required", "optional", "root"]  # How a field is used in a model
-type FormatValidatorType = FormatValidator | type  # `FormatValidator` or `Annotated`
+type FormatValidatorType = (
+    FormatValidator | type | TypeAliasType
+)  # `FormatValidator`, type, or `type` alias
 type TagType = str | int | None  # Scalar discriminator tag value (`bool` is an `int`)
 
 
@@ -86,12 +89,11 @@ class FormatValidator(Protocol):
     Accepts any JSON Schema type: string, number, integer, boolean, null, array, object.
     Callables receive the raw input and run before Pydantic's standard validation.
 
-    See:
-    https://json-schema.org/draft/2020-12/json-schema-validation#section-7.1
+    See [validation §7.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-7.1).
 
-    For Pydantic validation details, see:
-    https://docs.pydantic.dev/latest/concepts/validators/#annotated-validators
-    https://docs.pydantic.dev/latest/concepts/validators/#after-validators
+    For Pydantic validation details, see
+    [annotated validators](https://docs.pydantic.dev/latest/concepts/validators/#annotated-validators)
+    and [after validators](https://docs.pydantic.dev/latest/concepts/validators/#after-validators).
     """
 
     # NOTE: `value` must stay `Any`-typed: protocol parameters are contravariant,
@@ -623,7 +625,9 @@ class SchemaConverter:
     ) -> AnnotationType:
         """Apply validator to annotation.
 
-        Handles three types of validators:
+        Handles these validator kinds:
+        - `type` aliases (the built-in format types): unwrapped to their underlying
+          `Annotated` / type, then handled like the cases below.
         - Annotated types: used directly as annotation (replaces original).
         - Type classes: used directly as annotation (replaces original).
         - Callables: wrapped with `BeforeValidator`.
@@ -636,6 +640,12 @@ class SchemaConverter:
             return annotation
 
         validator = self._format_validators[schema.format]
+
+        # Built-in format types (`Email`, `UUID`, ...) are PEP 695 `type` aliases, i.e.
+        # `TypeAliasType`. Unwrap to the actual `Annotated` / class they alias so the field
+        # annotation stays clean (`str`, `uuid.UUID`) instead of the alias wrapper.
+        if isinstance(validator, TypeAliasType):
+            validator = validator.__value__
 
         if get_origin(validator) is Annotated:
             return validator
