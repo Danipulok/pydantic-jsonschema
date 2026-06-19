@@ -68,8 +68,11 @@ class Reference(BaseModel):
 class Schema(BaseModel):
     """JSON Schema object.
 
-    Only fields consumed by the converter are declared explicitly.
-    Unknown keywords are preserved via ``extra="allow"`` per spec §4.3.1 / §6.5.
+    Declares the JSON Schema 2020-12 validation and applicator keywords; any other or
+    custom keyword is still preserved via ``extra="allow"`` per spec §4.3.1 / §6.5.
+
+    Not every declared keyword is consumed by the converter yet: unsupported ones
+    round-trip through parsing and serialization but do not affect the generated model.
 
     See:
 
@@ -97,11 +100,25 @@ class Schema(BaseModel):
     """The `properties` keyword: schemas for object properties. [Core §10.3.2.1](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.2.1)."""
     items: SchemaOrRefType | MISSING = MISSING
     """The `items` keyword: the schema for array elements. [Core §10.3.1.2](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.1.2)."""
+    prefix_items: list[SchemaOrRefType] | MISSING = MISSING
+    """The `prefixItems` keyword: schemas for the leading array elements (tuple). [Core §10.3.1.1](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.1.1)."""
+    contains: SchemaOrRefType | MISSING = MISSING
+    """The `contains` keyword: at least one array element must match this schema. [Core §10.3.1.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.1.3)."""
     additional_properties: SchemaOrRefType | bool | MISSING = MISSING
     """The `additionalProperties` keyword: schema/toggle for extra properties. [Core §10.3.2.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.2.3)."""
+    pattern_properties: dict[str, SchemaOrRefType] | MISSING = MISSING
+    """The `patternProperties` keyword: schemas for properties matching a regex. [Core §10.3.2.2](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.2.2)."""
 
     required: list[str] | MISSING = MISSING
     """The `required` keyword: names of required properties. [Validation §6.5.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.5.3)."""
+    min_properties: int | MISSING = MISSING
+    """The `minProperties` keyword: minimum number of properties. [Validation §6.5.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.5.2)."""
+    max_properties: int | MISSING = MISSING
+    """The `maxProperties` keyword: maximum number of properties. [Validation §6.5.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.5.1)."""
+    dependent_required: dict[str, list[str]] | MISSING = MISSING
+    """The `dependentRequired` keyword: properties required when another is present. [Validation §6.5.4](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.5.4)."""
+    dependent_schemas: dict[str, SchemaOrRefType] | MISSING = MISSING
+    """The `dependentSchemas` keyword: subschemas applied when a property is present. [Core §10.2.2.4](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.4)."""
 
     all_of: list[SchemaOrRefType] | MISSING = MISSING
     """The `allOf` keyword: must match every subschema. [Core §10.2.1.1](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.1)."""
@@ -132,6 +149,8 @@ class Schema(BaseModel):
     """The `minItems` keyword: minimum array length. [Validation §6.4.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.2)."""
     max_items: int | MISSING = MISSING
     """The `maxItems` keyword: maximum array length. [Validation §6.4.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.1)."""
+    unique_items: bool | MISSING = MISSING
+    """The `uniqueItems` keyword: array elements must be unique. [Validation §6.4.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.3)."""
 
     format: str | MISSING = MISSING
     """The `format` keyword: a semantic format (e.g. `date-time`). [Validation §7](https://json-schema.org/draft/2020-12/json-schema-validation#section-7)."""
