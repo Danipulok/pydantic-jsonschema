@@ -37,7 +37,7 @@ format:
 lint:
     uv run ruff format --check
     uv run ruff check
-    uv run mypy .
+    uv run mypy
     uv run codespell
     npx --yes markdownlint-cli2
 
@@ -192,7 +192,7 @@ ci-install-release: _check-uv
 ci-lint:
     uv run ruff format --check
     uv run ruff check
-    uv run mypy .
+    uv run mypy
     uv run codespell
     npx --yes markdownlint-cli2
 
