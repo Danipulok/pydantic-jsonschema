@@ -7,6 +7,7 @@ from inline_snapshot import snapshot
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from pydantic_jsonschema import OneOf, Schema, to_model
+from tests.conftest import dump_errors
 
 
 class Pet(BaseModel):
@@ -33,8 +34,19 @@ class TestOneOfValidation:
         class Model(BaseModel):
             value: Annotated[int | float, OneOf(branches=[int, float])]
 
-        with pytest.raises(ValidationError, match=r"matches 2 `oneOf` branches"):
+        with pytest.raises(ValidationError) as exc_info:
             Model(value=1)
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("value",),
+                    "msg": "Value error, Input matches 2 `oneOf` branches, expected exactly 1",
+                    "input": 1,
+                }
+            ]
+        )
 
     def test_zero_matches_rejected(self) -> None:
         """Value matching no branch is rejected."""
@@ -42,8 +54,19 @@ class TestOneOfValidation:
         class Model(BaseModel):
             value: Annotated[str | bool, OneOf(branches=[str, bool])]
 
-        with pytest.raises(ValidationError, match=r"matches 0 `oneOf` branches"):
+        with pytest.raises(ValidationError) as exc_info:
             Model(value=[1, 2, 3])
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("value",),
+                    "msg": "Value error, Input matches 0 `oneOf` branches, expected exactly 1",
+                    "input": [1, 2, 3],
+                }
+            ]
+        )
 
     def test_branches_accept_any_iterable(self) -> None:
         """`branches` accepts any iterable, not only sequences."""
@@ -62,8 +85,19 @@ class TestOneOfValidation:
 
         assert adapter.validate_python(1.5) == snapshot(1.5)
 
-        with pytest.raises(ValidationError, match=r"matches 2 `oneOf` branches"):
+        with pytest.raises(ValidationError) as exc_info:
             adapter.validate_python(1)
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": (),
+                    "msg": "Value error, Input matches 2 `oneOf` branches, expected exactly 1",
+                    "input": 1,
+                }
+            ]
+        )
 
     def test_forward_ref_branch_resolved_after_binding(self) -> None:
         """`ForwardRef` branches resolve through the bound namespace."""

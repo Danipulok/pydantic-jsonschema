@@ -20,6 +20,7 @@ from pydantic_jsonschema.exceptions import SchemaConversionError, SchemaReferenc
 from pydantic_jsonschema.formats import UUID as UUID_FORMAT
 from pydantic_jsonschema.formats import DateTime, Email, IPv4, Uri
 from pydantic_jsonschema.types import Schema
+from tests.conftest import dump_errors
 
 if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
@@ -1075,6 +1076,7 @@ class TestComposition:
                     ],
                 },
             },
+            "required": ["value"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -1082,8 +1084,19 @@ class TestComposition:
         instance = model(value=1.5)
         assert instance.model_dump() == snapshot({"value": 1.5})
 
-        with pytest.raises(ValidationError, match=r"matches 2 `oneOf` branches"):
+        with pytest.raises(ValidationError) as exc_info:
             model(value=1)
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("value",),
+                    "msg": "Value error, Input matches 2 `oneOf` branches, expected exactly 1",
+                    "input": 1,
+                }
+            ]
+        )
 
     def test_oneof_no_matching_branch_rejected(self) -> None:
         """Test `oneOf` rejects a value matching zero branches."""
@@ -1097,12 +1110,24 @@ class TestComposition:
                     ],
                 },
             },
+            "required": ["value"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
 
-        with pytest.raises(ValidationError, match=r"matches 0 `oneOf` branches"):
+        with pytest.raises(ValidationError) as exc_info:
             model(value=[1, 2, 3])
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("value",),
+                    "msg": "Value error, Input matches 0 `oneOf` branches, expected exactly 1",
+                    "input": [1, 2, 3],
+                }
+            ]
+        )
 
     def test_oneof_with_forward_ref(self) -> None:
         """Test `oneOf` with a forward reference branch resolved lazily."""
@@ -1250,7 +1275,7 @@ class TestDiscriminatedOneOf:
         with pytest.raises(ValidationError) as exc_info:
             model.model_validate({"type": "fish"})
 
-        assert exc_info.value.errors(include_url=False, include_context=False) == snapshot(
+        assert dump_errors(exc_info.value) == snapshot(
             [
                 {
                     "type": "union_tag_invalid",
@@ -1291,7 +1316,7 @@ class TestDiscriminatedOneOf:
         with pytest.raises(ValidationError) as exc_info:
             model(pet={"type": "fish"})
 
-        assert exc_info.value.errors(include_url=False, include_context=False) == snapshot(
+        assert dump_errors(exc_info.value) == snapshot(
             [
                 {
                     "type": "union_tag_invalid",
@@ -1340,7 +1365,7 @@ class TestDiscriminatedOneOf:
         with pytest.raises(ValidationError) as exc_info:
             model(pet={"type": "cat", "bark": True})
 
-        assert exc_info.value.errors(include_url=False, include_context=False) == snapshot(
+        assert dump_errors(exc_info.value) == snapshot(
             [
                 {
                     "type": "missing",
@@ -1440,7 +1465,7 @@ class TestDiscriminatedOneOf:
         with pytest.raises(ValidationError) as exc_info:
             model(pet={"kind": "bird"})
 
-        assert exc_info.value.errors(include_url=False, include_context=False) == snapshot(
+        assert dump_errors(exc_info.value) == snapshot(
             [
                 {
                     "type": "union_tag_invalid",
@@ -1485,7 +1510,7 @@ class TestDiscriminatedOneOf:
         with pytest.raises(ValidationError) as exc_info:
             model(shape={"kind": "triangle"})
 
-        assert exc_info.value.errors(include_url=False, include_context=False) == snapshot(
+        assert dump_errors(exc_info.value) == snapshot(
             [
                 {
                     "type": "union_tag_invalid",
@@ -1524,7 +1549,7 @@ class TestDiscriminatedOneOf:
         with pytest.raises(ValidationError) as exc_info:
             model(value={"x": 1})
 
-        assert exc_info.value.errors(include_url=False, include_context=False) == snapshot(
+        assert dump_errors(exc_info.value) == snapshot(
             [
                 {
                     "type": "value_error",
@@ -1563,7 +1588,7 @@ class TestDiscriminatedOneOf:
         with pytest.raises(ValidationError) as exc_info:
             model(value={"tag": "same"})
 
-        assert exc_info.value.errors(include_url=False, include_context=False) == snapshot(
+        assert dump_errors(exc_info.value) == snapshot(
             [
                 {
                     "type": "value_error",
@@ -1602,7 +1627,7 @@ class TestDiscriminatedOneOf:
         with pytest.raises(ValidationError) as exc_info:
             model(value={"kind": 9.9})
 
-        assert exc_info.value.errors(include_url=False, include_context=False) == snapshot(
+        assert dump_errors(exc_info.value) == snapshot(
             [
                 {
                     "type": "value_error",
@@ -2090,8 +2115,19 @@ class TestFormatValidators:
         instance = model(count=5)
         assert instance.model_dump() == snapshot({"count": 5})
 
-        with pytest.raises(ValidationError, match="Must be positive"):
+        with pytest.raises(ValidationError) as exc_info:
             model(count=-1)
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("count",),
+                    "msg": "Value error, Must be positive",
+                    "input": -1,
+                }
+            ]
+        )
 
     def test_annotated_validator_with_transformation(self) -> None:
         """Test Annotated type with value transformation."""
@@ -2141,8 +2177,19 @@ class TestFormatValidators:
         instance = model(email="test@example.com")
         assert instance.model_dump() == snapshot({"email": "test@example.com"})
 
-        with pytest.raises(ValidationError, match="Invalid email"):
+        with pytest.raises(ValidationError) as exc_info:
             model(email="invalid")
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("email",),
+                    "msg": "Value error, Invalid email",
+                    "input": "invalid",
+                }
+            ]
+        )
 
     def test_mixed_validators(self) -> None:
         """Test multiple validator types in one schema."""
@@ -2178,11 +2225,33 @@ class TestFormatValidators:
         instance = model(count=5, code="ABC")
         assert instance.model_dump() == snapshot({"count": 5, "code": "ABC"})
 
-        with pytest.raises(ValidationError, match="Must be positive"):
+        with pytest.raises(ValidationError) as exc_info:
             model(count=-1, code="ABC")
 
-        with pytest.raises(ValidationError, match="Must be uppercase"):
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("count",),
+                    "msg": "Value error, Must be positive",
+                    "input": -1,
+                }
+            ]
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
             model(count=5, code="abc")
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("code",),
+                    "msg": "Value error, Must be uppercase",
+                    "input": "abc",
+                }
+            ]
+        )
 
     def test_validator_as_type_class(self) -> None:
         """Test validator as type class."""
