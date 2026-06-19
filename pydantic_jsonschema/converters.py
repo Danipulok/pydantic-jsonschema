@@ -86,12 +86,11 @@ class FormatValidator(Protocol):
     Accepts any JSON Schema type: string, number, integer, boolean, null, array, object.
     Callables receive the raw input and run before Pydantic's standard validation.
 
-    See:
-    https://json-schema.org/draft/2020-12/json-schema-validation#section-7.1
+    See [validation §7.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-7.1).
 
-    For Pydantic validation details, see:
-    https://docs.pydantic.dev/latest/concepts/validators/#annotated-validators
-    https://docs.pydantic.dev/latest/concepts/validators/#after-validators
+    For Pydantic validation details, see
+    [annotated validators](https://docs.pydantic.dev/latest/concepts/validators/#annotated-validators)
+    and [after validators](https://docs.pydantic.dev/latest/concepts/validators/#after-validators).
     """
 
     # NOTE: `value` must stay `Any`-typed: protocol parameters are contravariant,

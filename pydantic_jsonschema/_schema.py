@@ -31,7 +31,7 @@ type SchemaOrRefType = Reference | Schema
 class DataType(StrEnum):
     """JSON Schema primitive types.
 
-    See: https://json-schema.org/draft/2020-12/json-schema-core#section-4.2.1
+    See [core §4.2.1](https://json-schema.org/draft/2020-12/json-schema-core#section-4.2.1).
     """
 
     NULL = "null"
@@ -46,7 +46,7 @@ class DataType(StrEnum):
 class Reference(BaseModel):
     """JSON Schema `$ref` reference.
 
-    See: https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.3.1
+    See [core §8.2.3.1](https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.3.1).
     """
 
     model_config = ConfigDict(
@@ -63,9 +63,11 @@ class Schema(BaseModel):
     Only fields consumed by the converter are declared explicitly.
     Unknown keywords are preserved via ``extra="allow"`` per spec §4.3.1 / §6.5.
 
-    See: https://json-schema.org/draft/2020-12/json-schema-core#section-4.3.1
-    See: https://json-schema.org/draft/2020-12/json-schema-core#section-6.5
-    See: https://json-schema.org/draft/2020-12/json-schema-validation
+    See:
+
+    - [core §4.3.1](https://json-schema.org/draft/2020-12/json-schema-core#section-4.3.1)
+    - [core §6.5](https://json-schema.org/draft/2020-12/json-schema-core#section-6.5)
+    - [validation](https://json-schema.org/draft/2020-12/json-schema-validation)
     """
 
     model_config = ConfigDict(
