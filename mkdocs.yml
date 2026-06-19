@@ -79,10 +79,11 @@ nav:
   - Format Validators: formats.md
   - Examples: examples.md
   - API Reference:
-    - api/converters.md
-    - api/exceptions.md
-    - api/types.md
-    - api/formats.md
+    - Schema model: api/types.md
+    - Converters: api/converters.md
+    - OneOf: api/one_of.md
+    - Format validators: api/formats.md
+    - Exceptions: api/exceptions.md
   - Development:
     - Contributing: contributing.md
     - Changelog: changelog.md
@@ -178,10 +179,15 @@ plugins:
             show_root_toc_entry: false
             show_object_full_path: false
             show_category_heading: false
-            show_if_no_docstring: false
+            show_if_no_docstring: true
             inherited_members: false
             group_by_category: true
             summary: true
+            # Render undocumented public members (e.g. `Schema` fields, format aliases)
+            # but hide Pydantic/dunder noise that `show_if_no_docstring` would surface.
+            filters:
+              - "!^_"
+              - "!^model_config$"
 
 watch:
   - pydantic_jsonschema
