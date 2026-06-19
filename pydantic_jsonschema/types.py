@@ -1,4 +1,4 @@
-"""Public type exports."""
+"""Public JSON Schema models: `Schema`, `Reference`, and the `DataType` enum."""
 
 from pydantic_jsonschema._schema import (
     DataType,

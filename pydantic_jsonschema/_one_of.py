@@ -19,7 +19,9 @@ from pydantic_core import CoreSchema, core_schema
 __all__ = ["OneOf"]
 
 # Type aliases
-type PythonType = Any  # Anything that Pydantic supports
+type AnnotationType = (
+    Any  # Any annotation Pydantic supports (`type`, `Annotated`, `ForwardRef`, ...)
+)
 
 
 class OneOf:
@@ -33,17 +35,17 @@ class OneOf:
     def __init__(
         self,
         *,
-        branches: Iterable[PythonType],
+        branches: Iterable[AnnotationType],
     ) -> None:
         """Initialize with union branch annotations.
 
         :param branches: Union branch annotations (may contain `ForwardRef`).
         """
-        self._branches: tuple[PythonType, ...] = tuple(branches)
+        self._branches: tuple[AnnotationType, ...] = tuple(branches)
         self._namespace: dict[str, type[BaseModel]] = {}
-        self._adapters: list[TypeAdapter[PythonType]] | None = None
+        self._adapters: list[TypeAdapter[AnnotationType]] | None = None
 
-    def as_annotation(self) -> PythonType:
+    def as_annotation(self) -> AnnotationType:
         """Build the field annotation: union of branches with this validator attached.
 
         The plain `Union` is required: it drives Pydantic coercion and serialization,
@@ -68,7 +70,7 @@ class OneOf:
 
     def __get_pydantic_core_schema__(
         self,
-        source_type: PythonType,
+        source_type: AnnotationType,
         handler: GetCoreSchemaHandler,
     ) -> CoreSchema:
         """Wrap the union schema with the exactly-one-branch check."""
@@ -85,7 +87,7 @@ class OneOf:
             json_schema["oneOf"] = json_schema.pop("anyOf")
         return json_schema
 
-    def _get_adapters(self) -> list[TypeAdapter[PythonType]]:
+    def _get_adapters(self) -> list[TypeAdapter[AnnotationType]]:
         """Build branch adapters, resolving `ForwardRef` branches on first use.
 
         :returns: One `TypeAdapter` per `oneOf` branch.
@@ -106,9 +108,9 @@ class OneOf:
 
     def _validate(
         self,
-        value: PythonType,
+        value: AnnotationType,
         handler: core_schema.ValidatorFunctionWrapHandler,
-    ) -> PythonType:
+    ) -> AnnotationType:
         """Count matching branches and delegate to the union schema.
 
         :param value: Raw input value.
