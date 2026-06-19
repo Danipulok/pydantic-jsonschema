@@ -1,5 +1,5 @@
 # Format validators
 
-Built-in `format` validators and the aliases you pass to `format_validators`.
+For usage and examples, see the [Format Validators guide](../formats.md).
 
 ::: pydantic_jsonschema.formats
