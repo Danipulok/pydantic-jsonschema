@@ -17,6 +17,8 @@ from pydantic_jsonschema.formats._uri import (
     validate_uri_reference,
 )
 
+__all__: list[str] = []
+
 
 class TestValidUri:
     """Valid URIs per RFC 3986 (scheme required)."""

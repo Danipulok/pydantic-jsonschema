@@ -27,6 +27,8 @@ if TYPE_CHECKING:
 
     from tests.conftest import SchemaRaw
 
+__all__: list[str] = []
+
 
 class TestBasicConversion:
     """Tests for basic schema conversion."""

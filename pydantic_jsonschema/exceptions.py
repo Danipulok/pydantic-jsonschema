@@ -3,6 +3,13 @@
 from dataclasses import dataclass, fields
 from typing import Any
 
+__all__ = [
+    "BasePydanticJsonSchemaError",
+    "FormatValidationError",
+    "SchemaConversionError",
+    "SchemaReferenceError",
+]
+
 
 @dataclass
 class BasePydanticJsonSchemaError(Exception):

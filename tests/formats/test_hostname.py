@@ -20,6 +20,8 @@ import pytest
 
 from pydantic_jsonschema.formats._hostname import validate_hostname, validate_idn_hostname
 
+__all__: list[str] = []
+
 
 class TestValidHostnames:
     """Valid hostnames per RFC 1123."""

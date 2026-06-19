@@ -10,6 +10,8 @@ import pytest
 
 from pydantic_jsonschema.formats._regex import validate_regex
 
+__all__: list[str] = []
+
 
 class TestValidRegex:
     """Valid regular expressions."""

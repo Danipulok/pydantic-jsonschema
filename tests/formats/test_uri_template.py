@@ -10,6 +10,8 @@ import pytest
 
 from pydantic_jsonschema.formats._uri_template import validate_uri_template
 
+__all__: list[str] = []
+
 
 class TestValidUriTemplate:
     """Valid URI Templates per RFC 6570."""

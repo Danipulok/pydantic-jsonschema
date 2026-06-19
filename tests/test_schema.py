@@ -10,6 +10,8 @@ from pydantic_jsonschema._schema import DataType, Reference, Schema
 if TYPE_CHECKING:
     from tests.conftest import SchemaRaw
 
+__all__: list[str] = []
+
 
 class TestDataType:
     """Tests for `DataType` enum."""

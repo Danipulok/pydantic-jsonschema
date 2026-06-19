@@ -15,6 +15,8 @@ import pytest
 
 from pydantic_jsonschema.formats._email import validate_email, validate_idn_email
 
+__all__: list[str] = []
+
 
 class TestValidEmails:
     """Valid email addresses per RFC 5321."""

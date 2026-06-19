@@ -9,6 +9,8 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 from pydantic_jsonschema import OneOf, Schema, to_model
 from tests.conftest import dump_errors
 
+__all__: list[str] = []
+
 
 class Pet(BaseModel):
     """Sample model used as a `ForwardRef` target."""

@@ -4,6 +4,8 @@ import pytest
 
 from pydantic_jsonschema._utils import sanitize_identifier
 
+__all__: list[str] = []
+
 
 class TestSanitizeIdentifier:
     """Tests for sanitize_identifier function."""

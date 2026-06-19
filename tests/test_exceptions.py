@@ -9,6 +9,8 @@ from pydantic_jsonschema.exceptions import (
     SchemaReferenceError,
 )
 
+__all__: list[str] = []
+
 
 class TestExceptions:
     """Tests for schema exceptions."""

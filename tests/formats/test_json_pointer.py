@@ -15,6 +15,8 @@ from pydantic_jsonschema.formats._json_pointer import (
     validate_relative_json_pointer,
 )
 
+__all__: list[str] = []
+
 
 class TestValidJsonPointer:
     """Valid JSON Pointers per RFC 6901."""

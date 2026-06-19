@@ -27,6 +27,8 @@ from pydantic_jsonschema.formats import (
     UriTemplate,
 )
 
+__all__: list[str] = []
+
 
 class TestDateTime:
     """Test `DateTime` format type."""
