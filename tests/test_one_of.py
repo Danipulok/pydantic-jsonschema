@@ -165,6 +165,7 @@ class TestOneOfJsonSchema:
                         ],
                     },
                 },
+                "required": ["value"],
             }
         )
         model = to_model(schema)
@@ -178,6 +179,7 @@ class TestOneOfJsonSchema:
                         "title": "Value",
                     }
                 },
+                "required": ["value"],
                 "title": "Model",
                 "type": "object",
             }

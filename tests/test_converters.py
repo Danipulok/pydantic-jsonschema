@@ -68,6 +68,7 @@ class TestBasicConversion:
                     "items": {"type": "string"},
                 },
             },
+            "required": ["tags"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -89,8 +90,10 @@ class TestBasicConversion:
                     "properties": {
                         "name": {"type": "string"},
                     },
+                    "required": ["name"],
                 },
             },
+            "required": ["user"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -115,10 +118,13 @@ class TestBasicConversion:
                             "properties": {
                                 "value": {"type": "integer"},
                             },
+                            "required": ["value"],
                         },
                     },
+                    "required": ["level2"],
                 },
             },
+            "required": ["level1"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -141,6 +147,7 @@ class TestBasicConversion:
             "properties": {
                 "anything": {},
             },
+            "required": ["anything"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -166,6 +173,7 @@ class TestBasicConversion:
             "properties": {
                 "value": {"type": ["string", "integer", "null"]},
             },
+            "required": ["value"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -186,6 +194,7 @@ class TestBasicConversion:
             "properties": {
                 "value": {"type": ["object", "string"]},
             },
+            "required": ["value"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -206,6 +215,7 @@ class TestBasicConversion:
             "properties": {
                 "data": {"type": "array"},
             },
+            "required": ["data"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -232,8 +242,10 @@ class TestReferences:
                         "street": {"type": "string"},
                         "city": {"type": "string"},
                     },
+                    "required": ["street", "city"],
                 },
             },
+            "required": ["address"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -265,6 +277,7 @@ class TestReferences:
             "properties": {
                 "home": {"$ref": "#/$defs/Address"},
             },
+            "required": ["home"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -289,18 +302,21 @@ class TestReferences:
                         "name": {"type": "string"},
                         "age": {"type": "integer"},
                     },
+                    "required": ["name", "age"],
                 },
                 "Address": {
                     "type": "object",
                     "properties": {
                         "street": {"type": "string"},
                     },
+                    "required": ["street"],
                 },
                 "Company": {
                     "type": "object",
                     "properties": {
                         "name": {"type": "string"},
                     },
+                    "required": ["name"],
                 },
             },
             "type": "object",
@@ -309,6 +325,7 @@ class TestReferences:
                 "address": {"$ref": "#/$defs/Address"},
                 "employer": {"$ref": "#/$defs/Company"},
             },
+            "required": ["owner", "address", "employer"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -335,6 +352,7 @@ class TestReferences:
                     "properties": {
                         "name": {"type": "string"},
                     },
+                    "required": ["name"],
                 },
                 "Address": {
                     "type": "object",
@@ -342,12 +360,14 @@ class TestReferences:
                         "street": {"type": "string"},
                         "city": {"$ref": "#/$defs/City"},
                     },
+                    "required": ["street", "city"],
                 },
             },
             "type": "object",
             "properties": {
                 "home": {"$ref": "#/$defs/Address"},
             },
+            "required": ["home"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -369,6 +389,7 @@ class TestReferences:
             "properties": {
                 "field": {"$ref": "#/$defs/DoesNotExist"},
             },
+            "required": ["field"],
         }
         schema = Schema.model_validate(schema_raw)
 
@@ -388,6 +409,7 @@ class TestReferences:
                         "email": {"type": "string", "format": "email"},
                         "phone": {"type": "string"},
                     },
+                    "required": ["email", "phone"],
                 },
             },
             "type": "object",
@@ -419,6 +441,7 @@ class TestReferences:
                         "name": {"type": "string"},
                         "value": {"type": "integer"},
                     },
+                    "required": ["name", "value"],
                 },
             },
             "type": "object",
@@ -428,6 +451,7 @@ class TestReferences:
                     "items": {"$ref": "#/$defs/Item"},
                 },
             },
+            "required": ["items"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -451,6 +475,7 @@ class TestReferences:
                     "properties": {
                         "name": {"type": "string"},
                     },
+                    "required": ["name"],
                 },
                 "Article": {
                     "type": "object",
@@ -458,12 +483,14 @@ class TestReferences:
                         "title": {"type": "string"},
                         "author": {"$ref": "#/$defs/Author"},
                     },
+                    "required": ["title", "author"],
                 },
             },
             "type": "object",
             "properties": {
                 "featured": {"$ref": "#/$defs/Article"},
             },
+            "required": ["featured"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -487,6 +514,7 @@ class TestReferences:
             "properties": {
                 "address": {"$ref": "#/$defs/CustomAddress"},
             },
+            "required": ["address"],
         }
         schema = Schema.model_validate(schema_raw)
 
@@ -513,6 +541,7 @@ class TestReferences:
                     "properties": {
                         "value": {"type": "string"},
                     },
+                    "required": ["value"],
                 },
             },
             "type": "object",
@@ -520,6 +549,7 @@ class TestReferences:
                 "field1": {"$ref": "#/$defs/CustomType"},
                 "field2": {"$ref": "#/$defs/CustomType"},
             },
+            "required": ["field1", "field2"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -544,6 +574,7 @@ class TestReferences:
                     "properties": {
                         "name": {"type": "string"},
                     },
+                    "required": ["name"],
                 },
             },
             "type": "array",
@@ -564,6 +595,7 @@ class TestReferences:
                     "properties": {
                         "street": {"type": "string"},
                     },
+                    "required": ["street"],
                 },
                 "Location": {"$ref": "#/$defs/Address"},
             },
@@ -571,6 +603,7 @@ class TestReferences:
             "properties": {
                 "home": {"$ref": "#/$defs/Location"},
             },
+            "required": ["home"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -593,12 +626,14 @@ class TestReferences:
                     "properties": {
                         "value": {"type": "integer"},
                     },
+                    "required": ["value"],
                 },
             },
             "type": "object",
             "properties": {
                 "field": {"$ref": "#/$defs/Primary"},
             },
+            "required": ["field"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -668,11 +703,13 @@ class TestReferences:
                                 "properties": {
                                     "nested": {"type": "string"},
                                 },
+                                "required": ["nested"],
                             },
                         ],
                     },
                 },
             },
+            "required": ["items"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -697,8 +734,10 @@ class TestReferences:
                     "properties": {
                         "field": {"type": "string"},
                     },
+                    "required": ["field"],
                 },
             },
+            "required": ["nested"],
         }
         schema = Schema.model_validate(schema_raw)
 
@@ -722,6 +761,7 @@ class TestReferences:
             "properties": {
                 "address": {"$ref": "#/$defs/CustomAddress"},
             },
+            "required": ["address"],
         }
         schema = Schema.model_validate(schema_raw)
 
@@ -746,6 +786,7 @@ class TestReferences:
                         "id": {"type": "integer"},
                         "name": {"type": "string"},
                     },
+                    "required": ["id", "name"],
                 },
             },
             "type": "object",
@@ -755,6 +796,7 @@ class TestReferences:
                     "items": {"$ref": "#/$defs/Item"},
                 },
             },
+            "required": ["items"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -786,6 +828,7 @@ class TestComposition:
                 {
                     "type": "object",
                     "properties": {"age": {"type": "integer"}},
+                    "required": ["age"],
                 },
             ],
         }
@@ -820,6 +863,7 @@ class TestComposition:
                     "properties": {
                         "name": {"type": "string"},
                     },
+                    "required": ["name"],
                 },
             ],
         }
@@ -844,14 +888,17 @@ class TestComposition:
                         {
                             "type": "object",
                             "properties": {"a": {"type": "string"}},
+                            "required": ["a"],
                         },
                         {
                             "type": "object",
                             "properties": {"b": {"type": "integer"}},
+                            "required": ["b"],
                         },
                     ],
                 },
             },
+            "required": ["combined"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -906,12 +953,14 @@ class TestComposition:
                     "properties": {
                         "age": {"type": "integer"},
                     },
+                    "required": ["age"],
                 },
                 {
                     "type": "object",
                     "properties": {
                         "email": {"type": "string"},
                     },
+                    "required": ["email"],
                 },
             ],
         }
@@ -939,6 +988,7 @@ class TestComposition:
                     ],
                 },
             },
+            "required": ["value"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -962,6 +1012,7 @@ class TestComposition:
                     ],
                 },
             },
+            "required": ["multi_value"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -987,6 +1038,7 @@ class TestComposition:
                     ],
                 },
             },
+            "required": ["value"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -1012,18 +1064,21 @@ class TestComposition:
                             ],
                         },
                     },
+                    "required": ["a", "other"],
                 },
                 "TypeB": {
                     "type": "object",
                     "properties": {
                         "b": {"type": "integer"},
                     },
+                    "required": ["b"],
                 },
             },
             "type": "object",
             "properties": {
                 "item": {"$ref": "#/$defs/TypeA"},
             },
+            "required": ["item"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -1054,6 +1109,7 @@ class TestComposition:
                     ],
                 },
             },
+            "required": ["value"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -1143,18 +1199,21 @@ class TestComposition:
                             ],
                         },
                     },
+                    "required": ["other"],
                 },
                 "TypeB": {
                     "type": "object",
                     "properties": {
                         "b": {"type": "integer"},
                     },
+                    "required": ["b"],
                 },
             },
             "type": "object",
             "properties": {
                 "item": {"$ref": "#/$defs/TypeA"},
             },
+            "required": ["item"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -1205,6 +1264,7 @@ class TestDiscriminatedOneOf:
                     ],
                 },
             },
+            "required": ["pet"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -1398,6 +1458,7 @@ class TestDiscriminatedOneOf:
                     ],
                 },
             },
+            "required": ["pet"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -1431,6 +1492,7 @@ class TestDiscriminatedOneOf:
                         "title": "Pet",
                     }
                 },
+                "required": ["pet"],
                 "title": "Model",
                 "type": "object",
             }
@@ -1737,6 +1799,7 @@ class TestRootModels:
                     "properties": {
                         "name": {"type": "string"},
                     },
+                    "required": ["name"],
                 },
             },
             "type": "object",
@@ -1871,6 +1934,7 @@ class TestConstraints:
                     "multipleOf": 0.5,
                 },
             },
+            "required": ["score"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -1898,6 +1962,7 @@ class TestConstraints:
                     "uniqueItems": True,
                 },
             },
+            "required": ["tags"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -1920,6 +1985,7 @@ class TestAdditionalProperties:
             "properties": {
                 "metadata": {"type": "object", "additionalProperties": {"type": "integer"}},
             },
+            "required": ["metadata"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -1938,6 +2004,7 @@ class TestAdditionalProperties:
             "properties": {
                 "data": {"type": "object", "additionalProperties": False},
             },
+            "required": ["data"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -1958,6 +2025,7 @@ class TestAdditionalProperties:
                     "additionalProperties": True,
                 },
             },
+            "required": ["data"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
@@ -2010,6 +2078,7 @@ class TestAdditionalProperties:
             "properties": {
                 "name": {"type": "string"},
             },
+            "required": ["name"],
             "additionalProperties": {
                 "type": "integer",
             },
@@ -2286,6 +2355,7 @@ class TestFormatValidators:
             "properties": {
                 "field": {"type": "string", "format": "custom"},
             },
+            "required": ["field"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema, format_validators={"custom": CustomType})
@@ -2466,6 +2536,7 @@ class TestFormatValidators:
                 "id": {"type": "string", "format": "uuid"},
                 "ip": {"type": "string", "format": "ipv4"},
             },
+            "required": ["email", "website", "created_at", "id", "ip"],
         }
         schema = Schema.model_validate(schema_raw)
         model = to_model(
@@ -2578,6 +2649,7 @@ class TestConverterCaching:
             "properties": {
                 "name": {"type": "string"},
             },
+            "required": ["name"],
         }
 
         converter = SchemaConverter()
@@ -2596,6 +2668,7 @@ class TestConverterCaching:
             "properties": {
                 "name": {"type": "string"},
             },
+            "required": ["name"],
         }
 
         schema_raw2 = {
@@ -2603,6 +2676,7 @@ class TestConverterCaching:
             "properties": {
                 "age": {"type": "integer"},
             },
+            "required": ["age"],
         }
 
         converter = SchemaConverter()
