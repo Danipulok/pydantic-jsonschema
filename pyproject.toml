@@ -149,6 +149,9 @@ ignore = [
 "tests/test_converters.py" = [
     "E501",     # Long lines in `inline_snapshot` literals (Pydantic error messages)
 ]
+"pydantic_jsonschema/formats/_types.py" = [
+    "E501",     # Long spec URLs in format-alias attribute docstrings
+]
 "tests/formats/test_hostname.py" = [
     "RUF001",   # Ambiguous unicode (intentional in IDN hostname test data)
 ]
