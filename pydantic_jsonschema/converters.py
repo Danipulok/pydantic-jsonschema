@@ -79,19 +79,15 @@ type TagType = str | int | None  # Scalar discriminator tag value (`bool` is an 
 
 
 class FormatValidator(Protocol):
-    """Protocol for format validator callables.
+    """Callable that validates a raw value for a JSON Schema `format`.
 
-    Can be:
-    - Callable: validation function
-    - type: Pydantic type class (e.g., from pydantic-extra-types)
-    - Annotated type with validators (e.g., Annotated[int, AfterValidator(...)])
-
-    Accepts any JSON Schema type: string, number, integer, boolean, null, array, object.
-    Callables receive the raw input and run before Pydantic's standard validation.
+    This describes the *callable* form of a `format_validators` entry (a value may also be a
+    Pydantic type or an `Annotated` type). The callable receives the raw input before
+    Pydantic's standard validation and returns the validated value, or raises `ValueError`.
 
     See [validation §7.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-7.1).
 
-    For Pydantic validation details, see
+    For Pydantic validators, see
     [annotated validators](https://docs.pydantic.dev/latest/concepts/validators/#annotated-validators)
     and [after validators](https://docs.pydantic.dev/latest/concepts/validators/#after-validators).
     """
