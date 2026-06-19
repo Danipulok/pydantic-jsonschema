@@ -143,7 +143,7 @@ class SchemaConverter:
     ) -> None:
         """Initialize converter with optional pre-built refs and format validators.
 
-        :param default_model_name: Fallback name for models without `title`.
+        :param default_model_name: Fallback name for models without `title` (default: `Model`).
         :param refs: Pre-built Pydantic models for `$ref` resolution.
         :param format_validators: Validators keyed by JSON Schema `format` value.
         """
