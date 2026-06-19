@@ -1,4 +1,4 @@
-"""JSON Schema to Pydantic model converter."""
+"""Convert a JSON Schema `Schema` into a Pydantic model (`to_model` / `SchemaConverter`)."""
 
 # NOTE: `Schema` fields use `X | MISSING` unions (see `_schema.py`). mypy doesn't
 # recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
