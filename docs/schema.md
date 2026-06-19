@@ -171,24 +171,84 @@ All members: `NULL`, `STRING`, `NUMBER`, `INTEGER`, `BOOLEAN`, `ARRAY`, `OBJECT`
 
 ## Field Reference
 
-`Schema` fields map directly to JSON Schema keywords. Names convert between `snake_case` and
-`camelCase` automatically (via `alias_generator`). Only fields used by the converter are declared
-explicitly; unknown keywords are preserved via `extra="allow"`.
+`Schema` fields map directly to JSON Schema keywords. Only fields used by the converter are declared explicitly.
+Unknown keywords are preserved via `extra="allow"`.
 
-Fields by category:
+### Composition
 
-- **Type & values:** `type`, `enum`, `const`
-- **Composition:** `all_of`, `any_of`, `one_of`
-- **Subschemas:** `properties`, `items`, `additional_properties`
-- **Numeric:** `multiple_of`, `maximum`, `exclusive_maximum`, `minimum`, `exclusive_minimum`
-- **String:** `min_length`, `max_length`, `pattern`
-- **Array:** `min_items`, `max_items`
-- **Object:** `required`
-- **Format:** `format`
-- **Metadata:** `title`, `description`, `default`, `examples`
-- **Definitions:** `defs` (`$defs`)
+| Python field | JSON Schema | Spec                                                                                        |
+|--------------|-------------|---------------------------------------------------------------------------------------------|
+| `all_of`     | `allOf`     | [core §10.2.1.1](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.1)   |
+| `any_of`     | `anyOf`     | [core §10.2.1.2](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.2)   |
+| `one_of`     | `oneOf`     | [core §10.2.1.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.3)   |
 
-See the [API reference](api/types.md) for each field's description and JSON Schema spec link.
+### Subschemas
+
+| Python field            | JSON Schema            | Spec                                                                                        |
+|-------------------------|------------------------|---------------------------------------------------------------------------------------------|
+| `items`                 | `items`                | [core §10.3.1.2](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.1.2)   |
+| `properties`            | `properties`           | [core §10.3.2.1](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.2.1)   |
+| `additional_properties` | `additionalProperties` | [core §10.3.2.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.2.3)   |
+
+### Type and constants
+
+| Python field | JSON Schema | Spec                                                                                                |
+|--------------|-------------|-----------------------------------------------------------------------------------------------------|
+| `type`       | `type`      | [validation §6.1.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.1.1)     |
+| `enum`       | `enum`      | [validation §6.1.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.1.2)     |
+| `const`      | `const`     | [validation §6.1.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.1.3)     |
+
+### Numeric constraints
+
+| Python field         | JSON Schema        | Spec                                                                                            |
+|----------------------|--------------------|-------------------------------------------------------------------------------------------------|
+| `multiple_of`        | `multipleOf`       | [validation §6.2.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.2.1) |
+| `maximum`            | `maximum`          | [validation §6.2.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.2.2) |
+| `exclusive_maximum`  | `exclusiveMaximum` | [validation §6.2.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.2.3) |
+| `minimum`            | `minimum`          | [validation §6.2.4](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.2.4) |
+| `exclusive_minimum`  | `exclusiveMinimum` | [validation §6.2.5](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.2.5) |
+
+### String constraints
+
+| Python field | JSON Schema | Spec                                                                                            |
+|--------------|-------------|-------------------------------------------------------------------------------------------------|
+| `min_length` | `minLength` | [validation §6.3.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.3.2) |
+| `max_length` | `maxLength` | [validation §6.3.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.3.1) |
+| `pattern`    | `pattern`   | [validation §6.3.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.3.3) |
+
+### Array constraints
+
+| Python field | JSON Schema | Spec                                                                                            |
+|--------------|-------------|-------------------------------------------------------------------------------------------------|
+| `min_items`  | `minItems`  | [validation §6.4.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.2) |
+| `max_items`  | `maxItems`  | [validation §6.4.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.1) |
+
+### Object constraints
+
+| Python field | JSON Schema | Spec                                                                                            |
+|--------------|-------------|-------------------------------------------------------------------------------------------------|
+| `required`   | `required`  | [validation §6.5.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.5.3) |
+
+### Format
+
+| Python field | JSON Schema | Spec                                                                                    |
+|--------------|-------------|-----------------------------------------------------------------------------------------|
+| `format`     | `format`    | [validation §7](https://json-schema.org/draft/2020-12/json-schema-validation#section-7) |
+
+### Metadata
+
+| Python field  | JSON Schema   | Spec                                                                                        |
+|---------------|---------------|---------------------------------------------------------------------------------------------|
+| `title`       | `title`       | [validation §9.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-9.1) |
+| `description` | `description` | [validation §9.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-9.1) |
+| `default`     | `default`     | [validation §9.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-9.2) |
+| `examples`    | `examples`    | [validation §9.5](https://json-schema.org/draft/2020-12/json-schema-validation#section-9.5) |
+
+### Definitions
+
+| Python field | JSON Schema | Spec                                                                                      |
+|--------------|-------------|-------------------------------------------------------------------------------------------|
+| `defs`       | `$defs`     | [core §8.2.4](https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.4)       |
 
 ## Extra Keywords
 
