@@ -179,12 +179,12 @@ plugins:
             show_root_toc_entry: false
             show_object_full_path: false
             show_category_heading: false
-            show_if_no_docstring: true
+            show_if_no_docstring: false
             inherited_members: false
             group_by_category: true
             summary: true
-            # Render undocumented public members (e.g. `Schema` fields, format aliases)
-            # but hide Pydantic/dunder noise that `show_if_no_docstring` would surface.
+            # `model_config` has no docstring, but the `types` page turns on
+            # `show_if_no_docstring` to list `Schema` fields, so filter it out there.
             filters:
               - "!^_"
               - "!^model_config$"
