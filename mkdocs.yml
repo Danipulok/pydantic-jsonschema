@@ -182,7 +182,7 @@ plugins:
             show_if_no_docstring: false
             inherited_members: false
             group_by_category: true
-            summary: true
+            summary: false
             # `model_config` has no docstring, but the `types` page turns on
             # `show_if_no_docstring` to list `Schema` fields, so filter it out there.
             filters:
