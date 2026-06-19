@@ -5,6 +5,8 @@ from typing import Any
 from pydantic import ValidationError
 from pydantic_core import ErrorDetails
 
+__all__ = ["SchemaRaw", "dump_errors"]
+
 type SchemaRaw = dict[str, Any]
 
 
