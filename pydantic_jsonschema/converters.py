@@ -37,6 +37,7 @@ from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.fields import FieldInfo
 
 from ._contains import Contains
+from ._not import Not
 from ._one_of import OneOf
 from ._prefix_items import PrefixItems
 from ._utils import sanitize_identifier
@@ -329,6 +330,7 @@ class SchemaConverter:
         self._one_of_validators: list[OneOf] = []
         self._contains_validators: list[Contains] = []
         self._prefix_items_validators: list[PrefixItems] = []
+        self._not_validators: list[Not] = []
 
     @staticmethod
     def _hash_schema(
@@ -379,6 +381,13 @@ class SchemaConverter:
         # Build model using common logic
         model = self._build_model(schema, model_name=model_name)
 
+        # A root object becomes a plain `BaseModel` (not a `RootModel`), so it bypasses the
+        # annotation path where `not` is otherwise attached — wrap it explicitly here. Every
+        # other shape (root non-object / dict-root, and all nested values) carries `not` via
+        # its annotation already.
+        if schema.not_ is not MISSING and not issubclass(model, RootModel):
+            model = self._wrap_root_not(model, schema)
+
         # Bind the forward-refs namespace so `OneOf` / `Contains` validators can resolve
         # `ForwardRef` branches lazily at validation time.
         namespace = self._get_forward_refs_namespace()
@@ -388,6 +397,8 @@ class SchemaConverter:
             contains_validator.bind_namespace(namespace)
         for prefix_items_validator in self._prefix_items_validators:
             prefix_items_validator.bind_namespace(namespace)
+        for not_validator in self._not_validators:
+            not_validator.bind_namespace(namespace)
 
         return model
 
@@ -962,15 +973,84 @@ class SchemaConverter:
 
         # `enum` / `const` -> `Literal`:
         if schema.enum is not MISSING or schema.const is not MISSING:
-            return self._literal_annotation(schema)
+            annotation: type | ForwardRef = self._literal_annotation(schema)
+        else:
+            # `anyOf` / `oneOf` / `allOf` -> union or nested model; else `type` (or `Any`).
+            composition_annotation = self._composition_annotation(schema)
+            annotation = (
+                composition_annotation
+                if composition_annotation is not None
+                else self._type_annotation(schema)
+            )
 
-        # `anyOf` / `oneOf` / `allOf` -> union or nested model:
-        composition_annotation = self._composition_annotation(schema)
-        if composition_annotation is not None:
-            return composition_annotation
+        # `not` is checked against the raw value before the host type (a wrap-validator).
+        if schema.not_ is not MISSING:
+            annotation = self._apply_not(annotation, schema)
 
-        # `type` -> Python type (or `Any` when absent):
-        return self._type_annotation(schema)
+        return annotation
+
+    def _apply_not(
+        self,
+        annotation: AnnotationType,
+        schema: Schema,
+        /,
+    ) -> type:
+        """Wrap a value annotation with the `not` check.
+
+        :param annotation: The value's base annotation.
+        :param schema: Schema carrying `not`.
+        :returns: `Annotated[annotation, Not(...)]`.
+        """
+        not_validator = self._build_not(schema)
+        return cast("type", Annotated[annotation, not_validator])
+
+    def _build_not(
+        self,
+        schema: Schema,
+        /,
+    ) -> Not:
+        """Build the `not` validator, registering it for namespace binding.
+
+        :param schema: Schema carrying `not`.
+        :returns: A `Not` validator for the subschema.
+        """
+        with self._track_path("not"):
+            branch = self._schema_to_annotation(schema.not_)
+
+        not_validator = Not(branch=branch)
+        self._not_validators.append(not_validator)
+        return not_validator
+
+    def _wrap_root_not(
+        self,
+        model: type[BaseModel],
+        schema: Schema,
+        /,
+    ) -> type[BaseModel]:
+        """Wrap a root object model with a `before` validator enforcing `not`.
+
+        :param model: The root object `BaseModel`.
+        :param schema: Root schema carrying `not`.
+        :returns: A subclass of `model` that rejects inputs matching the `not` subschema.
+        """
+        not_validator = self._build_not(schema)
+
+        def _check(data: PythonType) -> PythonType:
+            if not_validator.matches(data):
+                msg = "Value must not match the `not` schema"
+                raise ValueError(msg)
+            return data
+
+        validators: dict[str, PythonType] = {
+            "_validate_not": model_validator(mode="before")(_check),
+        }
+        wrapped = create_model(
+            model.__name__,
+            __base__=model,
+            __module__=__name__,
+            __validators__=validators,
+        )
+        return cast("type[BaseModel]", wrapped)
 
     def _reference_annotation(
         self,

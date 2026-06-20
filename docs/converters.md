@@ -111,6 +111,7 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | `uniqueItems: true`                          | array uniqueness constraint                 | `AfterValidator` rejecting dupes    |
 | `contains`, `minContains`, `maxContains`     | array match-count constraint                | `Contains` validator                |
 | `prefixItems`                                | positional (tuple-style) array validation   | `PrefixItems` validator             |
+| `not`                                        | value must not match the subschema          | `Not` validator                     |
 | `minProperties`, `maxProperties`             | object property-count constraints           | `before` validator / `dict` length  |
 | `dependentRequired`                          | conditionally required properties           | `before` validator                  |
 | `format` with validators                     | configured format validation                | see [Format Validators](formats.md) |
@@ -123,7 +124,7 @@ for custom keywords) but do not yet affect the generated model's validation:
 
 | Keyword group | Ignored keywords                                                                                                 |
 |---------------|------------------------------------------------------------------------------------------------------------------|
-| composition   | `not`, `if` / `then` / `else`                                                                                    |
+| composition   | `if` / `then` / `else`                                                                                           |
 | objects       | `patternProperties`, `propertyNames`, `dependentSchemas`                                                         |
 
 ## Known Limitations
@@ -140,6 +141,9 @@ for custom keywords) but do not yet affect the generated model's validation:
 - `format` is metadata unless a matching entry is passed in `format_validators` — see [Format Validators](formats.md).
   Built-in aliases cover all 19 spec-defined formats;
   `idn-*` formats use the stdlib IDNA 2003 codec and `regex` uses the Python `re` dialect (see the differences from the specification in [Format Validators](formats.md)).
+- `not` is only as precise as the converter's coverage of its subschema. A subschema that maps to
+  `Any` (an empty schema, or `required` without `type` / `properties`) matches every value, so
+  `not` then rejects everything.
 
 ## Common Conversions
 
