@@ -36,6 +36,7 @@ from pydantic import (
 from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.fields import FieldInfo
 
+from ._contains import Contains
 from ._one_of import OneOf
 from ._utils import sanitize_identifier
 from .exceptions import SchemaConversionError, SchemaReferenceError
@@ -289,6 +290,7 @@ class SchemaConverter:
         self._models_cache: dict[SchemaHash, type[BaseModel]] = {}
         self._resolution_path: list[str] = []  # Track path for error reporting
         self._one_of_validators: list[OneOf] = []
+        self._contains_validators: list[Contains] = []
 
     @staticmethod
     def _hash_schema(
@@ -339,11 +341,13 @@ class SchemaConverter:
         # Build model using common logic
         model = self._build_model(schema, model_name=model_name)
 
-        # Bind the forward-refs namespace so `OneOf` validators can resolve
+        # Bind the forward-refs namespace so `OneOf` / `Contains` validators can resolve
         # `ForwardRef` branches lazily at validation time.
         namespace = self._get_forward_refs_namespace()
         for one_of_validator in self._one_of_validators:
             one_of_validator.bind_namespace(namespace)
+        for contains_validator in self._contains_validators:
+            contains_validator.bind_namespace(namespace)
 
         return model
 
@@ -1150,7 +1154,41 @@ class SchemaConverter:
             with self._track_path("items"):
                 item_type = self._schema_to_annotation(schema.items)
         list_annotation = list[item_type]  # type: ignore[valid-type]
-        return _annotate(list_annotation, _array_metadata(schema))
+
+        # `uniqueItems` is stateless; `contains` needs the converter (subschema + namespace).
+        metadata: list[PythonType] = _array_metadata(schema)
+        contains = self._build_contains(schema)
+        if contains is not None:
+            metadata.append(contains)
+
+        return _annotate(list_annotation, metadata)
+
+    def _build_contains(
+        self,
+        schema: Schema,
+        /,
+    ) -> Contains | None:
+        """Build the `contains` / `minContains` / `maxContains` validator for an array.
+
+        Registers the validator so its `ForwardRef` subschema (a `contains` pointing at a
+        `$ref`) is namespace-bound after the whole schema is converted.
+
+        :param schema: Array schema.
+        :returns: A `Contains` validator, or `None` when `contains` is absent.
+        """
+        if schema.contains is MISSING:
+            return None
+
+        with self._track_path("contains"):
+            branch = self._schema_to_annotation(schema.contains)
+
+        # `minContains` defaults to 1; `maxContains` is unbounded when absent.
+        min_contains = schema.min_contains if schema.min_contains is not MISSING else 1
+        max_contains = schema.max_contains if schema.max_contains is not MISSING else None
+
+        contains = Contains(branch=branch, min_contains=min_contains, max_contains=max_contains)
+        self._contains_validators.append(contains)
+        return contains
 
     def _object_annotation(
         self,

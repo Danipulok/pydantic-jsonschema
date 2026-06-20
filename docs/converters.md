@@ -109,6 +109,7 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | `pattern`                                    | string regex constraint                     | `pattern`                           |
 | `minItems`, `maxItems`                       | list length constraints                     | `min_length`, `max_length`          |
 | `uniqueItems: true`                          | array uniqueness constraint                 | `AfterValidator` rejecting dupes    |
+| `contains`, `minContains`, `maxContains`     | array match-count constraint                | `Contains` validator                |
 | `minProperties`, `maxProperties`             | object property-count constraints           | `before` validator / `dict` length  |
 | `format` with validators                     | configured format validation                | see [Format Validators](formats.md) |
 | `title`, `model_name`, `default_model_name`  | generated class name                        | `User`, `CustomUser`, `Model`       |
@@ -121,7 +122,7 @@ for custom keywords) but do not yet affect the generated model's validation:
 | Keyword group | Ignored keywords                                                                                                 |
 |---------------|------------------------------------------------------------------------------------------------------------------|
 | composition   | `not`, `if` / `then` / `else`                                                                                    |
-| arrays        | `prefixItems`, `contains`                                                                                        |
+| arrays        | `prefixItems`                                                                                                    |
 | objects       | `patternProperties`, `propertyNames`, `dependentRequired`, `dependentSchemas`                                    |
 
 ## Known Limitations
