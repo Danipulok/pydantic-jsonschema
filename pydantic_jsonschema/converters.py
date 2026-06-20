@@ -236,6 +236,39 @@ def _property_count_validator(schema: Schema, /) -> PythonType | None:
     return model_validator(mode="before")(_check)
 
 
+def _dependent_required_validator(schema: Schema, /) -> PythonType | None:
+    """`dependentRequired`: when a property is present, the listed properties are required too.
+
+    Checks the raw input mapping keys before field parsing, so it sees every present property
+    (declared fields plus `extra` keys) (validation §6.5.4).
+
+    :param schema: Object schema.
+    :returns: A `model_validator(mode="before")`, or `None` when the keyword is absent.
+    """
+    if schema.dependent_required is MISSING:
+        return None
+
+    dependent_required: dict[str, list[str]] = schema.dependent_required
+
+    def _check(data: PythonType) -> PythonType:
+        # Non-mapping input is left for the normal type validation to reject.
+        if not isinstance(data, dict):
+            return data
+
+        for trigger, required in dependent_required.items():
+            if trigger not in data:
+                continue
+            missing = [name for name in required if name not in data]
+            if missing:
+                missing_list = "`, `".join(missing)
+                msg = f"Property `{trigger}` requires `{missing_list}`"
+                raise ValueError(msg)
+
+        return data
+
+    return model_validator(mode="before")(_check)
+
+
 class _ObjectValidatorBuilder(Protocol):
     """Builds a `model_validator` for one object keyword, or `None` when the schema omits it."""
 
@@ -249,7 +282,10 @@ class _ObjectValidatorBuilder(Protocol):
 
 # Registry of object-model validators. To support a new object-level keyword, write a
 # builder `(schema) -> validator | None` and add it here — no other wiring is needed.
-_OBJECT_MODEL_VALIDATORS: Final[tuple[_ObjectValidatorBuilder, ...]] = (_property_count_validator,)
+_OBJECT_MODEL_VALIDATORS: Final[tuple[_ObjectValidatorBuilder, ...]] = (
+    _property_count_validator,
+    _dependent_required_validator,
+)
 
 
 def _build_object_validators(schema: Schema, /) -> dict[str, PythonType]:

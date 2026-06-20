@@ -2242,6 +2242,52 @@ class TestContains:
         )
 
 
+class TestDependentRequired:
+    """Tests for `dependentRequired` enforcement."""
+
+    def test_dependent_required(self) -> None:
+        """Test a trigger property makes its dependent properties required."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {
+                    "credit_card": {"type": "integer"},
+                    "billing_address": {"type": "string"},
+                    "cvv": {"type": "integer"},
+                },
+                "dependentRequired": {"credit_card": ["billing_address", "cvv"]},
+            }
+        )
+        model = to_model(schema)
+
+        # Trigger absent -> no dependency applies.
+        assert model.model_validate({}).model_dump() == snapshot({})
+
+        # Trigger present with all dependents.
+        assert model.model_validate(
+            {"credit_card": 1, "billing_address": "x", "cvv": 2}
+        ).model_dump() == snapshot({"credit_card": 1, "billing_address": "x", "cvv": 2})
+
+        # Trigger present, dependents missing.
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"credit_card": 1})
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": (),
+                    "msg": "Value error, Property `credit_card` requires `billing_address`, `cvv`",
+                    "input": {"credit_card": 1},
+                }
+            ]
+        )
+
+        # Non-mapping input passes through and is rejected by type validation.
+        with pytest.raises(ValidationError):
+            model.model_validate("not a mapping")
+
+
 class TestAdditionalProperties:
     """Tests for `additionalProperties` handling."""
 

@@ -111,6 +111,7 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | `uniqueItems: true`                          | array uniqueness constraint                 | `AfterValidator` rejecting dupes    |
 | `contains`, `minContains`, `maxContains`     | array match-count constraint                | `Contains` validator                |
 | `minProperties`, `maxProperties`             | object property-count constraints           | `before` validator / `dict` length  |
+| `dependentRequired`                          | conditionally required properties           | `before` validator                  |
 | `format` with validators                     | configured format validation                | see [Format Validators](formats.md) |
 | `title`, `model_name`, `default_model_name`  | generated class name                        | `User`, `CustomUser`, `Model`       |
 
@@ -123,7 +124,7 @@ for custom keywords) but do not yet affect the generated model's validation:
 |---------------|------------------------------------------------------------------------------------------------------------------|
 | composition   | `not`, `if` / `then` / `else`                                                                                    |
 | arrays        | `prefixItems`                                                                                                    |
-| objects       | `patternProperties`, `propertyNames`, `dependentRequired`, `dependentSchemas`                                    |
+| objects       | `patternProperties`, `propertyNames`, `dependentSchemas`                                                         |
 
 ## Known Limitations
 
