@@ -38,6 +38,7 @@ from pydantic.fields import FieldInfo
 
 from ._contains import Contains
 from ._one_of import OneOf
+from ._prefix_items import PrefixItems
 from ._utils import sanitize_identifier
 from .exceptions import SchemaConversionError, SchemaReferenceError
 from .types import DataType, Reference, Schema
@@ -327,6 +328,7 @@ class SchemaConverter:
         self._resolution_path: list[str] = []  # Track path for error reporting
         self._one_of_validators: list[OneOf] = []
         self._contains_validators: list[Contains] = []
+        self._prefix_items_validators: list[PrefixItems] = []
 
     @staticmethod
     def _hash_schema(
@@ -384,6 +386,8 @@ class SchemaConverter:
             one_of_validator.bind_namespace(namespace)
         for contains_validator in self._contains_validators:
             contains_validator.bind_namespace(namespace)
+        for prefix_items_validator in self._prefix_items_validators:
+            prefix_items_validator.bind_namespace(namespace)
 
         return model
 
@@ -1185,19 +1189,56 @@ class SchemaConverter:
         :param schema: Array schema to convert.
         :returns: `list[...]` annotation, wrapped with array constraint metadata when set.
         """
+        # With `prefixItems`, element types are positional, so the base stays `list[Any]` and
+        # `PrefixItems` validates each position (including the `items` tail). Without it, `items`
+        # is the homogeneous element type.
+        prefix_items = self._build_prefix_items(schema)
+
         item_type: type | ForwardRef = Any
-        if schema.items is not MISSING:
+        if prefix_items is None and schema.items is not MISSING:
             with self._track_path("items"):
                 item_type = self._schema_to_annotation(schema.items)
         list_annotation = list[item_type]  # type: ignore[valid-type]
 
-        # `uniqueItems` is stateless; `contains` needs the converter (subschema + namespace).
+        # `uniqueItems` is stateless; `contains` / `prefixItems` need the converter.
         metadata: list[PythonType] = _array_metadata(schema)
+        if prefix_items is not None:
+            metadata.append(prefix_items)
         contains = self._build_contains(schema)
         if contains is not None:
             metadata.append(contains)
 
         return _annotate(list_annotation, metadata)
+
+    def _build_prefix_items(
+        self,
+        schema: Schema,
+        /,
+    ) -> PrefixItems | None:
+        """Build the `prefixItems` positional validator for an array.
+
+        Registers the validator so its `ForwardRef` subschemas (a prefix / tail pointing at a
+        `$ref`) are namespace-bound after the whole schema is converted.
+
+        :param schema: Array schema.
+        :returns: A `PrefixItems` validator, or `None` when `prefixItems` is absent.
+        """
+        if schema.prefix_items is MISSING:
+            return None
+
+        prefixes: list[PythonType] = []
+        for index, sub_schema in enumerate(schema.prefix_items):
+            with self._track_path(f"prefixItems[{index}]"):
+                prefixes.append(self._schema_to_annotation(sub_schema))
+
+        tail: PythonType | None = None
+        if schema.items is not MISSING:
+            with self._track_path("items"):
+                tail = self._schema_to_annotation(schema.items)
+
+        prefix_items = PrefixItems(prefixes=prefixes, tail=tail)
+        self._prefix_items_validators.append(prefix_items)
+        return prefix_items
 
     def _build_contains(
         self,
