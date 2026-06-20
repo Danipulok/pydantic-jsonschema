@@ -1954,7 +1954,7 @@ class TestConstraints:
             model(score=50.3)
 
     def test_unique_items_array(self) -> None:
-        """Test array with uniqueItems constraint."""
+        """Test `uniqueItems` accepts distinct items and rejects duplicates."""
         schema_raw: SchemaRaw = {
             "type": "object",
             "properties": {
@@ -1975,6 +1975,53 @@ class TestConstraints:
                 "tags": ["python", "coding", "dev"],
             }
         )
+
+        with pytest.raises(ValidationError) as exc_info:
+            model(tags=["dup", "dup"])
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("tags",),
+                    "msg": "Value error, Array items must be unique",
+                    "input": ["dup", "dup"],
+                }
+            ]
+        )
+
+    def test_unique_items_unhashable(self) -> None:
+        """Test `uniqueItems` rejects duplicate object items (unhashable, no `set`)."""
+        schema = Schema.model_validate(
+            {"type": "array", "items": {"type": "object"}, "uniqueItems": True}
+        )
+        model = to_model(schema)
+
+        assert model.model_validate([{"a": 1}, {"b": 2}]).model_dump() == snapshot(
+            [{"a": 1}, {"b": 2}]
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate([{"a": 1}, {"a": 1}])
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": (),
+                    "msg": "Value error, Array items must be unique",
+                    "input": [{"a": 1}, {"a": 1}],
+                }
+            ]
+        )
+
+    def test_unique_items_false_is_noop(self) -> None:
+        """Test `uniqueItems: false` imposes no constraint."""
+        schema = Schema.model_validate(
+            {"type": "array", "items": {"type": "integer"}, "uniqueItems": False}
+        )
+        model = to_model(schema)
+        assert model.model_validate([1, 1, 1]).model_dump() == snapshot([1, 1, 1])
 
 
 class TestAdditionalProperties:
