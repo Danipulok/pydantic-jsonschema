@@ -382,6 +382,25 @@ class TestSchemaArrayKeywords:
         schema = Schema.model_validate({"type": "array", "uniqueItems": True})
         assert schema.model_dump() == snapshot({"type": DataType.ARRAY, "uniqueItems": True})
 
+    def test_min_max_contains(self) -> None:
+        """Test `minContains` / `maxContains` parsed from camelCase."""
+        schema = Schema.model_validate(
+            {
+                "type": "array",
+                "contains": {"type": "integer"},
+                "minContains": 1,
+                "maxContains": 3,
+            }
+        )
+        assert schema.model_dump() == snapshot(
+            {
+                "type": DataType.ARRAY,
+                "contains": {"type": DataType.INTEGER},
+                "maxContains": 3,
+                "minContains": 1,
+            }
+        )
+
 
 class TestSchemaObjectKeywords:
     """Tests for object applicator / constraint keywords."""

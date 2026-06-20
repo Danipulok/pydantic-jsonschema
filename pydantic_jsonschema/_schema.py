@@ -164,6 +164,10 @@ class Schema(BaseModel):
     """The `maxItems` keyword: maximum array length. [Validation §6.4.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.1)."""
     unique_items: bool | MISSING = MISSING
     """The `uniqueItems` keyword: array elements must be unique. [Validation §6.4.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.3)."""
+    max_contains: int | MISSING = MISSING
+    """The `maxContains` keyword: max elements matching `contains`. [Validation §6.4.4](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.4)."""
+    min_contains: int | MISSING = MISSING
+    """The `minContains` keyword: min elements matching `contains`. [Validation §6.4.5](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.5)."""
 
     format: str | MISSING = MISSING
     """The `format` keyword: a semantic format (e.g. `date-time`). [Validation §7](https://json-schema.org/draft/2020-12/json-schema-validation#section-7)."""

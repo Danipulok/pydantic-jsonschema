@@ -238,6 +238,8 @@ Some declared keywords round-trip through parsing and serialization but are not 
 | `min_items`    | `minItems`    | [validation §6.4.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.2) |
 | `max_items`    | `maxItems`    | [validation §6.4.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.1) |
 | `unique_items` | `uniqueItems` | [validation §6.4.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.3) |
+| `max_contains` | `maxContains` | [validation §6.4.4](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.4) |
+| `min_contains` | `minContains` | [validation §6.4.5](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.5) |
 
 ### Object constraints
 
