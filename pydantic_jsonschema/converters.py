@@ -31,6 +31,7 @@ from pydantic import (
     Field,
     RootModel,
     create_model,
+    model_validator,
 )
 from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.fields import FieldInfo
@@ -160,6 +161,37 @@ def _ensure_unique_items(value: list[PythonType], /) -> list[PythonType]:
             raise ValueError(msg)
         seen.append(item)
     return value
+
+
+def _build_property_count_validator(
+    *,
+    min_properties: int | None,
+    max_properties: int | None,
+) -> PythonType:
+    """Build a `before` model validator enforcing `minProperties` / `maxProperties`.
+
+    Counts the raw input mapping's keys before field parsing. That key count is exactly the
+    JSON Schema "number of properties" (declared fields plus `extra` keys) and is unambiguous
+    regardless of which keys map to declared fields (validation §6.5.1 / §6.5.2).
+
+    :param min_properties: Lower bound on the property count, or `None`.
+    :param max_properties: Upper bound on the property count, or `None`.
+    :returns: A `model_validator(mode="before")` enforcing the bounds.
+    """
+
+    def _check(data: PythonType) -> PythonType:
+        # Non-mapping input is left for the normal type validation to reject.
+        if isinstance(data, dict):
+            count: int = len(data)
+            if min_properties is not None and count < min_properties:
+                msg = f"Object must have at least {min_properties} properties"
+                raise ValueError(msg)
+            if max_properties is not None and count > max_properties:
+                msg = f"Object must have at most {max_properties} properties"
+                raise ValueError(msg)
+        return data
+
+    return model_validator(mode="before")(_check)
 
 
 class SchemaConverter:
@@ -371,6 +403,7 @@ class SchemaConverter:
         """
         fields = self._build_fields(schema)
         model_config = self._build_model_config(schema)
+        validators = self._build_property_count_validators(schema)
 
         # For some reason, `create_model` "accepts" `fields` values as `tuple[str, Any]`,
         # when in reality it accepts `tuple[type, FieldInfo]`
@@ -380,9 +413,32 @@ class SchemaConverter:
             __doc__=schema.description if schema.description is not MISSING else None,
             __base__=base_classes,
             __module__=__name__,
+            __validators__=validators,
             **fields,
         )
         return cast("type[BaseModel]", created_model)
+
+    @staticmethod
+    def _build_property_count_validators(
+        schema: Schema,
+        /,
+    ) -> dict[str, PythonType]:
+        """Build the `minProperties` / `maxProperties` validators for an object model.
+
+        :param schema: Object schema to read the bounds from.
+        :returns: A `__validators__` mapping (empty when neither bound is set).
+        """
+        min_properties = schema.min_properties if schema.min_properties is not MISSING else None
+        max_properties = schema.max_properties if schema.max_properties is not MISSING else None
+        if min_properties is None and max_properties is None:
+            return {}
+
+        return {
+            "_validate_property_count": _build_property_count_validator(
+                min_properties=min_properties,
+                max_properties=max_properties,
+            ),
+        }
 
     def _check_alias_target(
         self,
@@ -1073,9 +1129,38 @@ class SchemaConverter:
             with self._track_path("additionalProperties"):
                 value_annotation = self._schema_to_annotation(schema.additional_properties)
                 dict_annotation = dict[str, value_annotation]  # type: ignore[valid-type]
-                return cast("type", dict_annotation)
+                return self._apply_property_count(dict_annotation, schema)
 
-        return dict[str, Any]
+        return self._apply_property_count(dict[str, Any], schema)
+
+    @staticmethod
+    def _apply_property_count(
+        annotation: AnnotationType,
+        schema: Schema,
+        /,
+    ) -> type:
+        """Wrap a `dict` object annotation with `minProperties` / `maxProperties` length bounds.
+
+        Object schemas without declared `properties` map to `dict[str, ...]`; their property
+        count is the `dict` length, so the bounds become `annotated_types` length metadata.
+        Object schemas *with* properties become models instead and are bounded by
+        `_build_property_count_validators`.
+
+        :param annotation: The `dict[str, ...]` annotation.
+        :param schema: Schema carrying optional `min_properties` / `max_properties`.
+        :returns: The annotation, wrapped with length metadata when a bound is set.
+        """
+        constraints: list[PythonType] = []
+        if schema.min_properties is not MISSING:
+            constraints.append(annotated_types.MinLen(schema.min_properties))
+        if schema.max_properties is not MISSING:
+            constraints.append(annotated_types.MaxLen(schema.max_properties))
+
+        if not constraints:
+            return cast("type", annotation)
+
+        constrained = Annotated[(annotation, *constraints)]
+        return cast("type", constrained)
 
     @staticmethod
     def _get_field_default(
