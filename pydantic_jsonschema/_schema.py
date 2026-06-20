@@ -127,6 +127,19 @@ class Schema(BaseModel):
     one_of: list[SchemaOrRefType] | MISSING = MISSING
     """The `oneOf` keyword: must match exactly one subschema. [Core §10.2.1.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.3)."""
 
+    # NOTE: `not` / `if` / `else` are Python reserved words, so the fields use a trailing
+    # underscore with an explicit alias. `populate_by_name=True` keeps both forms loadable
+    # (e.g. `Schema(if_=...)` and `Schema.model_validate({"if": ...})`); dumps use the alias.
+    not_: SchemaOrRefType | MISSING = Field(default=MISSING, alias="not")
+    """The `not` keyword: must NOT match this subschema. [Core §10.2.1.4](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.4)."""
+
+    if_: SchemaOrRefType | MISSING = Field(default=MISSING, alias="if")
+    """The `if` keyword: condition subschema gating `then` / `else`. [Core §10.2.2.1](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.1)."""
+    then: SchemaOrRefType | MISSING = MISSING
+    """The `then` keyword: applied when `if` validates. [Core §10.2.2.2](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.2)."""
+    else_: SchemaOrRefType | MISSING = Field(default=MISSING, alias="else")
+    """The `else` keyword: applied when `if` fails. [Core §10.2.2.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.3)."""
+
     multiple_of: float | MISSING = MISSING
     """The `multipleOf` keyword: value must be a multiple of this. [Validation §6.2.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.2.1)."""
     maximum: float | MISSING = MISSING

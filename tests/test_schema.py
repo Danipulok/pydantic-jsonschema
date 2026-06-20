@@ -451,15 +451,11 @@ class TestSchemaObjectKeywords:
         )
 
 
-class TestSchemaReservedWordKeywords:
-    """Tests for reserved-word keywords that cannot be Python field names."""
+class TestSchemaConditionalKeywords:
+    """Tests for the conditional / negation keywords with reserved-word aliases."""
 
-    def test_conditional_and_not_pass_through(self) -> None:
-        """Test `if` / `then` / `else` / `not` round-trip via ``extra="allow"``.
-
-        These are Python reserved words, so they cannot be declared as model fields;
-        they are preserved verbatim through `extra="allow"` instead.
-        """
+    def test_if_then_else_and_not_by_alias(self) -> None:
+        """Test `if` / `then` / `else` / `not` parsed as typed nested schemas via aliases."""
         schema = Schema.model_validate(
             {
                 "type": "integer",
@@ -469,12 +465,33 @@ class TestSchemaReservedWordKeywords:
                 "not": {"const": 5},
             }
         )
+        assert isinstance(schema.if_, Schema)
+        assert isinstance(schema.then, Schema)
+        assert isinstance(schema.else_, Schema)
+        assert isinstance(schema.not_, Schema)
         assert schema.model_dump() == snapshot(
             {
                 "type": DataType.INTEGER,
-                "if": {"minimum": 0},
-                "then": {"maximum": 9},
-                "else": {"maximum": -1},
                 "not": {"const": 5},
+                "if": {"minimum": 0.0},
+                "then": {"maximum": 9.0},
+                "else": {"maximum": -1.0},
+            }
+        )
+
+    def test_populate_by_python_name(self) -> None:
+        """Test the reserved-word fields also load by their Python names (`populate_by_name`)."""
+        schema = Schema(
+            if_=Schema(minimum=0),
+            then=Schema(maximum=9),
+            else_=Schema(maximum=-1),
+            not_=Schema(const=5),
+        )
+        assert schema.model_dump() == snapshot(
+            {
+                "not": {"const": 5},
+                "if": {"minimum": 0.0},
+                "then": {"maximum": 9.0},
+                "else": {"maximum": -1.0},
             }
         )

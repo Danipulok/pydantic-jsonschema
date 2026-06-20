@@ -181,6 +181,18 @@ Some declared keywords round-trip through parsing and serialization but are not 
 | `all_of`     | `allOf`     | [core §10.2.1.1](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.1)   |
 | `any_of`     | `anyOf`     | [core §10.2.1.2](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.2)   |
 | `one_of`     | `oneOf`     | [core §10.2.1.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.3)   |
+| `not_`       | `not`       | [core §10.2.1.4](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.4)   |
+
+### Conditional
+
+`if` / `else` are Python reserved words, so the fields use a trailing underscore with an alias.
+`populate_by_name=True` keeps both forms loadable (`Schema(if_=...)` and `{"if": ...}`).
+
+| Python field | JSON Schema | Spec                                                                                        |
+|--------------|-------------|---------------------------------------------------------------------------------------------|
+| `if_`        | `if`        | [core §10.2.2.1](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.1)   |
+| `then`       | `then`      | [core §10.2.2.2](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.2)   |
+| `else_`      | `else`      | [core §10.2.2.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.3)   |
 
 ### Subschemas
 
