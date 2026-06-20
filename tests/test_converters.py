@@ -1978,6 +1978,7 @@ class TestConstraints:
 
         with pytest.raises(ValidationError) as exc_info:
             model(tags=["dup", "dup"])
+
         assert dump_errors(exc_info.value) == snapshot(
             [
                 {
@@ -2002,6 +2003,7 @@ class TestConstraints:
 
         with pytest.raises(ValidationError) as exc_info:
             model.model_validate([{"a": 1}, {"a": 1}])
+
         assert dump_errors(exc_info.value) == snapshot(
             [
                 {

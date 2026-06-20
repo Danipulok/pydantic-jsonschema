@@ -1016,16 +1016,7 @@ class SchemaConverter:
         :returns: Type annotation (`Any` when `type` is absent).
         """
         if schema.type == DataType.ARRAY:
-            item_type: type | ForwardRef = Any
-            if schema.items is not MISSING:
-                with self._track_path("items"):
-                    item_type = self._schema_to_annotation(schema.items)
-            list_annotation = list[item_type]  # type: ignore[valid-type]
-            # `uniqueItems: false` (and absent) imposes no constraint; only `true` enforces.
-            if schema.unique_items is True:
-                unique_annotation = Annotated[list_annotation, AfterValidator(_ensure_unique_items)]
-                return cast("type", unique_annotation)
-            return cast("type", list_annotation)
+            return self._array_annotation(schema)
 
         if schema.type == DataType.OBJECT:
             return self._object_annotation(schema)
@@ -1038,6 +1029,29 @@ class SchemaConverter:
             return cast("type", union_annotation)
 
         return Any
+
+    def _array_annotation(
+        self,
+        schema: Schema,
+        /,
+    ) -> type:
+        """Convert an array schema to a `list` annotation, applying array constraints.
+
+        :param schema: Array schema to convert.
+        :returns: `list[...]` annotation, wrapped with `uniqueItems` validation when set.
+        """
+        item_type: type | ForwardRef = Any
+        if schema.items is not MISSING:
+            with self._track_path("items"):
+                item_type = self._schema_to_annotation(schema.items)
+        list_annotation = list[item_type]  # type: ignore[valid-type]
+
+        # `uniqueItems: false` (and absent) imposes no constraint; only `true` enforces.
+        if schema.unique_items is True:
+            unique_annotation = Annotated[list_annotation, AfterValidator(_ensure_unique_items)]
+            return cast("type", unique_annotation)
+
+        return cast("type", list_annotation)
 
     def _object_annotation(
         self,
