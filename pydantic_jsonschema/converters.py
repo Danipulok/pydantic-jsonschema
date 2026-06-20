@@ -37,6 +37,7 @@ from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.fields import FieldInfo
 
 from ._contains import Contains
+from ._dependent_schemas import DependentSchemas
 from ._not import Not
 from ._one_of import OneOf
 from ._prefix_items import PrefixItems
@@ -331,6 +332,7 @@ class SchemaConverter:
         self._contains_validators: list[Contains] = []
         self._prefix_items_validators: list[PrefixItems] = []
         self._not_validators: list[Not] = []
+        self._dependent_schemas_validators: list[DependentSchemas] = []
 
     @staticmethod
     def _hash_schema(
@@ -399,6 +401,8 @@ class SchemaConverter:
             prefix_items_validator.bind_namespace(namespace)
         for not_validator in self._not_validators:
             not_validator.bind_namespace(namespace)
+        for dependent_schemas_validator in self._dependent_schemas_validators:
+            dependent_schemas_validator.bind_namespace(namespace)
 
         return model
 
@@ -529,7 +533,10 @@ class SchemaConverter:
         """
         fields = self._build_fields(schema)
         model_config = self._build_model_config(schema)
+        # Converter-free keyword validators from the registry, plus converter-aware ones
+        # (subschemas need conversion + namespace binding) that the registry cannot build.
         validators = _build_object_validators(schema)
+        validators.update(self._build_dependent_schemas_validators(schema))
 
         # For some reason, `create_model` "accepts" `fields` values as `tuple[str, Any]`,
         # when in reality it accepts `tuple[type, FieldInfo]`
@@ -543,6 +550,35 @@ class SchemaConverter:
             **fields,
         )
         return cast("type[BaseModel]", created_model)
+
+    def _build_dependent_schemas_validators(
+        self,
+        schema: Schema,
+        /,
+    ) -> dict[str, PythonType]:
+        """Build the `dependentSchemas` validator for an object model.
+
+        Registers the validator so its `ForwardRef` subschemas (a dependent pointing at a `$ref`)
+        are namespace-bound after the whole schema is converted.
+
+        :param schema: Object schema.
+        :returns: A `__validators__` mapping (empty when `dependentSchemas` is absent).
+        """
+        if schema.dependent_schemas is MISSING:
+            return {}
+
+        branches: dict[str, PythonType] = {}
+        for trigger, sub_schema in schema.dependent_schemas.items():
+            with self._track_path(f"dependentSchemas.{trigger}"):
+                branches[trigger] = self._schema_to_annotation(sub_schema)
+
+        dependent_schemas = DependentSchemas(branches=branches)
+        self._dependent_schemas_validators.append(dependent_schemas)
+
+        def _check(data: PythonType) -> PythonType:
+            return dependent_schemas.validate(data)
+
+        return {"_validate_dependent_schemas": model_validator(mode="before")(_check)}
 
     def _check_alias_target(
         self,

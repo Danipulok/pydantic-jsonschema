@@ -114,6 +114,7 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | `not`                                        | value must not match the subschema          | `Not` validator                     |
 | `minProperties`, `maxProperties`             | object property-count constraints           | `before` validator / `dict` length  |
 | `dependentRequired`                          | conditionally required properties           | `before` validator                  |
+| `dependentSchemas`                           | conditionally applied object subschema      | `DependentSchemas` validator        |
 | `format` with validators                     | configured format validation                | see [Format Validators](formats.md) |
 | `title`, `model_name`, `default_model_name`  | generated class name                        | `User`, `CustomUser`, `Model`       |
 
@@ -125,7 +126,7 @@ for custom keywords) but do not yet affect the generated model's validation:
 | Keyword group | Ignored keywords                                                                                                 |
 |---------------|------------------------------------------------------------------------------------------------------------------|
 | composition   | `if` / `then` / `else`                                                                                           |
-| objects       | `patternProperties`, `propertyNames`, `dependentSchemas`                                                         |
+| objects       | `patternProperties`, `propertyNames`                                                                             |
 
 ## Known Limitations
 
