@@ -108,18 +108,19 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | `minLength`, `maxLength`                     | string length constraints                   | `min_length`, `max_length`          |
 | `pattern`                                    | string regex constraint                     | `pattern`                           |
 | `minItems`, `maxItems`                       | list length constraints                     | `min_length`, `max_length`          |
+| `uniqueItems: true`                          | array uniqueness constraint                 | `AfterValidator` rejecting dupes    |
 | `format` with validators                     | configured format validation                | see [Format Validators](formats.md) |
 | `title`, `model_name`, `default_model_name`  | generated class name                        | `User`, `CustomUser`, `Model`       |
 
 ## Unsupported Keywords
 
-Unknown keywords are preserved on the `Schema` model (`extra="allow"`) but do not affect the
-generated model's validation:
+These keywords are parsed and preserved on the `Schema` model (declared fields, or `extra="allow"`
+for custom keywords) but do not yet affect the generated model's validation:
 
 | Keyword group | Ignored keywords                                                                                                 |
 |---------------|------------------------------------------------------------------------------------------------------------------|
 | composition   | `not`, `if` / `then` / `else`                                                                                    |
-| arrays        | `prefixItems`, `contains`, `uniqueItems`                                                                         |
+| arrays        | `prefixItems`, `contains`                                                                                        |
 | objects       | `patternProperties`, `propertyNames`, `minProperties`, `maxProperties`, `dependentRequired`, `dependentSchemas`  |
 
 ## Known Limitations

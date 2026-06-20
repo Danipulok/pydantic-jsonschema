@@ -23,7 +23,15 @@ from typing import (
 )
 
 import annotated_types
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, RootModel, create_model
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    RootModel,
+    create_model,
+)
 from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.fields import FieldInfo
 
@@ -125,6 +133,33 @@ class _FieldKwargs(TypedDict, total=False):
     min_length: int | None
     max_length: int | None
     pattern: str | None
+
+
+def _ensure_unique_items(value: list[PythonType], /) -> list[PythonType]:
+    """Reject arrays with duplicate items (`uniqueItems: true`, validation §6.4.3).
+
+    Items are compared by Python equality, which matches JSON structural equality for the
+    common scalar / object / array cases. The check is O(n^2) pairwise rather than `set`-based
+    because JSON values can be unhashable (`dict` / `list`).
+
+    NOTE: Python equates `True == 1` and `1 == 1.0`, so e.g. `[true, 1]` is treated as a
+    duplicate even though JSON Schema considers the two values distinct. Acceptable edge.
+
+    Reproduce:
+        to_model(Schema(type="array", unique_items=True)).model_validate([1, 1])
+        # -> ValidationError: Array items must be unique
+
+    :param value: The already-parsed array.
+    :returns: The array unchanged when all items are unique.
+    :raises ValueError: When two items are equal.
+    """
+    seen: list[PythonType] = []
+    for item in value:
+        if item in seen:
+            msg = "Array items must be unique"
+            raise ValueError(msg)
+        seen.append(item)
+    return value
 
 
 class SchemaConverter:
@@ -986,6 +1021,10 @@ class SchemaConverter:
                 with self._track_path("items"):
                     item_type = self._schema_to_annotation(schema.items)
             list_annotation = list[item_type]  # type: ignore[valid-type]
+            # `uniqueItems: false` (and absent) imposes no constraint; only `true` enforces.
+            if schema.unique_items is True:
+                unique_annotation = Annotated[list_annotation, AfterValidator(_ensure_unique_items)]
+                return cast("type", unique_annotation)
             return cast("type", list_annotation)
 
         if schema.type == DataType.OBJECT:
