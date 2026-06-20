@@ -31,6 +31,7 @@ from pydantic import (
     Field,
     RootModel,
     create_model,
+    model_validator,
 )
 from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.fields import FieldInfo
@@ -160,6 +161,108 @@ def _ensure_unique_items(value: list[PythonType], /) -> list[PythonType]:
             raise ValueError(msg)
         seen.append(item)
     return value
+
+
+def _annotate(annotation: AnnotationType, metadata: list[PythonType], /) -> type:
+    """Wrap an annotation with `Annotated` metadata (validators / constraints).
+
+    :param annotation: Base annotation (e.g. `list[int]`, `dict[str, int]`).
+    :param metadata: `Annotated` metadata to attach (empty -> annotation returned as-is).
+    :returns: The annotation, wrapped only when there is metadata to attach.
+    """
+    if not metadata:
+        return cast("type", annotation)
+    return cast("type", Annotated[(annotation, *metadata)])
+
+
+def _array_metadata(schema: Schema, /) -> list[PythonType]:
+    """`Annotated` metadata for array constraint keywords.
+
+    :param schema: Array schema.
+    :returns: Metadata for the array's `list[...]` annotation (add a keyword's check here).
+    """
+    metadata: list[PythonType] = []
+    # `uniqueItems: false` (and absent) imposes no constraint; only `true` enforces.
+    if schema.unique_items is True:
+        metadata.append(AfterValidator(_ensure_unique_items))
+    return metadata
+
+
+def _object_dict_metadata(schema: Schema, /) -> list[PythonType]:
+    """`Annotated` metadata for object keywords on a `dict` mapping (no declared properties).
+
+    :param schema: Object schema mapped to `dict[str, ...]`.
+    :returns: Length metadata for `minProperties` / `maxProperties` (add a keyword's check here).
+    """
+    metadata: list[PythonType] = []
+    if schema.min_properties is not MISSING:
+        metadata.append(annotated_types.MinLen(schema.min_properties))
+    if schema.max_properties is not MISSING:
+        metadata.append(annotated_types.MaxLen(schema.max_properties))
+    return metadata
+
+
+def _property_count_validator(schema: Schema, /) -> PythonType | None:
+    """`minProperties` / `maxProperties`: bound the number of properties of an object model.
+
+    Counts the raw input mapping's keys before field parsing. That key count is exactly the
+    JSON Schema "number of properties" (declared fields plus `extra` keys) and is unambiguous
+    regardless of which keys map to declared fields (validation §6.5.1 / §6.5.2).
+
+    :param schema: Object schema.
+    :returns: A `model_validator(mode="before")`, or `None` when neither bound is set.
+    """
+    min_properties = schema.min_properties if schema.min_properties is not MISSING else None
+    max_properties = schema.max_properties if schema.max_properties is not MISSING else None
+    if min_properties is None and max_properties is None:
+        return None
+
+    def _check(data: PythonType) -> PythonType:
+        # Non-mapping input is left for the normal type validation to reject.
+        if not isinstance(data, dict):
+            return data
+
+        count: int = len(data)
+        if min_properties is not None and count < min_properties:
+            msg = f"Object must have at least `{min_properties}` properties"
+            raise ValueError(msg)
+        if max_properties is not None and count > max_properties:
+            msg = f"Object must have at most `{max_properties}` properties"
+            raise ValueError(msg)
+
+        return data
+
+    return model_validator(mode="before")(_check)
+
+
+class _ObjectValidatorBuilder(Protocol):
+    """Builds a `model_validator` for one object keyword, or `None` when the schema omits it."""
+
+    # Each builder is a module-level function; its name is the `__validators__` key.
+    __name__: str
+
+    def __call__(self, schema: Schema, /) -> PythonType | None:
+        """Return the keyword's validator for `schema`, or `None` to skip it."""
+        ...
+
+
+# Registry of object-model validators. To support a new object-level keyword, write a
+# builder `(schema) -> validator | None` and add it here — no other wiring is needed.
+_OBJECT_MODEL_VALIDATORS: Final[tuple[_ObjectValidatorBuilder, ...]] = (_property_count_validator,)
+
+
+def _build_object_validators(schema: Schema, /) -> dict[str, PythonType]:
+    """Collect the `model_validator`s for an object model from the keyword registry.
+
+    :param schema: Object schema to read keywords from.
+    :returns: A `create_model(__validators__=...)` mapping (empty when no keyword applies).
+    """
+    validators: dict[str, PythonType] = {}
+    for builder in _OBJECT_MODEL_VALIDATORS:
+        validator = builder(schema)
+        if validator is not None:
+            validators[builder.__name__] = validator
+    return validators
 
 
 class SchemaConverter:
@@ -371,6 +474,7 @@ class SchemaConverter:
         """
         fields = self._build_fields(schema)
         model_config = self._build_model_config(schema)
+        validators = _build_object_validators(schema)
 
         # For some reason, `create_model` "accepts" `fields` values as `tuple[str, Any]`,
         # when in reality it accepts `tuple[type, FieldInfo]`
@@ -380,6 +484,7 @@ class SchemaConverter:
             __doc__=schema.description if schema.description is not MISSING else None,
             __base__=base_classes,
             __module__=__name__,
+            __validators__=validators,
             **fields,
         )
         return cast("type[BaseModel]", created_model)
@@ -1038,20 +1143,14 @@ class SchemaConverter:
         """Convert an array schema to a `list` annotation, applying array constraints.
 
         :param schema: Array schema to convert.
-        :returns: `list[...]` annotation, wrapped with `uniqueItems` validation when set.
+        :returns: `list[...]` annotation, wrapped with array constraint metadata when set.
         """
         item_type: type | ForwardRef = Any
         if schema.items is not MISSING:
             with self._track_path("items"):
                 item_type = self._schema_to_annotation(schema.items)
         list_annotation = list[item_type]  # type: ignore[valid-type]
-
-        # `uniqueItems: false` (and absent) imposes no constraint; only `true` enforces.
-        if schema.unique_items is True:
-            unique_annotation = Annotated[list_annotation, AfterValidator(_ensure_unique_items)]
-            return cast("type", unique_annotation)
-
-        return cast("type", list_annotation)
+        return _annotate(list_annotation, _array_metadata(schema))
 
     def _object_annotation(
         self,
@@ -1073,9 +1172,9 @@ class SchemaConverter:
             with self._track_path("additionalProperties"):
                 value_annotation = self._schema_to_annotation(schema.additional_properties)
                 dict_annotation = dict[str, value_annotation]  # type: ignore[valid-type]
-                return cast("type", dict_annotation)
+                return _annotate(dict_annotation, _object_dict_metadata(schema))
 
-        return dict[str, Any]
+        return _annotate(dict[str, Any], _object_dict_metadata(schema))
 
     @staticmethod
     def _get_field_default(

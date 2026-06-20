@@ -2024,6 +2024,110 @@ class TestConstraints:
         assert model.model_validate([1, 1, 1]).model_dump() == snapshot([1, 1, 1])
 
 
+class TestPropertyCount:
+    """Tests for `minProperties` / `maxProperties` enforcement."""
+
+    def test_min_properties_object(self) -> None:
+        """Test `minProperties` on an object with declared properties."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                "minProperties": 2,
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"a": 1, "b": 2}).model_dump() == snapshot({"a": 1, "b": 2})
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"a": 1})
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": (),
+                    "msg": "Value error, Object must have at least `2` properties",
+                    "input": {"a": 1},
+                }
+            ]
+        )
+
+        # Non-mapping input passes through the count validator and is rejected by type validation.
+        with pytest.raises(ValidationError):
+            model.model_validate("not a mapping")
+
+    def test_max_properties_counts_extra_keys(self) -> None:
+        """Test `maxProperties` counts `extra` keys, not only declared fields."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"a": {"type": "integer"}},
+                "maxProperties": 1,
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"a": 1}).model_dump() == snapshot({"a": 1})
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"a": 1, "extra": 2})
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": (),
+                    "msg": "Value error, Object must have at most `1` properties",
+                    "input": {"a": 1, "extra": 2},
+                }
+            ]
+        )
+
+    def test_property_count_dict_root(self) -> None:
+        """Test `minProperties` / `maxProperties` on a dict-root object (no declared properties)."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "additionalProperties": {"type": "integer"},
+                "minProperties": 1,
+                "maxProperties": 2,
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"a": 1, "b": 2}).model_dump() == snapshot({"a": 1, "b": 2})
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({})
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "too_short",
+                    "loc": (),
+                    "msg": "Dictionary should have at least 1 item after validation, not 0",
+                    "input": {},
+                }
+            ]
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"a": 1, "b": 2, "c": 3})
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "too_long",
+                    "loc": (),
+                    "msg": "Dictionary should have at most 2 items after validation, not 3",
+                    "input": {"a": 1, "b": 2, "c": 3},
+                }
+            ]
+        )
+
+
 class TestAdditionalProperties:
     """Tests for `additionalProperties` handling."""
 
