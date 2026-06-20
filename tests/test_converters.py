@@ -2048,7 +2048,7 @@ class TestPropertyCount:
                 {
                     "type": "value_error",
                     "loc": (),
-                    "msg": "Value error, Object must have at least 2 properties",
+                    "msg": "Value error, Object must have at least `2` properties",
                     "input": {"a": 1},
                 }
             ]
@@ -2079,7 +2079,7 @@ class TestPropertyCount:
                 {
                     "type": "value_error",
                     "loc": (),
-                    "msg": "Value error, Object must have at most 1 properties",
+                    "msg": "Value error, Object must have at most `1` properties",
                     "input": {"a": 1, "extra": 2},
                 }
             ]

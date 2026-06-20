@@ -181,14 +181,17 @@ def _build_property_count_validator(
 
     def _check(data: PythonType) -> PythonType:
         # Non-mapping input is left for the normal type validation to reject.
-        if isinstance(data, dict):
-            count: int = len(data)
-            if min_properties is not None and count < min_properties:
-                msg = f"Object must have at least {min_properties} properties"
-                raise ValueError(msg)
-            if max_properties is not None and count > max_properties:
-                msg = f"Object must have at most {max_properties} properties"
-                raise ValueError(msg)
+        if not isinstance(data, dict):
+            return data
+
+        count: int = len(data)
+        if min_properties is not None and count < min_properties:
+            msg = f"Object must have at least `{min_properties}` properties"
+            raise ValueError(msg)
+        if max_properties is not None and count > max_properties:
+            msg = f"Object must have at most `{max_properties}` properties"
+            raise ValueError(msg)
+
         return data
 
     return model_validator(mode="before")(_check)
