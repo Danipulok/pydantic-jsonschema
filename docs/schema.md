@@ -171,8 +171,8 @@ All members: `NULL`, `STRING`, `NUMBER`, `INTEGER`, `BOOLEAN`, `ARRAY`, `OBJECT`
 
 ## Field Reference
 
-`Schema` fields map directly to JSON Schema keywords. Only fields used by the converter are declared explicitly.
-Unknown keywords are preserved via `extra="allow"`.
+`Schema` fields map directly to JSON Schema keywords. Other or custom keywords are preserved via `extra="allow"`.
+Some declared keywords round-trip through parsing and serialization but are not yet consumed by the converter.
 
 ### Composition
 
@@ -181,14 +181,29 @@ Unknown keywords are preserved via `extra="allow"`.
 | `all_of`     | `allOf`     | [core §10.2.1.1](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.1)   |
 | `any_of`     | `anyOf`     | [core §10.2.1.2](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.2)   |
 | `one_of`     | `oneOf`     | [core §10.2.1.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.3)   |
+| `not_`       | `not`       | [core §10.2.1.4](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.4)   |
+
+### Conditional
+
+`if` / `else` are Python reserved words, so the fields use a trailing underscore with an alias.
+`populate_by_name=True` keeps both forms loadable (`Schema(if_=...)` and `{"if": ...}`).
+
+| Python field | JSON Schema | Spec                                                                                        |
+|--------------|-------------|---------------------------------------------------------------------------------------------|
+| `if_`        | `if`        | [core §10.2.2.1](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.1)   |
+| `then`       | `then`      | [core §10.2.2.2](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.2)   |
+| `else_`      | `else`      | [core §10.2.2.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.3)   |
 
 ### Subschemas
 
 | Python field            | JSON Schema            | Spec                                                                                        |
 |-------------------------|------------------------|---------------------------------------------------------------------------------------------|
 | `items`                 | `items`                | [core §10.3.1.2](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.1.2)   |
+| `prefix_items`          | `prefixItems`          | [core §10.3.1.1](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.1.1)   |
+| `contains`              | `contains`             | [core §10.3.1.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.1.3)   |
 | `properties`            | `properties`           | [core §10.3.2.1](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.2.1)   |
 | `additional_properties` | `additionalProperties` | [core §10.3.2.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.2.3)   |
+| `pattern_properties`    | `patternProperties`    | [core §10.3.2.2](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.2.2)   |
 
 ### Type and constants
 
@@ -218,16 +233,21 @@ Unknown keywords are preserved via `extra="allow"`.
 
 ### Array constraints
 
-| Python field | JSON Schema | Spec                                                                                            |
-|--------------|-------------|-------------------------------------------------------------------------------------------------|
-| `min_items`  | `minItems`  | [validation §6.4.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.2) |
-| `max_items`  | `maxItems`  | [validation §6.4.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.1) |
+| Python field   | JSON Schema   | Spec                                                                                            |
+|----------------|---------------|-------------------------------------------------------------------------------------------------|
+| `min_items`    | `minItems`    | [validation §6.4.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.2) |
+| `max_items`    | `maxItems`    | [validation §6.4.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.1) |
+| `unique_items` | `uniqueItems` | [validation §6.4.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.3) |
 
 ### Object constraints
 
-| Python field | JSON Schema | Spec                                                                                            |
-|--------------|-------------|-------------------------------------------------------------------------------------------------|
-| `required`   | `required`  | [validation §6.5.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.5.3) |
+| Python field         | JSON Schema         | Spec                                                                                            |
+|----------------------|---------------------|-------------------------------------------------------------------------------------------------|
+| `required`           | `required`          | [validation §6.5.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.5.3) |
+| `min_properties`     | `minProperties`     | [validation §6.5.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.5.2) |
+| `max_properties`     | `maxProperties`     | [validation §6.5.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.5.1) |
+| `dependent_required` | `dependentRequired` | [validation §6.5.4](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.5.4) |
+| `dependent_schemas`  | `dependentSchemas`  | [core §10.2.2.4](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.4)       |
 
 ### Format
 

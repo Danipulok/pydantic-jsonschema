@@ -345,3 +345,153 @@ class TestSchemaSerialization:
                 "required": ["name"],
             }
         )
+
+
+class TestSchemaArrayKeywords:
+    """Tests for array applicator / constraint keywords."""
+
+    def test_prefix_items(self) -> None:
+        """Test `prefixItems` parsed as a list of nested `Schema`."""
+        schema = Schema.model_validate(
+            {
+                "type": "array",
+                "prefixItems": [{"type": "string"}, {"type": "integer"}],
+            }
+        )
+        assert all(isinstance(item, Schema) for item in schema.prefix_items)
+        assert schema.model_dump() == snapshot(
+            {
+                "type": DataType.ARRAY,
+                "prefixItems": [{"type": DataType.STRING}, {"type": DataType.INTEGER}],
+            }
+        )
+
+    def test_contains(self) -> None:
+        """Test `contains` parsed as a nested `Schema`."""
+        schema = Schema.model_validate({"type": "array", "contains": {"type": "integer"}})
+        assert isinstance(schema.contains, Schema)
+        assert schema.model_dump() == snapshot(
+            {
+                "type": DataType.ARRAY,
+                "contains": {"type": DataType.INTEGER},
+            }
+        )
+
+    def test_unique_items(self) -> None:
+        """Test `uniqueItems` parsed from camelCase."""
+        schema = Schema.model_validate({"type": "array", "uniqueItems": True})
+        assert schema.model_dump() == snapshot({"type": DataType.ARRAY, "uniqueItems": True})
+
+
+class TestSchemaObjectKeywords:
+    """Tests for object applicator / constraint keywords."""
+
+    def test_pattern_properties(self) -> None:
+        """Test `patternProperties` parsed as nested schemas keyed by regex."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "patternProperties": {"^x-": {"type": "string"}},
+            }
+        )
+        assert isinstance(schema.pattern_properties["^x-"], Schema)
+        assert schema.model_dump() == snapshot(
+            {
+                "type": DataType.OBJECT,
+                "patternProperties": {"^x-": {"type": DataType.STRING}},
+            }
+        )
+
+    def test_min_max_properties(self) -> None:
+        """Test `minProperties` / `maxProperties` parsed from camelCase."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "minProperties": 1,
+                "maxProperties": 5,
+            }
+        )
+        assert schema.model_dump() == snapshot(
+            {
+                "type": DataType.OBJECT,
+                "minProperties": 1,
+                "maxProperties": 5,
+            }
+        )
+
+    def test_dependent_required(self) -> None:
+        """Test `dependentRequired` parsed as a property-to-names mapping."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "dependentRequired": {"credit_card": ["billing_address"]},
+            }
+        )
+        assert schema.model_dump() == snapshot(
+            {
+                "type": DataType.OBJECT,
+                "dependentRequired": {"credit_card": ["billing_address"]},
+            }
+        )
+
+    def test_dependent_schemas(self) -> None:
+        """Test `dependentSchemas` parsed as nested schemas keyed by property name."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "dependentSchemas": {"credit_card": {"required": ["billing_address"]}},
+            }
+        )
+        assert isinstance(schema.dependent_schemas["credit_card"], Schema)
+        assert schema.model_dump() == snapshot(
+            {
+                "type": DataType.OBJECT,
+                "dependentSchemas": {"credit_card": {"required": ["billing_address"]}},
+            }
+        )
+
+
+class TestSchemaConditionalKeywords:
+    """Tests for the conditional / negation keywords with reserved-word aliases."""
+
+    def test_if_then_else_and_not_by_alias(self) -> None:
+        """Test `if` / `then` / `else` / `not` parsed as typed nested schemas via aliases."""
+        schema = Schema.model_validate(
+            {
+                "type": "integer",
+                "if": {"minimum": 0},
+                "then": {"maximum": 9},
+                "else": {"maximum": -1},
+                "not": {"const": 5},
+            }
+        )
+        assert isinstance(schema.if_, Schema)
+        assert isinstance(schema.then, Schema)
+        assert isinstance(schema.else_, Schema)
+        assert isinstance(schema.not_, Schema)
+        assert schema.model_dump() == snapshot(
+            {
+                "type": DataType.INTEGER,
+                "not": {"const": 5},
+                "if": {"minimum": 0.0},
+                "then": {"maximum": 9.0},
+                "else": {"maximum": -1.0},
+            }
+        )
+
+    def test_populate_by_python_name(self) -> None:
+        """Test the reserved-word fields also load by their Python names (`populate_by_name`)."""
+        schema = Schema(
+            if_=Schema(minimum=0),
+            then=Schema(maximum=9),
+            else_=Schema(maximum=-1),
+            not_=Schema(const=5),
+        )
+        assert schema.model_dump() == snapshot(
+            {
+                "not": {"const": 5},
+                "if": {"minimum": 0.0},
+                "then": {"maximum": 9.0},
+                "else": {"maximum": -1.0},
+            }
+        )
