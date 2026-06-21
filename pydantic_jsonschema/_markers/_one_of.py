@@ -4,27 +4,18 @@ See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.3
 """
 
 from collections.abc import Iterable
-from typing import Annotated, Any, ForwardRef, Union
+from typing import Annotated, Union
 
-from pydantic import (
-    BaseModel,
-    GetCoreSchemaHandler,
-    GetJsonSchemaHandler,
-    TypeAdapter,
-    ValidationError,
-)
+from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 
+from ._base import AnnotationType, SubschemaMarker
+
 __all__ = ["OneOf"]
 
-# Type aliases
-type AnnotationType = (
-    Any  # Any annotation Pydantic supports (`type`, `Annotated`, `ForwardRef`, ...)
-)
 
-
-class OneOf:
+class OneOf(SubschemaMarker):
     """Enforce JSON Schema `oneOf` semantics: exactly one branch must match.
 
     Python `Union` accepts a value when *any* branch matches (`anyOf` semantics),
@@ -41,8 +32,8 @@ class OneOf:
 
         :param branches: Union branch annotations (may contain `ForwardRef`).
         """
+        super().__init__()
         self._branches: tuple[AnnotationType, ...] = tuple(branches)
-        self._namespace: dict[str, type[BaseModel]] = {}
         self._adapters: list[TypeAdapter[AnnotationType]] | None = None
 
     def as_annotation(self) -> AnnotationType:
@@ -56,17 +47,6 @@ class OneOf:
         """
         union_annotation = Union[self._branches]  # type: ignore[name-defined]  # noqa: UP007
         return Annotated[union_annotation, self]
-
-    def bind_namespace(
-        self,
-        namespace: dict[str, type[BaseModel]],
-        /,
-    ) -> None:
-        """Provide the namespace used to resolve `ForwardRef` branches.
-
-        :param namespace: Mapping of sanitized reference names to models.
-        """
-        self._namespace = namespace
 
     def __get_pydantic_core_schema__(
         self,
@@ -88,22 +68,12 @@ class OneOf:
         return json_schema
 
     def _get_adapters(self) -> list[TypeAdapter[AnnotationType]]:
-        """Build branch adapters, resolving `ForwardRef` branches on first use.
+        """Build branch adapters on first use (caches across calls).
 
         :returns: One `TypeAdapter` per `oneOf` branch.
         """
-        # NOTE: Adapters are built lazily: at conversion time branches may contain
-        #       `ForwardRef` entries that only become resolvable after the whole
-        #       schema (including `$defs`) has been converted and the namespace
-        #       has been bound via `bind_namespace`.
         if self._adapters is None:
-            resolved_branches = [
-                self._namespace[branch.__forward_arg__]
-                if isinstance(branch, ForwardRef)
-                else branch
-                for branch in self._branches
-            ]
-            self._adapters = [TypeAdapter(branch) for branch in resolved_branches]
+            self._adapters = [self._build_adapter(branch) for branch in self._branches]
         return self._adapters
 
     def _validate(
@@ -118,14 +88,9 @@ class OneOf:
         :returns: Validated value.
         :raises ValueError: If the value does not match exactly one branch.
         """
-        matched_count: int = 0
-        for adapter in self._get_adapters():
-            try:
-                adapter.validate_python(value)
-            except ValidationError:
-                continue
-            else:
-                matched_count += 1
+        matched_count: int = sum(
+            1 for adapter in self._get_adapters() if self._validates(adapter, value)
+        )
 
         if matched_count != 1:
             msg = f"Input matches {matched_count} `oneOf` branches, expected exactly 1"

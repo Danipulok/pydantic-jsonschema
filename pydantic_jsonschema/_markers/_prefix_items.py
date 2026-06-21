@@ -4,25 +4,16 @@ See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.1.1
 """
 
 from collections.abc import Iterable
-from typing import Any, ForwardRef
 
-from pydantic import (
-    BaseModel,
-    GetCoreSchemaHandler,
-    TypeAdapter,
-    ValidationError,
-)
+from pydantic import GetCoreSchemaHandler, TypeAdapter, ValidationError
 from pydantic_core import CoreSchema, core_schema
+
+from ._base import AnnotationType, SubschemaMarker
 
 __all__ = ["PrefixItems"]
 
-# Type aliases
-type AnnotationType = (
-    Any  # Any annotation Pydantic supports (`type`, `Annotated`, `ForwardRef`, ...)
-)
 
-
-class PrefixItems:
+class PrefixItems(SubschemaMarker):
     """Enforce JSON Schema `prefixItems`: positional (tuple-style) array validation.
 
     Element `i` is validated against `prefixItems[i]`; elements past the prefix are validated
@@ -43,22 +34,11 @@ class PrefixItems:
         :param tail: The `items` annotation for elements past the prefix, or `None` when `items`
             is absent (extra elements are then unconstrained).
         """
+        super().__init__()
         self._prefixes: tuple[AnnotationType, ...] = tuple(prefixes)
         self._tail: AnnotationType | None = tail
-        self._namespace: dict[str, type[BaseModel]] = {}
         self._prefix_adapters: list[TypeAdapter[AnnotationType]] | None = None
         self._tail_adapter: TypeAdapter[AnnotationType] | None = None
-
-    def bind_namespace(
-        self,
-        namespace: dict[str, type[BaseModel]],
-        /,
-    ) -> None:
-        """Provide the namespace used to resolve `ForwardRef` subschemas.
-
-        :param namespace: Mapping of sanitized reference names to models.
-        """
-        self._namespace = namespace
 
     def __get_pydantic_core_schema__(
         self,
@@ -68,29 +48,12 @@ class PrefixItems:
         """Wrap the array schema with positional validation."""
         return core_schema.no_info_after_validator_function(self._validate, handler(source_type))
 
-    def _resolve(
-        self,
-        branch: AnnotationType,
-        /,
-    ) -> AnnotationType:
-        """Resolve a `ForwardRef` subschema against the bound namespace.
-
-        :param branch: A subschema annotation, possibly a `ForwardRef`.
-        :returns: The resolved model, or the annotation unchanged.
-        """
-        return self._namespace[branch.__forward_arg__] if isinstance(branch, ForwardRef) else branch
-
     def _build_adapters(self) -> None:
-        """Build the per-position and tail adapters, resolving `ForwardRef`s on first use."""
-        # NOTE: Built lazily: at conversion time subschemas may be `ForwardRef`s that only
-        #       become resolvable after the whole schema (including `$defs`) is converted and
-        #       the namespace is bound via `bind_namespace`.
+        """Build the per-position and tail adapters on first use (caches across calls)."""
         if self._prefix_adapters is None:
-            self._prefix_adapters = [
-                TypeAdapter(self._resolve(branch)) for branch in self._prefixes
-            ]
+            self._prefix_adapters = [self._build_adapter(branch) for branch in self._prefixes]
             if self._tail is not None:
-                self._tail_adapter = TypeAdapter(self._resolve(self._tail))
+                self._tail_adapter = self._build_adapter(self._tail)
 
     def _validate(
         self,
