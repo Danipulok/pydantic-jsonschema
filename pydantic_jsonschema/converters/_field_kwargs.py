@@ -1,0 +1,134 @@
+"""`FieldInfo` kwargs and defaults derived from JSON Schema constraints."""
+
+# NOTE: `Schema` fields use `X | MISSING` unions (see `_schema.py`). mypy doesn't
+# recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
+# and flags every `is not MISSING` check as a non-overlapping identity comparison.
+# mypy: disable-error-code="comparison-overlap"
+
+from typing import Any, Final, Literal, TypedDict
+
+import annotated_types
+from pydantic.experimental.missing_sentinel import MISSING
+
+from pydantic_jsonschema.types import DataType, Schema
+
+__all__ = [
+    "FieldKindType",
+    "build_field_kwargs",
+    "get_field_default",
+]
+
+type FieldKindType = Literal["required", "optional", "root"]  # How a field is used in a model
+
+# Missing value for `default` field
+# See: https://github.com/pydantic/pydantic/blob/6800281ba87625346daf5826563740ded8a9851b/pydantic/fields.py#L241-L247
+# For mypy issue, see: https://github.com/python/mypy/issues/7818
+_PYDANTIC_DEFAULT_MISSING: Final[Ellipsis] = ...  # type: ignore[valid-type]
+
+
+class _FieldKwargs(TypedDict, total=False):
+    """Subset of Pydantic `FieldInfo` kwargs produced from JSON Schema constraints.
+
+    Field names and types mirror `pydantic.fields._FromFieldInfoInputs`.
+    See: https://github.com/pydantic/pydantic/blob/v2.13.4/pydantic/fields.py#L50
+    """
+
+    examples: list[Any] | None
+    title: str | None
+    description: str | None
+    ge: annotated_types.SupportsGe | None
+    gt: annotated_types.SupportsGt | None
+    le: annotated_types.SupportsLe | None
+    lt: annotated_types.SupportsLt | None
+    multiple_of: float | None
+    min_length: int | None
+    max_length: int | None
+    pattern: str | None
+
+
+def build_field_kwargs(schema: Schema, /) -> _FieldKwargs:  # noqa: C901
+    """Build `FieldInfo` kwargs, only including constraints that are explicitly set.
+
+    :param schema: Schema to extract constraints and metadata from.
+    :returns: Keyword arguments for `FieldInfo`.
+    """
+    kwargs: _FieldKwargs = {}
+    if schema.examples is not MISSING:
+        kwargs["examples"] = schema.examples
+    if schema.title is not MISSING:
+        kwargs["title"] = schema.title
+    if schema.description is not MISSING:
+        kwargs["description"] = schema.description
+    if schema.minimum is not MISSING:
+        kwargs["ge"] = schema.minimum
+    if schema.exclusive_minimum is not MISSING:
+        kwargs["gt"] = schema.exclusive_minimum
+    if schema.maximum is not MISSING:
+        kwargs["le"] = schema.maximum
+    if schema.exclusive_maximum is not MISSING:
+        kwargs["lt"] = schema.exclusive_maximum
+    if schema.multiple_of is not MISSING:
+        kwargs["multiple_of"] = schema.multiple_of
+    if schema.pattern is not MISSING:
+        kwargs["pattern"] = schema.pattern
+
+    min_length = _get_min_length(schema)
+    if min_length is not None:
+        kwargs["min_length"] = min_length
+
+    max_length = _get_max_length(schema)
+    if max_length is not None:
+        kwargs["max_length"] = max_length
+
+    return kwargs
+
+
+def get_field_default(
+    schema: Schema,
+    /,
+    *,
+    field_kind: FieldKindType,
+) -> Any:  # noqa: ANN401
+    """Determine default value for the field based on its schema.
+
+    :param schema: Schema to get default from.
+    :param field_kind: `required` / `optional` object property, or `root` model value.
+    :returns: Default value, `...` for required fields, or the `MISSING` sentinel.
+    """
+    if field_kind == "required":
+        return _PYDANTIC_DEFAULT_MISSING
+
+    if schema.default is not MISSING:
+        return schema.default
+
+    # Root model values have no "absent" concept:
+    # a bare `{"type": "string"}` root schema always validates a value.
+    if field_kind == "root":
+        return _PYDANTIC_DEFAULT_MISSING
+
+    # Optional field without explicit default -> `MISSING` sentinel, so the
+    # field is omitted from dumps instead of carrying a fabricated `None`
+    # default that would not even validate against the annotation.
+    return MISSING
+
+
+def _get_min_length(schema: Schema, /) -> int | None:
+    """Get min length based on schema type.
+
+    :param schema: Schema to extract constraint from.
+    :returns: `minItems` for arrays, `minLength` for strings, `None` if unset.
+    """
+    if schema.type == DataType.ARRAY:
+        return schema.min_items if schema.min_items is not MISSING else None
+    return schema.min_length if schema.min_length is not MISSING else None
+
+
+def _get_max_length(schema: Schema, /) -> int | None:
+    """Get max length based on schema type.
+
+    :param schema: Schema to extract constraint from.
+    :returns: `maxItems` for arrays, `maxLength` for strings, `None` if unset.
+    """
+    if schema.type == DataType.ARRAY:
+        return schema.max_items if schema.max_items is not MISSING else None
+    return schema.max_length if schema.max_length is not MISSING else None
