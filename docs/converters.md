@@ -116,6 +116,7 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | `minProperties`, `maxProperties`             | object property-count constraints           | `before` validator / `dict` length  |
 | `dependentRequired`                          | conditionally required properties           | `before` validator                  |
 | `dependentSchemas`                           | conditionally applied object subschema      | `DependentSchemas` validator        |
+| `patternProperties`                          | regex-keyed property-value subschemas       | `PatternProperties` validator       |
 | `format` with validators                     | configured format validation                | see [Format Validators](formats.md) |
 | `title`, `model_name`, `default_model_name`  | generated class name                        | `User`, `CustomUser`, `Model`       |
 
@@ -126,7 +127,7 @@ for custom keywords) but do not yet affect the generated model's validation:
 
 | Keyword group | Ignored keywords                                                                                                 |
 |---------------|------------------------------------------------------------------------------------------------------------------|
-| objects       | `patternProperties`, `propertyNames`                                                                             |
+| objects       | `propertyNames`                                                                                                  |
 
 ## Known Limitations
 
@@ -145,6 +146,9 @@ for custom keywords) but do not yet affect the generated model's validation:
 - `not` is only as precise as the converter's coverage of its subschema. A subschema that maps to
   `Any` (an empty schema, or `required` without `type` / `properties`) matches every value, so
   `not` then rejects everything.
+- `patternProperties` validates the values of matching property names, but combined with
+  `additionalProperties: false` a pattern-matched extra key is still rejected by `extra="forbid"`
+  (the generated model cannot express "allow keys matching this regex").
 
 ## Common Conversions
 
