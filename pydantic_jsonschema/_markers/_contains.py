@@ -3,7 +3,7 @@
 See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.1.3
 """
 
-from typing import Any, ForwardRef
+from typing import ForwardRef
 
 from pydantic import (
     BaseModel,
@@ -13,12 +13,9 @@ from pydantic import (
 )
 from pydantic_core import CoreSchema, core_schema
 
-__all__ = ["Contains"]
+from pydantic_jsonschema._types import AnnotationType
 
-# Type aliases
-type AnnotationType = (
-    Any  # Any annotation Pydantic supports (`type`, `Annotated`, `ForwardRef`, ...)
-)
+__all__ = ["Contains"]
 
 
 class Contains:

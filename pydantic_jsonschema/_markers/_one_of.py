@@ -4,7 +4,7 @@ See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.3
 """
 
 from collections.abc import Iterable
-from typing import Annotated, Any, ForwardRef, Union
+from typing import Annotated, ForwardRef, Union
 
 from pydantic import (
     BaseModel,
@@ -16,12 +16,9 @@ from pydantic import (
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 
-__all__ = ["OneOf"]
+from pydantic_jsonschema._types import AnnotationType
 
-# Type aliases
-type AnnotationType = (
-    Any  # Any annotation Pydantic supports (`type`, `Annotated`, `ForwardRef`, ...)
-)
+__all__ = ["OneOf"]
 
 
 class OneOf:

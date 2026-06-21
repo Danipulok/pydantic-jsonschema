@@ -4,7 +4,7 @@ See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.2.2
 """
 
 import re
-from typing import Any, ForwardRef
+from typing import ForwardRef
 
 from pydantic import (
     BaseModel,
@@ -12,12 +12,9 @@ from pydantic import (
     ValidationError,
 )
 
-__all__ = ["PatternProperties"]
+from pydantic_jsonschema._types import AnnotationType
 
-# Type aliases
-type AnnotationType = (
-    Any  # Any annotation Pydantic supports (`type`, `Annotated`, `ForwardRef`, ...)
-)
+__all__ = ["PatternProperties"]
 
 
 class PatternProperties:

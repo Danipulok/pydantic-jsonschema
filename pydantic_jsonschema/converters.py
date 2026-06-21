@@ -46,6 +46,7 @@ from ._markers import (
     PrefixItems,
     PropertyNames,
 )
+from ._types import AnnotationType, PythonType
 from ._utils import sanitize_identifier
 from .exceptions import SchemaConversionError, SchemaReferenceError
 from .types import DataType, Reference, Schema
@@ -87,8 +88,6 @@ _DATA_TYPE_ANNOTATION_MAPPING: Final[dict[DataType, type]] = {
 type Ref = str  # Reference path like "#/$defs/User"
 type SchemaHash = str  # Schema cache key (JSON hash)
 type FormatName = str  # Format name like "date-time", "uuid"
-type AnnotationType = Any  # `type`, `Annotated`, `Union`, `Literal`, `ForwardRef`, etc.
-type PythonType = Any  # Anything that Pydantic supports
 type FieldKindType = Literal["required", "optional", "root"]  # How a field is used in a model
 type FormatValidatorType = (
     FormatValidator | type | TypeAliasType
