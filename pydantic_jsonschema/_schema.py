@@ -108,6 +108,8 @@ class Schema(BaseModel):
     """The `additionalProperties` keyword: schema/toggle for extra properties. [Core §10.3.2.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.2.3)."""
     pattern_properties: dict[str, SchemaOrRefType] | MISSING = MISSING
     """The `patternProperties` keyword: schemas for properties matching a regex. [Core §10.3.2.2](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.2.2)."""
+    property_names: SchemaOrRefType | MISSING = MISSING
+    """The `propertyNames` keyword: schema every property name must match. [Core §10.3.2.4](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.2.4)."""
 
     required: list[str] | MISSING = MISSING
     """The `required` keyword: names of required properties. [Validation §6.5.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.5.3)."""
