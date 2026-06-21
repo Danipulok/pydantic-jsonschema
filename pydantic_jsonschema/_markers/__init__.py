@@ -5,6 +5,7 @@ Each marker holds one or more subschema annotations (possibly a `ForwardRef`), b
 The converter collects them and calls `bind_namespace` once conversion finishes.
 """
 
+from ._base import SubschemaMarker
 from ._contains import Contains
 from ._dependent_schemas import DependentSchemas
 from ._if_then_else import IfThenElse
@@ -23,4 +24,5 @@ __all__ = [
     "PatternProperties",
     "PrefixItems",
     "PropertyNames",
+    "SubschemaMarker",
 ]

@@ -45,6 +45,7 @@ from ._markers import (
     PatternProperties,
     PrefixItems,
     PropertyNames,
+    SubschemaMarker,
 )
 from ._utils import sanitize_identifier
 from .exceptions import SchemaConversionError, SchemaReferenceError
@@ -277,14 +278,6 @@ def _dependent_required_validator(schema: Schema, /) -> PythonType | None:
     return model_validator(mode="before")(_check)
 
 
-class _ForwardRefMarker(Protocol):
-    """A marker validator whose `ForwardRef` subschemas resolve via a bound namespace."""
-
-    def bind_namespace(self, namespace: dict[str, type[BaseModel]], /) -> None:
-        """Bind the namespace used to resolve `ForwardRef` subschemas."""
-        ...
-
-
 class _ObjectValidatorBuilder(Protocol):
     """Builds a `model_validator` for one object keyword, or `None` when the schema omits it."""
 
@@ -341,14 +334,7 @@ class SchemaConverter:
         self._defs_cache: dict[Ref, Schema] = {}
         self._models_cache: dict[SchemaHash, type[BaseModel]] = {}
         self._resolution_path: list[str] = []  # Track path for error reporting
-        self._one_of_validators: list[OneOf] = []
-        self._contains_validators: list[Contains] = []
-        self._prefix_items_validators: list[PrefixItems] = []
-        self._not_validators: list[Not] = []
-        self._dependent_schemas_validators: list[DependentSchemas] = []
-        self._if_then_else_validators: list[IfThenElse] = []
-        self._pattern_properties_validators: list[PatternProperties] = []
-        self._property_names_validators: list[PropertyNames] = []
+        self._markers: list[SubschemaMarker] = []
 
     @staticmethod
     def _hash_schema(
@@ -429,6 +415,19 @@ class SchemaConverter:
             model = self._wrap_root_conditional(model, schema)
         return model
 
+    def _register[MarkerT: SubschemaMarker](
+        self,
+        marker: MarkerT,
+        /,
+    ) -> MarkerT:
+        """Register a marker so its `ForwardRef` subschemas are namespace-bound after conversion.
+
+        :param marker: The freshly built marker validator.
+        :returns: The same marker, for inline use at the call site.
+        """
+        self._markers.append(marker)
+        return marker
+
     def _bind_forward_refs(self) -> None:
         """Bind the forward-refs namespace into every marker validator.
 
@@ -436,17 +435,7 @@ class SchemaConverter:
         validation time, once the whole schema (including `$defs`) has been converted.
         """
         namespace = self._get_forward_refs_namespace()
-        markers: tuple[_ForwardRefMarker, ...] = (
-            *self._one_of_validators,
-            *self._contains_validators,
-            *self._prefix_items_validators,
-            *self._not_validators,
-            *self._dependent_schemas_validators,
-            *self._if_then_else_validators,
-            *self._pattern_properties_validators,
-            *self._property_names_validators,
-        )
-        for marker in markers:
+        for marker in self._markers:
             marker.bind_namespace(namespace)
 
     def _convert_nested_schema(
@@ -617,8 +606,7 @@ class SchemaConverter:
             with self._track_path(f"dependentSchemas.{trigger}"):
                 branches[trigger] = self._constrained_annotation(sub_schema)
 
-        dependent_schemas = DependentSchemas(branches=branches)
-        self._dependent_schemas_validators.append(dependent_schemas)
+        dependent_schemas = self._register(DependentSchemas(branches=branches))
 
         def _check(data: PythonType) -> PythonType:
             return dependent_schemas.validate(data)
@@ -646,8 +634,7 @@ class SchemaConverter:
             with self._track_path(f"patternProperties.{pattern}"):
                 branches[pattern] = self._constrained_annotation(sub_schema)
 
-        pattern_properties = PatternProperties(branches=branches)
-        self._pattern_properties_validators.append(pattern_properties)
+        pattern_properties = self._register(PatternProperties(branches=branches))
 
         def _check(data: PythonType) -> PythonType:
             return pattern_properties.validate(data)
@@ -673,8 +660,7 @@ class SchemaConverter:
         with self._track_path("propertyNames"):
             branch = self._constrained_annotation(schema.property_names)
 
-        property_names = PropertyNames(branch=branch)
-        self._property_names_validators.append(property_names)
+        property_names = self._register(PropertyNames(branch=branch))
 
         def _check(data: PythonType) -> PythonType:
             return property_names.validate(data)
@@ -1182,9 +1168,7 @@ class SchemaConverter:
         with self._track_path("not"):
             branch = self._constrained_annotation(schema.not_)
 
-        not_validator = Not(branch=branch)
-        self._not_validators.append(not_validator)
-        return not_validator
+        return self._register(Not(branch=branch))
 
     @staticmethod
     def _has_conditional(
@@ -1238,13 +1222,13 @@ class SchemaConverter:
             with self._track_path("else"):
                 else_branch = self._constrained_annotation(schema.else_)
 
-        conditional = IfThenElse(
-            if_branch=if_branch,
-            then_branch=then_branch,
-            else_branch=else_branch,
+        return self._register(
+            IfThenElse(
+                if_branch=if_branch,
+                then_branch=then_branch,
+                else_branch=else_branch,
+            )
         )
-        self._if_then_else_validators.append(conditional)
-        return conditional
 
     def _wrap_root_not(
         self,
@@ -1399,8 +1383,7 @@ class SchemaConverter:
             discriminated = Annotated[union_annotation, Field(discriminator=discriminator)]  # type: ignore[valid-type]
             return cast("type", discriminated)
 
-        one_of_validator = OneOf(branches=union_args)
-        self._one_of_validators.append(one_of_validator)
+        one_of_validator = self._register(OneOf(branches=union_args))
         return cast("type", one_of_validator.as_annotation())
 
     def _discriminator_property(
@@ -1575,9 +1558,7 @@ class SchemaConverter:
             with self._track_path("items"):
                 tail = self._constrained_annotation(schema.items)
 
-        prefix_items = PrefixItems(prefixes=prefixes, tail=tail)
-        self._prefix_items_validators.append(prefix_items)
-        return prefix_items
+        return self._register(PrefixItems(prefixes=prefixes, tail=tail))
 
     def _build_contains(
         self,
@@ -1602,9 +1583,9 @@ class SchemaConverter:
         min_contains = schema.min_contains if schema.min_contains is not MISSING else 1
         max_contains = schema.max_contains if schema.max_contains is not MISSING else None
 
-        contains = Contains(branch=branch, min_contains=min_contains, max_contains=max_contains)
-        self._contains_validators.append(contains)
-        return contains
+        return self._register(
+            Contains(branch=branch, min_contains=min_contains, max_contains=max_contains)
+        )
 
     def _object_annotation(
         self,
