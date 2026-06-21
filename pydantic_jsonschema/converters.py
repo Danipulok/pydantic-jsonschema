@@ -41,6 +41,7 @@ from ._dependent_schemas import DependentSchemas
 from ._if_then_else import IfThenElse
 from ._not import Not
 from ._one_of import OneOf
+from ._pattern_properties import PatternProperties
 from ._prefix_items import PrefixItems
 from ._utils import sanitize_identifier
 from .exceptions import SchemaConversionError, SchemaReferenceError
@@ -273,6 +274,14 @@ def _dependent_required_validator(schema: Schema, /) -> PythonType | None:
     return model_validator(mode="before")(_check)
 
 
+class _ForwardRefMarker(Protocol):
+    """A marker validator whose `ForwardRef` subschemas resolve via a bound namespace."""
+
+    def bind_namespace(self, namespace: dict[str, type[BaseModel]], /) -> None:
+        """Bind the namespace used to resolve `ForwardRef` subschemas."""
+        ...
+
+
 class _ObjectValidatorBuilder(Protocol):
     """Builds a `model_validator` for one object keyword, or `None` when the schema omits it."""
 
@@ -335,6 +344,7 @@ class SchemaConverter:
         self._not_validators: list[Not] = []
         self._dependent_schemas_validators: list[DependentSchemas] = []
         self._if_then_else_validators: list[IfThenElse] = []
+        self._pattern_properties_validators: list[PatternProperties] = []
 
     @staticmethod
     def _hash_schema(
@@ -384,34 +394,55 @@ class SchemaConverter:
 
         # Build model using common logic
         model = self._build_model(schema, model_name=model_name)
-
-        # A root object becomes a plain `BaseModel` (not a `RootModel`), so it bypasses the
-        # annotation path where whole-value assertions are otherwise attached — wrap it
-        # explicitly here. Every other shape (root non-object / dict-root, and all nested
-        # values) carries these via its annotation already.
-        if not issubclass(model, RootModel):
-            if schema.not_ is not MISSING:
-                model = self._wrap_root_not(model, schema)
-            if self._has_conditional(schema):
-                model = self._wrap_root_conditional(model, schema)
-
-        # Bind the forward-refs namespace so `OneOf` / `Contains` validators can resolve
-        # `ForwardRef` branches lazily at validation time.
-        namespace = self._get_forward_refs_namespace()
-        for one_of_validator in self._one_of_validators:
-            one_of_validator.bind_namespace(namespace)
-        for contains_validator in self._contains_validators:
-            contains_validator.bind_namespace(namespace)
-        for prefix_items_validator in self._prefix_items_validators:
-            prefix_items_validator.bind_namespace(namespace)
-        for not_validator in self._not_validators:
-            not_validator.bind_namespace(namespace)
-        for dependent_schemas_validator in self._dependent_schemas_validators:
-            dependent_schemas_validator.bind_namespace(namespace)
-        for if_then_else_validator in self._if_then_else_validators:
-            if_then_else_validator.bind_namespace(namespace)
+        model = self._wrap_root_value_assertions(model, schema)
+        self._bind_forward_refs()
 
         return model
+
+    def _wrap_root_value_assertions(
+        self,
+        model: type[BaseModel],
+        schema: Schema,
+        /,
+    ) -> type[BaseModel]:
+        """Attach `not` / `if` / `then` / `else` to a root object model.
+
+        A root object becomes a plain `BaseModel` (not a `RootModel`), so it bypasses the
+        annotation path where these whole-value assertions are otherwise attached. Every other
+        shape (root non-object / dict-root, and all nested values) carries them via its
+        annotation already.
+
+        :param model: The freshly built root model.
+        :param schema: The root schema.
+        :returns: The model, wrapped when it is a root object carrying whole-value assertions.
+        """
+        if issubclass(model, RootModel):
+            return model
+
+        if schema.not_ is not MISSING:
+            model = self._wrap_root_not(model, schema)
+        if self._has_conditional(schema):
+            model = self._wrap_root_conditional(model, schema)
+        return model
+
+    def _bind_forward_refs(self) -> None:
+        """Bind the forward-refs namespace into every marker validator.
+
+        Lets `OneOf` / `Contains` / `Not` / ... resolve `ForwardRef` branches lazily at
+        validation time, once the whole schema (including `$defs`) has been converted.
+        """
+        namespace = self._get_forward_refs_namespace()
+        markers: tuple[_ForwardRefMarker, ...] = (
+            *self._one_of_validators,
+            *self._contains_validators,
+            *self._prefix_items_validators,
+            *self._not_validators,
+            *self._dependent_schemas_validators,
+            *self._if_then_else_validators,
+            *self._pattern_properties_validators,
+        )
+        for marker in markers:
+            marker.bind_namespace(namespace)
 
     def _convert_nested_schema(
         self,
@@ -544,6 +575,7 @@ class SchemaConverter:
         # (subschemas need conversion + namespace binding) that the registry cannot build.
         validators = _build_object_validators(schema)
         validators.update(self._build_dependent_schemas_validators(schema))
+        validators.update(self._build_pattern_properties_validators(schema))
 
         # For some reason, `create_model` "accepts" `fields` values as `tuple[str, Any]`,
         # when in reality it accepts `tuple[type, FieldInfo]`
@@ -586,6 +618,35 @@ class SchemaConverter:
             return dependent_schemas.validate(data)
 
         return {"_validate_dependent_schemas": model_validator(mode="before")(_check)}
+
+    def _build_pattern_properties_validators(
+        self,
+        schema: Schema,
+        /,
+    ) -> dict[str, PythonType]:
+        """Build the `patternProperties` validator for an object model.
+
+        Registers the validator so its `ForwardRef` subschemas (a pattern value pointing at a
+        `$ref`) are namespace-bound after the whole schema is converted.
+
+        :param schema: Object schema.
+        :returns: A `__validators__` mapping (empty when `patternProperties` is absent).
+        """
+        if schema.pattern_properties is MISSING:
+            return {}
+
+        branches: dict[str, PythonType] = {}
+        for pattern, sub_schema in schema.pattern_properties.items():
+            with self._track_path(f"patternProperties.{pattern}"):
+                branches[pattern] = self._constrained_annotation(sub_schema)
+
+        pattern_properties = PatternProperties(branches=branches)
+        self._pattern_properties_validators.append(pattern_properties)
+
+        def _check(data: PythonType) -> PythonType:
+            return pattern_properties.validate(data)
+
+        return {"_validate_pattern_properties": model_validator(mode="before")(_check)}
 
     def _check_alias_target(
         self,
