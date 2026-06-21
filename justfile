@@ -212,8 +212,26 @@ ci-build:
 # Build documentation in CI
 ci-docs-build: docs-build
 
-# Deploy versioned documentation and update `latest` alias in CI
-ci-docs-deploy version: _ci-configure-git (docs-deploy-version version) (docs-alias version "latest") (docs-set-default "latest")
+# Deploy versioned docs to a single-commit `gh-pages` in CI (history never grows).
+#
+# `mike` keeps every version in the `gh-pages` *tree*, but each `mike deploy --push` adds a
+# commit carrying a full site snapshot, so the branch history balloons over time. Instead we
+# deploy locally (no `--push`), then collapse the whole branch into one orphan commit and
+# force-push it — each release replaces `gh-pages` rather than appending to it.
+# See: https://github.com/ag2ai/ag2/pull/2989
+ci-docs-deploy version: _ci-configure-git
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Bring the existing versions local so `mike` preserves them in the new tree.
+    git fetch origin gh-pages:gh-pages 2>/dev/null || true
+    uv run mike deploy --update-aliases "{{version}}" latest
+    uv run mike set-default latest
+    # Squash the entire branch to one orphan commit, then replace the remote branch.
+    git checkout gh-pages
+    git checkout --orphan _gh_pages_squashed
+    git add --all
+    git commit --quiet --message "docs: deploy {{version}}"
+    git push --force origin _gh_pages_squashed:gh-pages
 
 # Generate release notes for CI
 ci-release-notes output:
