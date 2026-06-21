@@ -168,7 +168,6 @@ class SchemaConverter:
         """Context manager for tracking resolution path.
 
         :param segment: Path segment to add.
-        :yields: None
         """
         self._resolution_path.append(segment)
         try:
@@ -190,10 +189,8 @@ class SchemaConverter:
         :returns: Pydantic model class.
         :raises SchemaConversionError: If schema cannot be converted.
         """
-        # Build defs cache from `$defs`
         self._build_defs_cache(schema)
 
-        # Build model using common logic
         model = self._build_model(schema, model_name=model_name)
         model = self._wrap_root_value_assertions(model, schema)
         self._bind_forward_refs()
@@ -267,12 +264,10 @@ class SchemaConverter:
         :returns: Pydantic model class.
         :raises SchemaConversionError: If schema contains `$defs` (only allowed in root).
         """
-        # Validate that `$defs` is not present in nested schemas
         if schema.defs is not MISSING:
             msg = f"{_DEFS_KEY} is only allowed in root schema, not in nested schemas"
             raise SchemaConversionError(msg)
 
-        # Build model using common logic
         return self._build_model(schema, model_name=model_name)
 
     def _build_model(
@@ -314,7 +309,6 @@ class SchemaConverter:
         :param model_name: Name for the generated model.
         :returns: Pydantic model class.
         """
-        # Handle `allOf` composition -> base classes
         base_classes = self._get_base_classes(schema)
 
         # Non-object types -> `RootModel`.
@@ -610,14 +604,11 @@ class SchemaConverter:
         """Build defs cache from schema `$defs` field.
 
         :param schema: Schema to extract defs from.
-        :returns: None
         """
         defs = self._get_inline_defs(schema)
 
         for ref, schema_def in defs.items():
-            # Store in defs cache
             self._defs_cache[ref] = schema_def
-            # Convert and cache nested models
             self._convert_nested_schema(schema_def)
 
         self._rebuild_def_models(defs)
@@ -658,11 +649,9 @@ class SchemaConverter:
         :returns: Pydantic model (from cache or generated).
         :raises SchemaReferenceError: If reference cannot be resolved.
         """
-        # Check if pre-built model exists
         if ref in self._refs:
             return self._refs[ref]
 
-        # Try to resolve schema from defs
         if ref not in self._defs_cache:
             path_str = " -> ".join(self._resolution_path) if self._resolution_path else "root"
             msg = f"Cannot resolve reference `{ref}` at path: `{path_str}`"
@@ -688,7 +677,6 @@ class SchemaConverter:
         if schema.all_of is MISSING:
             return (BaseModel,)
 
-        # Convert each `allOf` schema to model
         base_models = []
         for index, sub_schema in enumerate(schema.all_of):
             with self._track_path(f"allOf[{index}]"):
@@ -741,19 +729,17 @@ class SchemaConverter:
 
         for field_name, field_schema in properties.items():
             with self._track_path(f"properties.{field_name}"):
-                # Handle reference fields
                 annotation: AnnotationType | None = None
                 schema_for_field: Schema
 
                 if isinstance(field_schema, Reference):
-                    # Get model for annotation
                     annotation = self._get_model(field_schema.ref)
-                    # Use schema from defs for field metadata, or empty schema
+                    # A local `$ref` carries its own field metadata in `$defs`; an unknown
+                    # ref (external / pre-built) contributes none, so fall back to an empty schema.
                     schema_for_field = self._defs_cache.get(field_schema.ref, Schema())
                 else:
                     schema_for_field = field_schema
 
-                # Convert to Pydantic field
                 field = self._schema_to_field(
                     schema_for_field,
                     field_kind="required" if field_name in required_names else "optional",
@@ -810,7 +796,6 @@ class SchemaConverter:
         """Build model config from schema."""
         config: ConfigDict = {}
 
-        # Handle `additionalProperties`
         if schema.additional_properties is False:
             config["extra"] = "forbid"
         else:
@@ -833,16 +818,13 @@ class SchemaConverter:
         :param annotation: Pre-computed annotation.
         :returns: Pydantic FieldInfo.
         """
-        # Get annotation if not provided
         if annotation is None:
             valid_annotation: AnnotationType = self._schema_to_annotation(schema)
         else:
             valid_annotation = annotation
 
-        # Apply validators
         valid_annotation = self._apply_validators(valid_annotation, schema)
 
-        # Determine default value
         default = get_field_default(schema, field_kind=field_kind)
 
         # `MISSING` must be part of the annotation for Pydantic to accept it as default.
