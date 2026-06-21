@@ -311,9 +311,13 @@ class SchemaConverter:
             return model
 
         if schema.not_ is not MISSING:
-            model = self._wrap_root_not(model, schema)
+            model = self._wrap_root_assertion(model, self._build_not(schema), key="_validate_not")
         if self._has_conditional(schema):
-            model = self._wrap_root_conditional(model, schema)
+            model = self._wrap_root_assertion(
+                model,
+                self._build_conditional(schema),
+                key="_validate_conditional",
+            )
         return model
 
     def _register[MarkerT: SubschemaMarker](
@@ -1097,12 +1101,13 @@ class SchemaConverter:
                 else self._type_annotation(schema)
             )
 
-        # `not` and `if` / `then` / `else` are checked against the raw value before the host
-        # type (wrap-validators).
+        # `not` and `if` / `then` / `else` are checked against the raw value before the host type,
+        # attached as `Annotated` wrap-validator metadata (the path used for every shape that has a
+        # host annotation; root object models take the `before`-validator path instead).
         if schema.not_ is not MISSING:
-            annotation = self._apply_not(annotation, schema)
+            annotation = cast("type", Annotated[annotation, self._build_not(schema)])
         if self._has_conditional(schema):
-            annotation = self._apply_conditional(annotation, schema)
+            annotation = cast("type", Annotated[annotation, self._build_conditional(schema)])
 
         return annotation
 
@@ -1130,21 +1135,6 @@ class SchemaConverter:
         if kwargs:
             annotation = cast("type", Annotated[annotation, Field(**kwargs)])
         return annotation
-
-    def _apply_not(
-        self,
-        annotation: AnnotationType,
-        schema: Schema,
-        /,
-    ) -> type:
-        """Wrap a value annotation with the `not` check.
-
-        :param annotation: The value's base annotation.
-        :param schema: Schema carrying `not`.
-        :returns: `Annotated[annotation, Not(...)]`.
-        """
-        not_validator = self._build_not(schema)
-        return cast("type", Annotated[annotation, not_validator])
 
     def _build_not(
         self,
@@ -1174,21 +1164,6 @@ class SchemaConverter:
         return schema.if_ is not MISSING and (
             schema.then is not MISSING or schema.else_ is not MISSING
         )
-
-    def _apply_conditional(
-        self,
-        annotation: AnnotationType,
-        schema: Schema,
-        /,
-    ) -> type:
-        """Wrap a value annotation with the `if` / `then` / `else` check.
-
-        :param annotation: The value's base annotation.
-        :param schema: Schema carrying `if` / `then` / `else`.
-        :returns: `Annotated[annotation, IfThenElse(...)]`.
-        """
-        conditional = self._build_conditional(schema)
-        return cast("type", Annotated[annotation, conditional])
 
     def _build_conditional(
         self,
@@ -1221,46 +1196,30 @@ class SchemaConverter:
             )
         )
 
-    def _wrap_root_not(
+    def _wrap_root_assertion(
         self,
         model: type[BaseModel],
-        schema: Schema,
+        marker: Not | IfThenElse,
         /,
+        *,
+        key: str,
     ) -> type[BaseModel]:
-        """Wrap a root object model with a `before` validator enforcing `not`.
+        """Wrap a root object model with a `before` validator enforcing a whole-value assertion.
+
+        A root object is a plain `BaseModel` with no host annotation, so `not` / `if` / `then` /
+        `else` cannot ride along as `Annotated` metadata (the path used for every other shape).
+        Instead the marker's `check` runs as a `before` model validator on the raw input.
 
         :param model: The root object `BaseModel`.
-        :param schema: Root schema carrying `not`.
-        :returns: A subclass of `model` that rejects inputs matching the `not` subschema.
+        :param marker: The whole-value marker (`Not` or `IfThenElse`), already registered.
+        :param key: The `__validators__` key for the validator.
+        :returns: A subclass of `model` applying the assertion.
         """
-        not_validator = self._build_not(schema)
 
         def _check(data: PythonType) -> PythonType:
-            if not_validator.matches(data):
-                msg = "Value must not match the `not` schema"
-                raise ValueError(msg)
-            return data
+            return marker.check(data)
 
-        return self._wrap_root_before(model, key="_validate_not", check=_check)
-
-    def _wrap_root_conditional(
-        self,
-        model: type[BaseModel],
-        schema: Schema,
-        /,
-    ) -> type[BaseModel]:
-        """Wrap a root object model with a `before` validator enforcing `if` / `then` / `else`.
-
-        :param model: The root object `BaseModel`.
-        :param schema: Root schema carrying `if` / `then` / `else`.
-        :returns: A subclass of `model` applying the conditional check.
-        """
-        conditional = self._build_conditional(schema)
-
-        def _check(data: PythonType) -> PythonType:
-            return conditional.check(data)
-
-        return self._wrap_root_before(model, key="_validate_conditional", check=_check)
+        return self._wrap_root_before(model, key=key, check=_check)
 
     @staticmethod
     def _wrap_root_before(
