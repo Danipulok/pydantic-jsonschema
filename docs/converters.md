@@ -112,6 +112,7 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | `contains`, `minContains`, `maxContains`     | array match-count constraint                | `Contains` validator                |
 | `prefixItems`                                | positional (tuple-style) array validation   | `PrefixItems` validator             |
 | `not`                                        | value must not match the subschema          | `Not` validator                     |
+| `if` / `then` / `else`                       | conditional subschema application           | `IfThenElse` validator              |
 | `minProperties`, `maxProperties`             | object property-count constraints           | `before` validator / `dict` length  |
 | `dependentRequired`                          | conditionally required properties           | `before` validator                  |
 | `dependentSchemas`                           | conditionally applied object subschema      | `DependentSchemas` validator        |
@@ -125,7 +126,6 @@ for custom keywords) but do not yet affect the generated model's validation:
 
 | Keyword group | Ignored keywords                                                                                                 |
 |---------------|------------------------------------------------------------------------------------------------------------------|
-| composition   | `if` / `then` / `else`                                                                                           |
 | objects       | `patternProperties`, `propertyNames`                                                                             |
 
 ## Known Limitations

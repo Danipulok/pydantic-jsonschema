@@ -38,6 +38,7 @@ from pydantic.fields import FieldInfo
 
 from ._contains import Contains
 from ._dependent_schemas import DependentSchemas
+from ._if_then_else import IfThenElse
 from ._not import Not
 from ._one_of import OneOf
 from ._prefix_items import PrefixItems
@@ -333,6 +334,7 @@ class SchemaConverter:
         self._prefix_items_validators: list[PrefixItems] = []
         self._not_validators: list[Not] = []
         self._dependent_schemas_validators: list[DependentSchemas] = []
+        self._if_then_else_validators: list[IfThenElse] = []
 
     @staticmethod
     def _hash_schema(
@@ -384,11 +386,14 @@ class SchemaConverter:
         model = self._build_model(schema, model_name=model_name)
 
         # A root object becomes a plain `BaseModel` (not a `RootModel`), so it bypasses the
-        # annotation path where `not` is otherwise attached — wrap it explicitly here. Every
-        # other shape (root non-object / dict-root, and all nested values) carries `not` via
-        # its annotation already.
-        if schema.not_ is not MISSING and not issubclass(model, RootModel):
-            model = self._wrap_root_not(model, schema)
+        # annotation path where whole-value assertions are otherwise attached — wrap it
+        # explicitly here. Every other shape (root non-object / dict-root, and all nested
+        # values) carries these via its annotation already.
+        if not issubclass(model, RootModel):
+            if schema.not_ is not MISSING:
+                model = self._wrap_root_not(model, schema)
+            if self._has_conditional(schema):
+                model = self._wrap_root_conditional(model, schema)
 
         # Bind the forward-refs namespace so `OneOf` / `Contains` validators can resolve
         # `ForwardRef` branches lazily at validation time.
@@ -403,6 +408,8 @@ class SchemaConverter:
             not_validator.bind_namespace(namespace)
         for dependent_schemas_validator in self._dependent_schemas_validators:
             dependent_schemas_validator.bind_namespace(namespace)
+        for if_then_else_validator in self._if_then_else_validators:
+            if_then_else_validator.bind_namespace(namespace)
 
         return model
 
@@ -570,7 +577,7 @@ class SchemaConverter:
         branches: dict[str, PythonType] = {}
         for trigger, sub_schema in schema.dependent_schemas.items():
             with self._track_path(f"dependentSchemas.{trigger}"):
-                branches[trigger] = self._schema_to_annotation(sub_schema)
+                branches[trigger] = self._constrained_annotation(sub_schema)
 
         dependent_schemas = DependentSchemas(branches=branches)
         self._dependent_schemas_validators.append(dependent_schemas)
@@ -1019,10 +1026,38 @@ class SchemaConverter:
                 else self._type_annotation(schema)
             )
 
-        # `not` is checked against the raw value before the host type (a wrap-validator).
+        # `not` and `if` / `then` / `else` are checked against the raw value before the host
+        # type (wrap-validators).
         if schema.not_ is not MISSING:
             annotation = self._apply_not(annotation, schema)
+        if self._has_conditional(schema):
+            annotation = self._apply_conditional(annotation, schema)
 
+        return annotation
+
+    def _constrained_annotation(
+        self,
+        schema: Schema | Reference,
+        /,
+    ) -> AnnotationType:
+        """Build a subschema annotation with field-level constraints baked in.
+
+        The marker validators (`Not`, `Contains`, `PrefixItems`, `IfThenElse`, `DependentSchemas`)
+        validate values against subschemas via a `TypeAdapter`. Plain `_schema_to_annotation` omits
+        constraints that the converter normally applies through `FieldInfo` (`minimum`, `maxLength`,
+        `pattern`, `multipleOf`, ...), so they are re-applied here as `Annotated` `Field` metadata.
+
+        :param schema: The subschema (or reference) to convert.
+        :returns: The annotation, wrapped with `Field(...)` when it carries field-level constraints.
+        """
+        annotation = self._schema_to_annotation(schema)
+        if isinstance(schema, Reference):
+            return annotation
+
+        annotation = self._apply_validators(annotation, schema)
+        kwargs = self._build_field_kwargs(schema)
+        if kwargs:
+            annotation = cast("type", Annotated[annotation, Field(**kwargs)])
         return annotation
 
     def _apply_not(
@@ -1051,11 +1086,71 @@ class SchemaConverter:
         :returns: A `Not` validator for the subschema.
         """
         with self._track_path("not"):
-            branch = self._schema_to_annotation(schema.not_)
+            branch = self._constrained_annotation(schema.not_)
 
         not_validator = Not(branch=branch)
         self._not_validators.append(not_validator)
         return not_validator
+
+    @staticmethod
+    def _has_conditional(
+        schema: Schema,
+        /,
+    ) -> bool:
+        """Return whether `if` gates an actual `then` / `else` branch.
+
+        :param schema: Schema to inspect.
+        :returns: `True` when `if` is present together with `then` and/or `else`.
+        """
+        return schema.if_ is not MISSING and (
+            schema.then is not MISSING or schema.else_ is not MISSING
+        )
+
+    def _apply_conditional(
+        self,
+        annotation: AnnotationType,
+        schema: Schema,
+        /,
+    ) -> type:
+        """Wrap a value annotation with the `if` / `then` / `else` check.
+
+        :param annotation: The value's base annotation.
+        :param schema: Schema carrying `if` / `then` / `else`.
+        :returns: `Annotated[annotation, IfThenElse(...)]`.
+        """
+        conditional = self._build_conditional(schema)
+        return cast("type", Annotated[annotation, conditional])
+
+    def _build_conditional(
+        self,
+        schema: Schema,
+        /,
+    ) -> IfThenElse:
+        """Build the `if` / `then` / `else` validator, registering it for namespace binding.
+
+        :param schema: Schema carrying `if` / `then` / `else`.
+        :returns: An `IfThenElse` validator for the subschemas.
+        """
+        with self._track_path("if"):
+            if_branch = self._constrained_annotation(schema.if_)
+
+        then_branch: AnnotationType | None = None
+        if schema.then is not MISSING:
+            with self._track_path("then"):
+                then_branch = self._constrained_annotation(schema.then)
+
+        else_branch: AnnotationType | None = None
+        if schema.else_ is not MISSING:
+            with self._track_path("else"):
+                else_branch = self._constrained_annotation(schema.else_)
+
+        conditional = IfThenElse(
+            if_branch=if_branch,
+            then_branch=then_branch,
+            else_branch=else_branch,
+        )
+        self._if_then_else_validators.append(conditional)
+        return conditional
 
     def _wrap_root_not(
         self,
@@ -1077,9 +1172,43 @@ class SchemaConverter:
                 raise ValueError(msg)
             return data
 
-        validators: dict[str, PythonType] = {
-            "_validate_not": model_validator(mode="before")(_check),
-        }
+        return self._wrap_root_before(model, key="_validate_not", check=_check)
+
+    def _wrap_root_conditional(
+        self,
+        model: type[BaseModel],
+        schema: Schema,
+        /,
+    ) -> type[BaseModel]:
+        """Wrap a root object model with a `before` validator enforcing `if` / `then` / `else`.
+
+        :param model: The root object `BaseModel`.
+        :param schema: Root schema carrying `if` / `then` / `else`.
+        :returns: A subclass of `model` applying the conditional check.
+        """
+        conditional = self._build_conditional(schema)
+
+        def _check(data: PythonType) -> PythonType:
+            return conditional.check(data)
+
+        return self._wrap_root_before(model, key="_validate_conditional", check=_check)
+
+    @staticmethod
+    def _wrap_root_before(
+        model: type[BaseModel],
+        /,
+        *,
+        key: str,
+        check: PythonType,
+    ) -> type[BaseModel]:
+        """Subclass a root object model, attaching one `before` model validator.
+
+        :param model: The root object `BaseModel`.
+        :param key: The `__validators__` key for the validator.
+        :param check: The `(data) -> data` validation function.
+        :returns: A subclass of `model` with the validator attached.
+        """
+        validators: dict[str, PythonType] = {key: model_validator(mode="before")(check)}
         wrapped = create_model(
             model.__name__,
             __base__=model,
@@ -1345,12 +1474,12 @@ class SchemaConverter:
         prefixes: list[PythonType] = []
         for index, sub_schema in enumerate(schema.prefix_items):
             with self._track_path(f"prefixItems[{index}]"):
-                prefixes.append(self._schema_to_annotation(sub_schema))
+                prefixes.append(self._constrained_annotation(sub_schema))
 
         tail: PythonType | None = None
         if schema.items is not MISSING:
             with self._track_path("items"):
-                tail = self._schema_to_annotation(schema.items)
+                tail = self._constrained_annotation(schema.items)
 
         prefix_items = PrefixItems(prefixes=prefixes, tail=tail)
         self._prefix_items_validators.append(prefix_items)
@@ -1373,7 +1502,7 @@ class SchemaConverter:
             return None
 
         with self._track_path("contains"):
-            branch = self._schema_to_annotation(schema.contains)
+            branch = self._constrained_annotation(schema.contains)
 
         # `minContains` defaults to 1; `maxContains` is unbounded when absent.
         min_contains = schema.min_contains if schema.min_contains is not MISSING else 1
