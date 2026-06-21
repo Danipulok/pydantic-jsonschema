@@ -36,14 +36,16 @@ from pydantic import (
 from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.fields import FieldInfo
 
-from ._contains import Contains
-from ._dependent_schemas import DependentSchemas
-from ._if_then_else import IfThenElse
-from ._not import Not
-from ._one_of import OneOf
-from ._pattern_properties import PatternProperties
-from ._prefix_items import PrefixItems
-from ._property_names import PropertyNames
+from ._markers import (
+    Contains,
+    DependentSchemas,
+    IfThenElse,
+    Not,
+    OneOf,
+    PatternProperties,
+    PrefixItems,
+    PropertyNames,
+)
 from ._utils import sanitize_identifier
 from .exceptions import SchemaConversionError, SchemaReferenceError
 from .types import DataType, Reference, Schema
