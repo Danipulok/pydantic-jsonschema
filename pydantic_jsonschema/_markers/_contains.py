@@ -3,25 +3,15 @@
 See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.1.3
 """
 
-from typing import Any, ForwardRef
-
-from pydantic import (
-    BaseModel,
-    GetCoreSchemaHandler,
-    TypeAdapter,
-    ValidationError,
-)
+from pydantic import GetCoreSchemaHandler, TypeAdapter
 from pydantic_core import CoreSchema, core_schema
+
+from ._base import AnnotationType, SubschemaMarker
 
 __all__ = ["Contains"]
 
-# Type aliases
-type AnnotationType = (
-    Any  # Any annotation Pydantic supports (`type`, `Annotated`, `ForwardRef`, ...)
-)
 
-
-class Contains:
+class Contains(SubschemaMarker):
     """Enforce JSON Schema `contains` / `minContains` / `maxContains` on an array.
 
     Counts how many array elements validate against the `contains` subschema and requires that
@@ -43,22 +33,11 @@ class Contains:
         :param min_contains: Minimum number of matching elements (`minContains`, default 1).
         :param max_contains: Maximum number of matching elements (`maxContains`), or `None`.
         """
+        super().__init__()
         self._branch: AnnotationType = branch
         self._min_contains: int = min_contains
         self._max_contains: int | None = max_contains
-        self._namespace: dict[str, type[BaseModel]] = {}
         self._adapter: TypeAdapter[AnnotationType] | None = None
-
-    def bind_namespace(
-        self,
-        namespace: dict[str, type[BaseModel]],
-        /,
-    ) -> None:
-        """Provide the namespace used to resolve a `ForwardRef` subschema.
-
-        :param namespace: Mapping of sanitized reference names to models.
-        """
-        self._namespace = namespace
 
     def __get_pydantic_core_schema__(
         self,
@@ -69,20 +48,12 @@ class Contains:
         return core_schema.no_info_after_validator_function(self._validate, handler(source_type))
 
     def _get_adapter(self) -> TypeAdapter[AnnotationType]:
-        """Build the `contains` adapter, resolving a `ForwardRef` subschema on first use.
+        """Build the `contains` adapter on first use (caches across calls).
 
         :returns: A `TypeAdapter` for the `contains` subschema.
         """
-        # NOTE: Built lazily: at conversion time the subschema may be a `ForwardRef` that only
-        #       becomes resolvable after the whole schema (including `$defs`) is converted and
-        #       the namespace is bound via `bind_namespace`.
         if self._adapter is None:
-            branch = (
-                self._namespace[self._branch.__forward_arg__]
-                if isinstance(self._branch, ForwardRef)
-                else self._branch
-            )
-            self._adapter = TypeAdapter(branch)
+            self._adapter = self._build_adapter(self._branch)
         return self._adapter
 
     def _matches(
@@ -95,11 +66,7 @@ class Contains:
         :param item: An array element (already parsed by the array's item type).
         :returns: `True` when the element validates against `contains`.
         """
-        try:
-            self._get_adapter().validate_python(item)
-        except ValidationError:
-            return False
-        return True
+        return self._validates(self._get_adapter(), item)
 
     def _validate(
         self,

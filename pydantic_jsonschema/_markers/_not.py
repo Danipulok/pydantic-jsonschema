@@ -3,25 +3,15 @@
 See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.4
 """
 
-from typing import Any, ForwardRef
-
-from pydantic import (
-    BaseModel,
-    GetCoreSchemaHandler,
-    TypeAdapter,
-    ValidationError,
-)
+from pydantic import GetCoreSchemaHandler, TypeAdapter
 from pydantic_core import CoreSchema, core_schema
+
+from ._base import AnnotationType, SubschemaMarker
 
 __all__ = ["Not"]
 
-# Type aliases
-type AnnotationType = (
-    Any  # Any annotation Pydantic supports (`type`, `Annotated`, `ForwardRef`, ...)
-)
 
-
-class Not:
+class Not(SubschemaMarker):
     """Enforce JSON Schema `not`: the instance must NOT validate against the subschema.
 
     Used two ways, both checking the *raw* input (before the host type coerces it):
@@ -44,20 +34,9 @@ class Not:
 
         :param branch: The `not` subschema annotation (may be a `ForwardRef`).
         """
+        super().__init__()
         self._branch: AnnotationType = branch
-        self._namespace: dict[str, type[BaseModel]] = {}
         self._adapter: TypeAdapter[AnnotationType] | None = None
-
-    def bind_namespace(
-        self,
-        namespace: dict[str, type[BaseModel]],
-        /,
-    ) -> None:
-        """Provide the namespace used to resolve a `ForwardRef` subschema.
-
-        :param namespace: Mapping of sanitized reference names to models.
-        """
-        self._namespace = namespace
 
     def __get_pydantic_core_schema__(
         self,
@@ -77,27 +56,15 @@ class Not:
         :param value: The raw input value.
         :returns: `True` when the value validates against `not` (and so must be rejected).
         """
-        try:
-            self._get_adapter().validate_python(value)
-        except ValidationError:
-            return False
-        return True
+        return self._validates(self._get_adapter(), value)
 
     def _get_adapter(self) -> TypeAdapter[AnnotationType]:
-        """Build the `not` adapter, resolving a `ForwardRef` subschema on first use.
+        """Build the `not` adapter on first use (caches across calls).
 
         :returns: A `TypeAdapter` for the `not` subschema.
         """
-        # NOTE: Built lazily: at conversion time the subschema may be a `ForwardRef` that only
-        #       becomes resolvable after the whole schema (including `$defs`) is converted and
-        #       the namespace is bound via `bind_namespace`.
         if self._adapter is None:
-            branch = (
-                self._namespace[self._branch.__forward_arg__]
-                if isinstance(self._branch, ForwardRef)
-                else self._branch
-            )
-            self._adapter = TypeAdapter(branch)
+            self._adapter = self._build_adapter(self._branch)
         return self._adapter
 
     def _validate(

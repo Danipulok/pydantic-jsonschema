@@ -3,23 +3,14 @@
 See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.2.4
 """
 
-from typing import Any, ForwardRef
+from pydantic import TypeAdapter
 
-from pydantic import (
-    BaseModel,
-    TypeAdapter,
-    ValidationError,
-)
+from ._base import AnnotationType, SubschemaMarker
 
 __all__ = ["PropertyNames"]
 
-# Type aliases
-type AnnotationType = (
-    Any  # Any annotation Pydantic supports (`type`, `Annotated`, `ForwardRef`, ...)
-)
 
-
-class PropertyNames:
+class PropertyNames(SubschemaMarker):
     """Enforce JSON Schema `propertyNames`: every property name must match the subschema.
 
     Property names are always strings, so the subschema typically constrains the string (a
@@ -38,36 +29,17 @@ class PropertyNames:
         :param branch: The subschema every property name must validate against (may be a
             `ForwardRef`).
         """
+        super().__init__()
         self._branch: AnnotationType = branch
-        self._namespace: dict[str, type[BaseModel]] = {}
         self._adapter: TypeAdapter[AnnotationType] | None = None
 
-    def bind_namespace(
-        self,
-        namespace: dict[str, type[BaseModel]],
-        /,
-    ) -> None:
-        """Provide the namespace used to resolve a `ForwardRef` subschema.
-
-        :param namespace: Mapping of sanitized reference names to models.
-        """
-        self._namespace = namespace
-
     def _get_adapter(self) -> TypeAdapter[AnnotationType]:
-        """Build the subschema adapter, resolving a `ForwardRef` on first use.
+        """Build the subschema adapter on first use (caches across calls).
 
         :returns: A `TypeAdapter` for the `propertyNames` subschema.
         """
-        # NOTE: Built lazily: at conversion time the subschema may be a `ForwardRef` that only
-        #       becomes resolvable after the whole schema (including `$defs`) is converted and
-        #       the namespace is bound via `bind_namespace`.
         if self._adapter is None:
-            branch = (
-                self._namespace[self._branch.__forward_arg__]
-                if isinstance(self._branch, ForwardRef)
-                else self._branch
-            )
-            self._adapter = TypeAdapter(branch)
+            self._adapter = self._build_adapter(self._branch)
         return self._adapter
 
     def validate(
@@ -86,10 +58,8 @@ class PropertyNames:
 
         adapter = self._get_adapter()
         for name in data:
-            try:
-                adapter.validate_python(name)
-            except ValidationError:
+            if not self._validates(adapter, name):
                 msg = f"Property name `{name}` does not satisfy the `propertyNames` schema"
-                raise ValueError(msg) from None
+                raise ValueError(msg)
 
         return data
