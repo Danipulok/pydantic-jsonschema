@@ -16,15 +16,12 @@ from typing import (
     Literal,
     Protocol,
     TypeAliasType,
-    TypedDict,
     Union,
     cast,
     get_origin,
 )
 
-import annotated_types
 from pydantic import (
-    AfterValidator,
     BaseModel,
     BeforeValidator,
     ConfigDict,
@@ -36,7 +33,7 @@ from pydantic import (
 from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.fields import FieldInfo
 
-from ._markers import (
+from pydantic_jsonschema._markers import (
     Contains,
     DependentSchemas,
     IfThenElse,
@@ -47,9 +44,14 @@ from ._markers import (
     PropertyNames,
     SubschemaMarker,
 )
-from ._utils import sanitize_identifier
-from .exceptions import SchemaConversionError, SchemaReferenceError
-from .types import DataType, Reference, Schema
+from pydantic_jsonschema._utils import sanitize_identifier
+from pydantic_jsonschema.exceptions import SchemaConversionError, SchemaReferenceError
+from pydantic_jsonschema.types import DataType, Reference, Schema
+
+from ._discriminator import discriminator_property
+from ._field_kwargs import FieldKindType, build_field_kwargs, get_field_default
+from ._metadata import annotate, array_metadata, object_dict_metadata
+from ._object_keywords import build_dependent_required, build_property_count
 
 __all__ = [
     "SchemaConverter",
@@ -59,10 +61,6 @@ __all__ = [
 
 # Default model name
 _DEFAULT_MODEL_NAME: Final[str] = "Model"
-# Missing value for `default` field
-# See: https://github.com/pydantic/pydantic/blob/6800281ba87625346daf5826563740ded8a9851b/pydantic/fields.py#L241-L247
-# For mypy issue, see: https://github.com/python/mypy/issues/7818
-_PYDANTIC_DEFAULT_MISSING: Final[Ellipsis] = ...  # type: ignore[valid-type]
 # JSON Schema 2020-12 definitions key
 # See: https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.4
 _DEFS_KEY: Final[str] = "$defs"
@@ -90,11 +88,9 @@ type SchemaHash = str  # Schema cache key (JSON hash)
 type FormatName = str  # Format name like "date-time", "uuid"
 type AnnotationType = Any  # `type`, `Annotated`, `Union`, `Literal`, `ForwardRef`, etc.
 type PythonType = Any  # Anything that Pydantic supports
-type FieldKindType = Literal["required", "optional", "root"]  # How a field is used in a model
 type FormatValidatorType = (
     FormatValidator | type | TypeAliasType
 )  # `FormatValidator`, type, or `type` alias
-type TagType = str | int | None  # Scalar discriminator tag value (`bool` is an `int`)
 
 
 class FormatValidator(Protocol):
@@ -124,92 +120,6 @@ class FormatValidator(Protocol):
     ) -> PythonType:
         """Process the raw value before Pydantic's standard validation."""
         ...
-
-
-class _FieldKwargs(TypedDict, total=False):
-    """Subset of Pydantic `FieldInfo` kwargs produced from JSON Schema constraints.
-
-    Field names and types mirror `pydantic.fields._FromFieldInfoInputs`.
-    See: https://github.com/pydantic/pydantic/blob/v2.13.4/pydantic/fields.py#L50
-    """
-
-    examples: list[Any] | None
-    title: str | None
-    description: str | None
-    ge: annotated_types.SupportsGe | None
-    gt: annotated_types.SupportsGt | None
-    le: annotated_types.SupportsLe | None
-    lt: annotated_types.SupportsLt | None
-    multiple_of: float | None
-    min_length: int | None
-    max_length: int | None
-    pattern: str | None
-
-
-def _ensure_unique_items(value: list[PythonType], /) -> list[PythonType]:
-    """Reject arrays with duplicate items (`uniqueItems: true`, validation §6.4.3).
-
-    Items are compared by Python equality, which matches JSON structural equality for the
-    common scalar / object / array cases. The check is O(n^2) pairwise rather than `set`-based
-    because JSON values can be unhashable (`dict` / `list`).
-
-    NOTE: Python equates `True == 1` and `1 == 1.0`, so e.g. `[true, 1]` is treated as a
-    duplicate even though JSON Schema considers the two values distinct. Acceptable edge.
-
-    Reproduce:
-        to_model(Schema(type="array", unique_items=True)).model_validate([1, 1])
-        # -> ValidationError: Array items must be unique
-
-    :param value: The already-parsed array.
-    :returns: The array unchanged when all items are unique.
-    :raises ValueError: When two items are equal.
-    """
-    seen: list[PythonType] = []
-    for item in value:
-        if item in seen:
-            msg = "Array items must be unique"
-            raise ValueError(msg)
-        seen.append(item)
-    return value
-
-
-def _annotate(annotation: AnnotationType, metadata: list[PythonType], /) -> type:
-    """Wrap an annotation with `Annotated` metadata (validators / constraints).
-
-    :param annotation: Base annotation (e.g. `list[int]`, `dict[str, int]`).
-    :param metadata: `Annotated` metadata to attach (empty -> annotation returned as-is).
-    :returns: The annotation, wrapped only when there is metadata to attach.
-    """
-    if not metadata:
-        return cast("type", annotation)
-    return cast("type", Annotated[(annotation, *metadata)])
-
-
-def _array_metadata(schema: Schema, /) -> list[PythonType]:
-    """`Annotated` metadata for array constraint keywords.
-
-    :param schema: Array schema.
-    :returns: Metadata for the array's `list[...]` annotation (add a keyword's check here).
-    """
-    metadata: list[PythonType] = []
-    # `uniqueItems: false` (and absent) imposes no constraint; only `true` enforces.
-    if schema.unique_items is True:
-        metadata.append(AfterValidator(_ensure_unique_items))
-    return metadata
-
-
-def _object_dict_metadata(schema: Schema, /) -> list[PythonType]:
-    """`Annotated` metadata for object keywords on a `dict` mapping (no declared properties).
-
-    :param schema: Object schema mapped to `dict[str, ...]`.
-    :returns: Length metadata for `minProperties` / `maxProperties` (add a keyword's check here).
-    """
-    metadata: list[PythonType] = []
-    if schema.min_properties is not MISSING:
-        metadata.append(annotated_types.MinLen(schema.min_properties))
-    if schema.max_properties is not MISSING:
-        metadata.append(annotated_types.MaxLen(schema.max_properties))
-    return metadata
 
 
 class SchemaConverter:
@@ -501,84 +411,12 @@ class SchemaConverter:
         :returns: A `create_model(__validators__=...)` mapping (empty when no keyword applies).
         """
         return {
-            **self._build_property_count(schema),
-            **self._build_dependent_required(schema),
+            **build_property_count(schema),
+            **build_dependent_required(schema),
             **self._build_dependent_schemas(schema),
             **self._build_pattern_properties(schema),
             **self._build_property_names(schema),
         }
-
-    @staticmethod
-    def _build_property_count(
-        schema: Schema,
-        /,
-    ) -> dict[str, PythonType]:
-        """`minProperties` / `maxProperties`: bound the number of properties of an object model.
-
-        Counts the raw input mapping's keys before field parsing. That key count is exactly the
-        JSON Schema "number of properties" (declared fields plus `extra` keys) and is unambiguous
-        regardless of which keys map to declared fields (validation §6.5.1 / §6.5.2).
-
-        :param schema: Object schema.
-        :returns: A `__validators__` mapping (empty when neither bound is set).
-        """
-        min_properties = schema.min_properties if schema.min_properties is not MISSING else None
-        max_properties = schema.max_properties if schema.max_properties is not MISSING else None
-        if min_properties is None and max_properties is None:
-            return {}
-
-        def _check(data: PythonType) -> PythonType:
-            # Non-mapping input is left for the normal type validation to reject.
-            if not isinstance(data, dict):
-                return data
-
-            count: int = len(data)
-            if min_properties is not None and count < min_properties:
-                msg = f"Object must have at least `{min_properties}` properties"
-                raise ValueError(msg)
-            if max_properties is not None and count > max_properties:
-                msg = f"Object must have at most `{max_properties}` properties"
-                raise ValueError(msg)
-
-            return data
-
-        return {"_validate_property_count": model_validator(mode="before")(_check)}
-
-    @staticmethod
-    def _build_dependent_required(
-        schema: Schema,
-        /,
-    ) -> dict[str, PythonType]:
-        """`dependentRequired`: when a property is present, the listed properties are required too.
-
-        Checks the raw input mapping keys before field parsing, so it sees every present property
-        (declared fields plus `extra` keys) (validation §6.5.4).
-
-        :param schema: Object schema.
-        :returns: A `__validators__` mapping (empty when the keyword is absent).
-        """
-        if schema.dependent_required is MISSING:
-            return {}
-
-        dependent_required: dict[str, list[str]] = schema.dependent_required
-
-        def _check(data: PythonType) -> PythonType:
-            # Non-mapping input is left for the normal type validation to reject.
-            if not isinstance(data, dict):
-                return data
-
-            for trigger, required in dependent_required.items():
-                if trigger not in data:
-                    continue
-                missing = [name for name in required if name not in data]
-                if missing:
-                    missing_list = "`, `".join(missing)
-                    msg = f"Property `{trigger}` requires `{missing_list}`"
-                    raise ValueError(msg)
-
-            return data
-
-        return {"_validate_dependent_required": model_validator(mode="before")(_check)}
 
     def _build_dependent_schemas(
         self,
@@ -1005,7 +843,7 @@ class SchemaConverter:
         valid_annotation = self._apply_validators(valid_annotation, schema)
 
         # Determine default value
-        default = self._get_field_default(schema, field_kind=field_kind)
+        default = get_field_default(schema, field_kind=field_kind)
 
         # `MISSING` must be part of the annotation for Pydantic to accept it as default.
         if default is MISSING:
@@ -1014,48 +852,8 @@ class SchemaConverter:
         return FieldInfo(
             annotation=valid_annotation,
             default=default,
-            **self._build_field_kwargs(schema),
+            **build_field_kwargs(schema),
         )
-
-    def _build_field_kwargs(  # noqa: C901
-        self,
-        schema: Schema,
-        /,
-    ) -> _FieldKwargs:
-        """Build `FieldInfo` kwargs, only including constraints that are explicitly set.
-
-        :param schema: Schema to extract constraints and metadata from.
-        :returns: Keyword arguments for `FieldInfo`.
-        """
-        kwargs: _FieldKwargs = {}
-        if schema.examples is not MISSING:
-            kwargs["examples"] = schema.examples
-        if schema.title is not MISSING:
-            kwargs["title"] = schema.title
-        if schema.description is not MISSING:
-            kwargs["description"] = schema.description
-        if schema.minimum is not MISSING:
-            kwargs["ge"] = schema.minimum
-        if schema.exclusive_minimum is not MISSING:
-            kwargs["gt"] = schema.exclusive_minimum
-        if schema.maximum is not MISSING:
-            kwargs["le"] = schema.maximum
-        if schema.exclusive_maximum is not MISSING:
-            kwargs["lt"] = schema.exclusive_maximum
-        if schema.multiple_of is not MISSING:
-            kwargs["multiple_of"] = schema.multiple_of
-        if schema.pattern is not MISSING:
-            kwargs["pattern"] = schema.pattern
-
-        min_length = self._get_min_length(schema)
-        if min_length is not None:
-            kwargs["min_length"] = min_length
-
-        max_length = self._get_max_length(schema)
-        if max_length is not None:
-            kwargs["max_length"] = max_length
-
-        return kwargs
 
     def _union_args(
         self,
@@ -1131,7 +929,7 @@ class SchemaConverter:
             return annotation
 
         annotation = self._apply_validators(annotation, schema)
-        kwargs = self._build_field_kwargs(schema)
+        kwargs = build_field_kwargs(schema)
         if kwargs:
             annotation = cast("type", Annotated[annotation, Field(**kwargs)])
         return annotation
@@ -1320,7 +1118,7 @@ class SchemaConverter:
         :returns: Discriminated `Union` annotation or `OneOf`-wrapped union.
         """
         union_args = self._union_args(schema.one_of, kind="oneOf")
-        discriminator = self._discriminator_property(schema.one_of)
+        discriminator = discriminator_property(schema.one_of, defs_cache=self._defs_cache)
 
         # A discriminated union needs >= 2 concrete members to introspect the tag field.
         # Unresolved `ForwardRef` branches keep the `OneOf` lazy path.
@@ -1335,96 +1133,6 @@ class SchemaConverter:
 
         one_of_validator = self._register(OneOf(branches=union_args))
         return cast("type", one_of_validator.as_annotation())
-
-    def _discriminator_property(
-        self,
-        one_of_schemas: list[Schema | Reference],
-        /,
-    ) -> str | None:
-        """Find the property that tags every `oneOf` branch with a distinct constant.
-
-        A property qualifies as a discriminator when, in *every* branch, it is a required
-        property whose schema is a single constant (`const` or single-value `enum`),
-        and its constant value is distinct across branches.
-
-        :param one_of_schemas: Sub-schemas of the `oneOf` composition.
-        :returns: The discriminator property name, or `None` when zero or more than
-            one property qualifies (ambiguous discriminators stay on the `OneOf` path).
-        """
-        branch_count: int = len(one_of_schemas)
-
-        # Collect each branch's tag value per property name.
-        tags_by_property: dict[str, list[TagType]] = {}
-        for branch in one_of_schemas:
-            branch_schema = self._resolve_branch_schema(branch)
-            if branch_schema is None or branch_schema.properties is MISSING:
-                return None
-
-            for name, tag in self._branch_tag_values(branch_schema).items():
-                tags_by_property.setdefault(name, []).append(tag)
-
-        # A discriminator tags every branch (count of tags == branch count)
-        # with a distinct value (count of unique tags == branch count).
-        qualified: list[str] = [
-            name
-            for name, tags in tags_by_property.items()
-            if len(tags) == branch_count == len(set(tags))
-        ]
-
-        # Exactly one qualifying property keeps promotion predictable.
-        if len(qualified) != 1:
-            return None
-        return qualified[0]
-
-    def _resolve_branch_schema(
-        self,
-        branch: Schema | Reference,
-        /,
-    ) -> Schema | None:
-        """Resolve a `oneOf` branch to a concrete object schema, if known.
-
-        :param branch: A `oneOf` sub-schema or reference.
-        :returns: The inline schema, the cached schema for a local `$ref`, or `None`
-            when the reference can't be introspected (external / forward / pre-built).
-        """
-        if isinstance(branch, Reference):
-            return self._defs_cache.get(branch.ref)
-        return branch
-
-    @staticmethod
-    def _branch_tag_values(
-        schema: Schema,
-        /,
-    ) -> dict[str, TagType]:
-        """Map each required single-constant property of a branch to its tag value.
-
-        Only scalar constants (`str` / `int` / `bool` / `None`) are eligible tags —
-        they are the hashable, `Literal`-compatible values Pydantic accepts as discriminators.
-
-        :param schema: Object branch schema.
-        :returns: Mapping of property name to its constant tag value.
-        """
-        required: set[str] = set(schema.required) if schema.required is not MISSING else set()
-        tags: dict[str, TagType] = {}
-        for name, prop in schema.properties.items():
-            if name not in required or isinstance(prop, Reference):
-                continue
-
-            if prop.const is not MISSING:
-                tag = prop.const
-            elif prop.enum is not MISSING and len(prop.enum) == 1:
-                tag = prop.enum[0]
-            else:
-                continue
-
-            # NOTE: Only scalar tags are accepted. `_discriminator_property` puts these
-            # values in a `set()` to check distinctness across branches, so a non-hashable
-            # `const` (array/object) would crash. `float` is excluded on purpose:
-            # float-equality discrimination is fragile, so such unions fall back to `OneOf`.
-            if isinstance(tag, (str, int, NoneType)):
-                tags[name] = tag
-
-        return tags
 
     def _type_annotation(
         self,
@@ -1473,14 +1181,14 @@ class SchemaConverter:
         list_annotation = list[item_type]  # type: ignore[valid-type]
 
         # `uniqueItems` is stateless; `contains` / `prefixItems` need the converter.
-        metadata: list[PythonType] = _array_metadata(schema)
+        metadata: list[PythonType] = array_metadata(schema)
         if prefix_items is not None:
             metadata.append(prefix_items)
         contains = self._build_contains(schema)
         if contains is not None:
             metadata.append(contains)
 
-        return _annotate(list_annotation, metadata)
+        return annotate(list_annotation, metadata)
 
     def _build_prefix_items(
         self,
@@ -1557,66 +1265,9 @@ class SchemaConverter:
             with self._track_path("additionalProperties"):
                 value_annotation = self._schema_to_annotation(schema.additional_properties)
                 dict_annotation = dict[str, value_annotation]  # type: ignore[valid-type]
-                return _annotate(dict_annotation, _object_dict_metadata(schema))
+                return annotate(dict_annotation, object_dict_metadata(schema))
 
-        return _annotate(dict[str, Any], _object_dict_metadata(schema))
-
-    @staticmethod
-    def _get_field_default(
-        schema: Schema,
-        /,
-        *,
-        field_kind: FieldKindType,
-    ) -> Any:  # noqa: ANN401
-        """Determine default value for the field based on its schema.
-
-        :param schema: Schema to get default from.
-        :param field_kind: `required` / `optional` object property, or `root` model value.
-        :returns: Default value, `...` for required fields, or the `MISSING` sentinel.
-        """
-        if field_kind == "required":
-            return _PYDANTIC_DEFAULT_MISSING
-
-        if schema.default is not MISSING:
-            return schema.default
-
-        # Root model values have no "absent" concept:
-        # a bare `{"type": "string"}` root schema always validates a value.
-        if field_kind == "root":
-            return _PYDANTIC_DEFAULT_MISSING
-
-        # Optional field without explicit default -> `MISSING` sentinel, so the
-        # field is omitted from dumps instead of carrying a fabricated `None`
-        # default that would not even validate against the annotation.
-        return MISSING
-
-    @staticmethod
-    def _get_min_length(
-        schema: Schema,
-        /,
-    ) -> int | None:
-        """Get min length based on schema type.
-
-        :param schema: Schema to extract constraint from.
-        :returns: `minItems` for arrays, `minLength` for strings, `None` if unset.
-        """
-        if schema.type == DataType.ARRAY:
-            return schema.min_items if schema.min_items is not MISSING else None
-        return schema.min_length if schema.min_length is not MISSING else None
-
-    @staticmethod
-    def _get_max_length(
-        schema: Schema,
-        /,
-    ) -> int | None:
-        """Get max length based on schema type.
-
-        :param schema: Schema to extract constraint from.
-        :returns: `maxItems` for arrays, `maxLength` for strings, `None` if unset.
-        """
-        if schema.type == DataType.ARRAY:
-            return schema.max_items if schema.max_items is not MISSING else None
-        return schema.max_length if schema.max_length is not MISSING else None
+        return annotate(dict[str, Any], object_dict_metadata(schema))
 
 
 def to_model(
