@@ -421,6 +421,17 @@ class TestSchemaObjectKeywords:
             }
         )
 
+    def test_property_names(self) -> None:
+        """Test `propertyNames` parsed as a nested `Schema`."""
+        schema = Schema.model_validate({"type": "object", "propertyNames": {"pattern": "^[a-z]+$"}})
+        assert isinstance(schema.property_names, Schema)
+        assert schema.model_dump() == snapshot(
+            {
+                "type": DataType.OBJECT,
+                "propertyNames": {"pattern": "^[a-z]+$"},
+            }
+        )
+
     def test_min_max_properties(self) -> None:
         """Test `minProperties` / `maxProperties` parsed from camelCase."""
         schema = Schema.model_validate(

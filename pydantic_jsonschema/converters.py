@@ -43,6 +43,7 @@ from ._not import Not
 from ._one_of import OneOf
 from ._pattern_properties import PatternProperties
 from ._prefix_items import PrefixItems
+from ._property_names import PropertyNames
 from ._utils import sanitize_identifier
 from .exceptions import SchemaConversionError, SchemaReferenceError
 from .types import DataType, Reference, Schema
@@ -345,6 +346,7 @@ class SchemaConverter:
         self._dependent_schemas_validators: list[DependentSchemas] = []
         self._if_then_else_validators: list[IfThenElse] = []
         self._pattern_properties_validators: list[PatternProperties] = []
+        self._property_names_validators: list[PropertyNames] = []
 
     @staticmethod
     def _hash_schema(
@@ -440,6 +442,7 @@ class SchemaConverter:
             *self._dependent_schemas_validators,
             *self._if_then_else_validators,
             *self._pattern_properties_validators,
+            *self._property_names_validators,
         )
         for marker in markers:
             marker.bind_namespace(namespace)
@@ -576,6 +579,7 @@ class SchemaConverter:
         validators = _build_object_validators(schema)
         validators.update(self._build_dependent_schemas_validators(schema))
         validators.update(self._build_pattern_properties_validators(schema))
+        validators.update(self._build_property_names_validators(schema))
 
         # For some reason, `create_model` "accepts" `fields` values as `tuple[str, Any]`,
         # when in reality it accepts `tuple[type, FieldInfo]`
@@ -647,6 +651,33 @@ class SchemaConverter:
             return pattern_properties.validate(data)
 
         return {"_validate_pattern_properties": model_validator(mode="before")(_check)}
+
+    def _build_property_names_validators(
+        self,
+        schema: Schema,
+        /,
+    ) -> dict[str, PythonType]:
+        """Build the `propertyNames` validator for an object model.
+
+        Registers the validator so its `ForwardRef` subschema (a `propertyNames` pointing at a
+        `$ref`) is namespace-bound after the whole schema is converted.
+
+        :param schema: Object schema.
+        :returns: A `__validators__` mapping (empty when `propertyNames` is absent).
+        """
+        if schema.property_names is MISSING:
+            return {}
+
+        with self._track_path("propertyNames"):
+            branch = self._constrained_annotation(schema.property_names)
+
+        property_names = PropertyNames(branch=branch)
+        self._property_names_validators.append(property_names)
+
+        def _check(data: PythonType) -> PythonType:
+            return property_names.validate(data)
+
+        return {"_validate_property_names": model_validator(mode="before")(_check)}
 
     def _check_alias_target(
         self,
