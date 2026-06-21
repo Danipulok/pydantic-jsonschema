@@ -212,105 +212,6 @@ def _object_dict_metadata(schema: Schema, /) -> list[PythonType]:
     return metadata
 
 
-def _property_count_validator(schema: Schema, /) -> PythonType | None:
-    """`minProperties` / `maxProperties`: bound the number of properties of an object model.
-
-    Counts the raw input mapping's keys before field parsing. That key count is exactly the
-    JSON Schema "number of properties" (declared fields plus `extra` keys) and is unambiguous
-    regardless of which keys map to declared fields (validation §6.5.1 / §6.5.2).
-
-    :param schema: Object schema.
-    :returns: A `model_validator(mode="before")`, or `None` when neither bound is set.
-    """
-    min_properties = schema.min_properties if schema.min_properties is not MISSING else None
-    max_properties = schema.max_properties if schema.max_properties is not MISSING else None
-    if min_properties is None and max_properties is None:
-        return None
-
-    def _check(data: PythonType) -> PythonType:
-        # Non-mapping input is left for the normal type validation to reject.
-        if not isinstance(data, dict):
-            return data
-
-        count: int = len(data)
-        if min_properties is not None and count < min_properties:
-            msg = f"Object must have at least `{min_properties}` properties"
-            raise ValueError(msg)
-        if max_properties is not None and count > max_properties:
-            msg = f"Object must have at most `{max_properties}` properties"
-            raise ValueError(msg)
-
-        return data
-
-    return model_validator(mode="before")(_check)
-
-
-def _dependent_required_validator(schema: Schema, /) -> PythonType | None:
-    """`dependentRequired`: when a property is present, the listed properties are required too.
-
-    Checks the raw input mapping keys before field parsing, so it sees every present property
-    (declared fields plus `extra` keys) (validation §6.5.4).
-
-    :param schema: Object schema.
-    :returns: A `model_validator(mode="before")`, or `None` when the keyword is absent.
-    """
-    if schema.dependent_required is MISSING:
-        return None
-
-    dependent_required: dict[str, list[str]] = schema.dependent_required
-
-    def _check(data: PythonType) -> PythonType:
-        # Non-mapping input is left for the normal type validation to reject.
-        if not isinstance(data, dict):
-            return data
-
-        for trigger, required in dependent_required.items():
-            if trigger not in data:
-                continue
-            missing = [name for name in required if name not in data]
-            if missing:
-                missing_list = "`, `".join(missing)
-                msg = f"Property `{trigger}` requires `{missing_list}`"
-                raise ValueError(msg)
-
-        return data
-
-    return model_validator(mode="before")(_check)
-
-
-class _ObjectValidatorBuilder(Protocol):
-    """Builds a `model_validator` for one object keyword, or `None` when the schema omits it."""
-
-    # Each builder is a module-level function; its name is the `__validators__` key.
-    __name__: str
-
-    def __call__(self, schema: Schema, /) -> PythonType | None:
-        """Return the keyword's validator for `schema`, or `None` to skip it."""
-        ...
-
-
-# Registry of object-model validators. To support a new object-level keyword, write a
-# builder `(schema) -> validator | None` and add it here — no other wiring is needed.
-_OBJECT_MODEL_VALIDATORS: Final[tuple[_ObjectValidatorBuilder, ...]] = (
-    _property_count_validator,
-    _dependent_required_validator,
-)
-
-
-def _build_object_validators(schema: Schema, /) -> dict[str, PythonType]:
-    """Collect the `model_validator`s for an object model from the keyword registry.
-
-    :param schema: Object schema to read keywords from.
-    :returns: A `create_model(__validators__=...)` mapping (empty when no keyword applies).
-    """
-    validators: dict[str, PythonType] = {}
-    for builder in _OBJECT_MODEL_VALIDATORS:
-        validator = builder(schema)
-        if validator is not None:
-            validators[builder.__name__] = validator
-    return validators
-
-
 class SchemaConverter:
     """Stateful converter from JSON Schema to Pydantic models."""
 
@@ -565,12 +466,7 @@ class SchemaConverter:
         """
         fields = self._build_fields(schema)
         model_config = self._build_model_config(schema)
-        # Converter-free keyword validators from the registry, plus converter-aware ones
-        # (subschemas need conversion + namespace binding) that the registry cannot build.
-        validators = _build_object_validators(schema)
-        validators.update(self._build_dependent_schemas_validators(schema))
-        validators.update(self._build_pattern_properties_validators(schema))
-        validators.update(self._build_property_names_validators(schema))
+        validators = self._build_object_validators(schema)
 
         # For some reason, `create_model` "accepts" `fields` values as `tuple[str, Any]`,
         # when in reality it accepts `tuple[type, FieldInfo]`
@@ -585,7 +481,102 @@ class SchemaConverter:
         )
         return cast("type[BaseModel]", created_model)
 
-    def _build_dependent_schemas_validators(
+    def _build_object_validators(
+        self,
+        schema: Schema,
+        /,
+    ) -> dict[str, PythonType]:
+        """Collect the `model_validator`s for an object model from every keyword builder.
+
+        Each `_build_*` builder returns a (possibly empty) `__validators__` fragment; merging them
+        yields the full mapping. To support a new object-level keyword, add a builder and spread it
+        here. Stateless builders are `@staticmethod`; converter-aware ones (subschemas need
+        conversion + namespace binding) are instance methods.
+
+        :param schema: Object schema to read keywords from.
+        :returns: A `create_model(__validators__=...)` mapping (empty when no keyword applies).
+        """
+        return {
+            **self._build_property_count(schema),
+            **self._build_dependent_required(schema),
+            **self._build_dependent_schemas(schema),
+            **self._build_pattern_properties(schema),
+            **self._build_property_names(schema),
+        }
+
+    @staticmethod
+    def _build_property_count(
+        schema: Schema,
+        /,
+    ) -> dict[str, PythonType]:
+        """`minProperties` / `maxProperties`: bound the number of properties of an object model.
+
+        Counts the raw input mapping's keys before field parsing. That key count is exactly the
+        JSON Schema "number of properties" (declared fields plus `extra` keys) and is unambiguous
+        regardless of which keys map to declared fields (validation §6.5.1 / §6.5.2).
+
+        :param schema: Object schema.
+        :returns: A `__validators__` mapping (empty when neither bound is set).
+        """
+        min_properties = schema.min_properties if schema.min_properties is not MISSING else None
+        max_properties = schema.max_properties if schema.max_properties is not MISSING else None
+        if min_properties is None and max_properties is None:
+            return {}
+
+        def _check(data: PythonType) -> PythonType:
+            # Non-mapping input is left for the normal type validation to reject.
+            if not isinstance(data, dict):
+                return data
+
+            count: int = len(data)
+            if min_properties is not None and count < min_properties:
+                msg = f"Object must have at least `{min_properties}` properties"
+                raise ValueError(msg)
+            if max_properties is not None and count > max_properties:
+                msg = f"Object must have at most `{max_properties}` properties"
+                raise ValueError(msg)
+
+            return data
+
+        return {"_validate_property_count": model_validator(mode="before")(_check)}
+
+    @staticmethod
+    def _build_dependent_required(
+        schema: Schema,
+        /,
+    ) -> dict[str, PythonType]:
+        """`dependentRequired`: when a property is present, the listed properties are required too.
+
+        Checks the raw input mapping keys before field parsing, so it sees every present property
+        (declared fields plus `extra` keys) (validation §6.5.4).
+
+        :param schema: Object schema.
+        :returns: A `__validators__` mapping (empty when the keyword is absent).
+        """
+        if schema.dependent_required is MISSING:
+            return {}
+
+        dependent_required: dict[str, list[str]] = schema.dependent_required
+
+        def _check(data: PythonType) -> PythonType:
+            # Non-mapping input is left for the normal type validation to reject.
+            if not isinstance(data, dict):
+                return data
+
+            for trigger, required in dependent_required.items():
+                if trigger not in data:
+                    continue
+                missing = [name for name in required if name not in data]
+                if missing:
+                    missing_list = "`, `".join(missing)
+                    msg = f"Property `{trigger}` requires `{missing_list}`"
+                    raise ValueError(msg)
+
+            return data
+
+        return {"_validate_dependent_required": model_validator(mode="before")(_check)}
+
+    def _build_dependent_schemas(
         self,
         schema: Schema,
         /,
@@ -613,7 +604,7 @@ class SchemaConverter:
 
         return {"_validate_dependent_schemas": model_validator(mode="before")(_check)}
 
-    def _build_pattern_properties_validators(
+    def _build_pattern_properties(
         self,
         schema: Schema,
         /,
@@ -641,7 +632,7 @@ class SchemaConverter:
 
         return {"_validate_pattern_properties": model_validator(mode="before")(_check)}
 
-    def _build_property_names_validators(
+    def _build_property_names(
         self,
         schema: Schema,
         /,
