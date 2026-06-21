@@ -58,6 +58,22 @@ class Not(SubschemaMarker):
         """
         return self._validates(self._get_adapter(), value)
 
+    def check(
+        self,
+        value: AnnotationType,
+        /,
+    ) -> AnnotationType:
+        """Reject inputs matching the `not` subschema (whole-value assertion on the raw input).
+
+        :param value: The raw input value.
+        :returns: The value unchanged when it does not match the `not` subschema.
+        :raises ValueError: When the value matches the `not` subschema.
+        """
+        if self.matches(value):
+            msg = "Value must not match the `not` schema"
+            raise ValueError(msg)
+        return value
+
     def _get_adapter(self) -> TypeAdapter[AnnotationType]:
         """Build the `not` adapter on first use (caches across calls).
 
@@ -72,14 +88,12 @@ class Not(SubschemaMarker):
         value: AnnotationType,
         handler: core_schema.ValidatorFunctionWrapHandler,
     ) -> AnnotationType:
-        """Reject inputs matching the `not` subschema, then delegate to the host schema.
+        """Run the `not` check, then delegate to the host schema.
 
         :param value: Raw input value.
         :param handler: Wrapped host-type validator.
         :returns: The validated value.
         :raises ValueError: When the value matches the `not` subschema.
         """
-        if self.matches(value):
-            msg = "Value must not match the `not` schema"
-            raise ValueError(msg)
+        self.check(value)
         return handler(value)
