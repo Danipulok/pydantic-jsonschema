@@ -7,6 +7,11 @@ on:
 permissions:
   pull-requests: read
 
+# Cancel superseded runs: a new push to the same ref aborts the in-flight run for it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   title:
     name: Validate PR title
