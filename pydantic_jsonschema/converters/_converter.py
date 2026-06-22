@@ -773,7 +773,7 @@ class SchemaConverter:
             # `anyOf` / `oneOf` / `allOf` -> union or nested model; else `type` (or `Any`).
             composition_annotation = self._composition_annotation(schema)
             annotation = (
-                self._apply_sibling_type(composition_annotation, schema)
+                composition_annotation
                 if composition_annotation is not None
                 else self._type_annotation(schema)
             )
@@ -790,10 +790,10 @@ class SchemaConverter:
 
     def _apply_sibling_type(
         self,
-        annotation: type | ForwardRef,
+        annotation: type,
         schema: Schema,
         /,
-    ) -> type | ForwardRef:
+    ) -> type:
         """Enforce a `type` declared alongside `anyOf` / `oneOf` / `allOf`.
 
         JSON Schema applies all keywords conjunctively, so a value must satisfy both the
@@ -1019,23 +1019,25 @@ class SchemaConverter:
     ) -> type | None:
         """Convert `anyOf` / `oneOf` / `allOf` composition to an annotation.
 
+        A `type` declared alongside the composition is enforced too — JSON Schema applies all
+        keywords conjunctively (see `_apply_sibling_type`).
+
         :param schema: Schema to convert.
         :returns: Annotation, or `None` if the schema has no composition keyword.
         """
         # `anyOf` -> `Union`:
         if schema.any_of is not MISSING:
-            union_args = self._union_args(schema.any_of, kind="anyOf")
-            return make_union(union_args)
-
+            annotation: type = make_union(self._union_args(schema.any_of, kind="anyOf"))
         # `oneOf` -> discriminated union or exactly-one-branch validation:
-        if schema.one_of is not MISSING:
-            return self._one_of_annotation(schema)
-
+        elif schema.one_of is not MISSING:
+            annotation = self._one_of_annotation(schema)
         # `allOf` -> nested model:
-        if schema.all_of is not MISSING:
-            return self._convert_nested_schema(schema)
+        elif schema.all_of is not MISSING:
+            annotation = self._convert_nested_schema(schema)
+        else:
+            return None
 
-        return None
+        return self._apply_sibling_type(annotation, schema)
 
     def _one_of_annotation(
         self,
