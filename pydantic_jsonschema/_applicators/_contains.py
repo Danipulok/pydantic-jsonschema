@@ -6,12 +6,12 @@ See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.1.3
 from pydantic import GetCoreSchemaHandler, TypeAdapter
 from pydantic_core import CoreSchema, core_schema
 
-from ._base import AnnotationType, SubschemaMarker
+from ._base import AnnotationType, Applicator
 
 __all__ = ["Contains"]
 
 
-class Contains(SubschemaMarker):
+class Contains(Applicator):
     """Enforce JSON Schema `contains` / `minContains` / `maxContains` on an array.
 
     Counts how many array elements validate against the `contains` subschema and requires that

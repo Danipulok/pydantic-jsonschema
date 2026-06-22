@@ -32,7 +32,8 @@ from pydantic import (
 from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.fields import FieldInfo
 
-from pydantic_jsonschema._markers import (
+from pydantic_jsonschema._applicators import (
+    Applicator,
     Contains,
     DependentSchemas,
     IfThenElse,
@@ -41,7 +42,6 @@ from pydantic_jsonschema._markers import (
     PatternProperties,
     PrefixItems,
     PropertyNames,
-    SubschemaMarker,
 )
 from pydantic_jsonschema._utils import sanitize_identifier
 from pydantic_jsonschema.exceptions import SchemaConversionError, SchemaReferenceError
@@ -143,7 +143,7 @@ class SchemaConverter:
         self._defs_cache: dict[Ref, Schema] = {}
         self._models_cache: dict[SchemaHash, type[BaseModel]] = {}
         self._resolution_path: list[str] = []  # Track path for error reporting
-        self._markers: list[SubschemaMarker] = []
+        self._applicators: list[Applicator] = []
 
     @staticmethod
     def _hash_schema(
@@ -225,28 +225,28 @@ class SchemaConverter:
             )
         return model
 
-    def _register[MarkerT: SubschemaMarker](
+    def _register[ApplicatorT: Applicator](
         self,
-        marker: MarkerT,
+        applicator: ApplicatorT,
         /,
-    ) -> MarkerT:
-        """Register a marker so its `ForwardRef` subschemas are namespace-bound after conversion.
+    ) -> ApplicatorT:
+        """Register an applicator for post-conversion `ForwardRef` namespace binding.
 
-        :param marker: The freshly built marker validator.
-        :returns: The same marker, for inline use at the call site.
+        :param applicator: The freshly built applicator validator.
+        :returns: The same applicator, for inline use at the call site.
         """
-        self._markers.append(marker)
-        return marker
+        self._applicators.append(applicator)
+        return applicator
 
     def _bind_forward_refs(self) -> None:
-        """Bind the forward-refs namespace into every marker validator.
+        """Bind the forward-refs namespace into every applicator validator.
 
         Lets `OneOf` / `Contains` / `Not` / ... resolve `ForwardRef` branches lazily at
         validation time, once the whole schema (including `$defs`) has been converted.
         """
         namespace = self._get_forward_refs_namespace()
-        for marker in self._markers:
-            marker.bind_namespace(namespace)
+        for applicator in self._applicators:
+            applicator.bind_namespace(namespace)
 
     def _convert_nested_schema(
         self,
@@ -432,7 +432,7 @@ class SchemaConverter:
                 branches[trigger] = self._constrained_annotation(sub_schema)
 
         dependent_schemas = self._register(DependentSchemas(branches=branches))
-        return before_validator("_validate_dependent_schemas", marker=dependent_schemas)
+        return before_validator("_validate_dependent_schemas", applicator=dependent_schemas)
 
     def _build_pattern_properties(
         self,
@@ -456,7 +456,7 @@ class SchemaConverter:
                 branches[pattern] = self._constrained_annotation(sub_schema)
 
         pattern_properties = self._register(PatternProperties(branches=branches))
-        return before_validator("_validate_pattern_properties", marker=pattern_properties)
+        return before_validator("_validate_pattern_properties", applicator=pattern_properties)
 
     def _build_property_names(
         self,
@@ -478,7 +478,7 @@ class SchemaConverter:
             branch = self._constrained_annotation(schema.property_names)
 
         property_names = self._register(PropertyNames(branch=branch))
-        return before_validator("_validate_property_names", marker=property_names)
+        return before_validator("_validate_property_names", applicator=property_names)
 
     def _build_defs_cache(
         self,
@@ -780,7 +780,7 @@ class SchemaConverter:
     ) -> AnnotationType:
         """Build a subschema annotation with field-level constraints baked in.
 
-        The marker validators (`Not`, `Contains`, `PrefixItems`, `IfThenElse`, `DependentSchemas`)
+        The applicators (`Not`, `Contains`, `PrefixItems`, `IfThenElse`, `DependentSchemas`)
         validate values against subschemas via a `TypeAdapter`. Plain `_schema_to_annotation` omits
         constraints that the converter normally applies through `FieldInfo` (`minimum`, `maxLength`,
         `pattern`, `multipleOf`, ...), so they are re-applied here as `Annotated` `Field` metadata.
@@ -861,7 +861,7 @@ class SchemaConverter:
     def _wrap_root_assertion(
         self,
         model: type[BaseModel],
-        marker: Not | IfThenElse,
+        applicator: Not | IfThenElse,
         /,
         *,
         key: str,
@@ -870,16 +870,16 @@ class SchemaConverter:
 
         A root object is a plain `BaseModel` with no host annotation, so `not` / `if` / `then` /
         `else` cannot ride along as `Annotated` metadata (the path used for every other shape).
-        Instead the marker's `check` runs as a `before` model validator on the raw input.
+        Instead the applicator's `check` runs as a `before` model validator on the raw input.
 
         :param model: The root object `BaseModel`.
-        :param marker: The whole-value marker (`Not` or `IfThenElse`), already registered.
+        :param applicator: The whole-value applicator (`Not` or `IfThenElse`), already registered.
         :param key: The `__validators__` key for the validator.
         :returns: A subclass of `model` applying the assertion.
         """
 
         def _check(data: PythonType) -> PythonType:
-            return marker.check(data)
+            return applicator.check(data)
 
         return self._wrap_root_before(model, key=key, check=_check)
 

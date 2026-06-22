@@ -1,9 +1,9 @@
-"""Shared base for marker validators.
+"""Shared base for applicator validators.
 
-Every marker validates values against one or more subschemas via a `TypeAdapter`. A subschema may
-be a `ForwardRef` (a keyword pointing at a `$ref`) that only becomes resolvable after the whole
-schema — including `$defs` — is converted. Markers therefore build their adapters lazily, and the
-converter binds a forward-ref namespace via `bind_namespace` once conversion finishes.
+Every applicator validates values against one or more subschemas via a `TypeAdapter`. A subschema
+may be a `ForwardRef` (a keyword pointing at a `$ref`) that only becomes resolvable after the whole
+schema — including `$defs` — is converted. Applicators therefore build their adapters lazily, and
+the converter binds a forward-ref namespace via `bind_namespace` once conversion finishes.
 """
 
 from typing import Any, ForwardRef
@@ -12,14 +12,14 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 
 __all__ = [
     "AnnotationType",
-    "SubschemaMarker",
+    "Applicator",
 ]
 
 # Any annotation Pydantic supports (`type`, `Annotated`, `Union`, `Literal`, `ForwardRef`, ...).
 type AnnotationType = Any
 
 
-class SubschemaMarker:
+class Applicator:
     """Base for validators that check values against `TypeAdapter`-wrapped subschemas.
 
     Holds the forward-ref namespace and provides the shared plumbing: resolving a `ForwardRef`

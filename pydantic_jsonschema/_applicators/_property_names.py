@@ -5,12 +5,12 @@ See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.2.4
 
 from pydantic import TypeAdapter
 
-from ._base import AnnotationType, SubschemaMarker
+from ._base import AnnotationType, Applicator
 
 __all__ = ["PropertyNames"]
 
 
-class PropertyNames(SubschemaMarker):
+class PropertyNames(Applicator):
     """Enforce JSON Schema `propertyNames`: every property name must match the subschema.
 
     Property names are always strings, so the subschema typically constrains the string (a

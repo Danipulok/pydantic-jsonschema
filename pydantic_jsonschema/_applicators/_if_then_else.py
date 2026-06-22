@@ -6,12 +6,12 @@ See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2
 from pydantic import GetCoreSchemaHandler, TypeAdapter
 from pydantic_core import CoreSchema, core_schema
 
-from ._base import AnnotationType, SubschemaMarker
+from ._base import AnnotationType, Applicator
 
 __all__ = ["IfThenElse"]
 
 
-class IfThenElse(SubschemaMarker):
+class IfThenElse(Applicator):
     """Enforce JSON Schema `if` / `then` / `else` conditional application.
 
     If the instance validates against `if`, it must also validate against `then`; otherwise it

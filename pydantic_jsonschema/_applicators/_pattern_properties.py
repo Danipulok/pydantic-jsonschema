@@ -7,12 +7,12 @@ import re
 
 from pydantic import TypeAdapter
 
-from ._base import AnnotationType, SubschemaMarker
+from ._base import AnnotationType, Applicator
 
 __all__ = ["PatternProperties"]
 
 
-class PatternProperties(SubschemaMarker):
+class PatternProperties(Applicator):
     """Enforce JSON Schema `patternProperties`: regex-keyed property-value subschemas.
 
     Every property whose name matches a regex must have a value validating against that regex's
