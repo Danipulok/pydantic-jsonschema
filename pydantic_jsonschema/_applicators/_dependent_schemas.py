@@ -5,12 +5,12 @@ See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.4
 
 from pydantic import TypeAdapter
 
-from ._base import AnnotationType, SubschemaMarker
+from ._base import AnnotationType, Applicator
 
 __all__ = ["DependentSchemas"]
 
 
-class DependentSchemas(SubschemaMarker):
+class DependentSchemas(Applicator):
     """Enforce JSON Schema `dependentSchemas`: a present property triggers a whole-object schema.
 
     For each `{property: subschema}` pair, when the property is present in the object the entire
