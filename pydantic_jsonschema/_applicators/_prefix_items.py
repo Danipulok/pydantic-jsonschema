@@ -8,12 +8,12 @@ from collections.abc import Iterable
 from pydantic import GetCoreSchemaHandler, TypeAdapter, ValidationError
 from pydantic_core import CoreSchema, core_schema
 
-from ._base import AnnotationType, SubschemaMarker
+from ._base import AnnotationType, Applicator
 
 __all__ = ["PrefixItems"]
 
 
-class PrefixItems(SubschemaMarker):
+class PrefixItems(Applicator):
     """Enforce JSON Schema `prefixItems`: positional (tuple-style) array validation.
 
     Element `i` is validated against `prefixItems[i]`; elements past the prefix are validated

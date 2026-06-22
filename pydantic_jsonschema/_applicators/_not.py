@@ -6,12 +6,12 @@ See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.4
 from pydantic import GetCoreSchemaHandler, TypeAdapter
 from pydantic_core import CoreSchema, core_schema
 
-from ._base import AnnotationType, SubschemaMarker
+from ._base import AnnotationType, Applicator
 
 __all__ = ["Not"]
 
 
-class Not(SubschemaMarker):
+class Not(Applicator):
     """Enforce JSON Schema `not`: the instance must NOT validate against the subschema.
 
     Used two ways, both checking the *raw* input (before the host type coerces it):
