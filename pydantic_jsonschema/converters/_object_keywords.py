@@ -18,6 +18,8 @@ from pydantic.experimental.missing_sentinel import MISSING
 
 from pydantic_jsonschema.types import Schema
 
+from ._helpers import unwrap
+
 __all__ = [
     "build_dependent_required",
     "build_property_count",
@@ -36,8 +38,8 @@ def build_property_count(schema: Schema, /) -> dict[str, PythonType]:
     :param schema: Object schema.
     :returns: A `__validators__` mapping (empty when neither bound is set).
     """
-    min_properties = schema.min_properties if schema.min_properties is not MISSING else None
-    max_properties = schema.max_properties if schema.max_properties is not MISSING else None
+    min_properties = unwrap(schema.min_properties, default=None)
+    max_properties = unwrap(schema.max_properties, default=None)
     if min_properties is None and max_properties is None:
         return {}
 
