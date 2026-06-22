@@ -9,7 +9,7 @@ from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 
-from ._base import AnnotationType, Applicator
+from ._base import AnnotationApplicator, AnnotationType
 
 __all__ = ["Contains"]
 
@@ -17,7 +17,7 @@ __all__ = ["Contains"]
 _DEFAULT_MIN_CONTAINS: Final[int] = 1
 
 
-class Contains(Applicator):
+class Contains(AnnotationApplicator):
     """Enforce JSON Schema `contains` / `minContains` / `maxContains` on an array.
 
     Counts how many array elements validate against the `contains` subschema and requires that

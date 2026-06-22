@@ -9,12 +9,12 @@ from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter, Va
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 
-from ._base import AnnotationType, Applicator
+from ._base import AnnotationApplicator, AnnotationType
 
 __all__ = ["PrefixItems"]
 
 
-class PrefixItems(Applicator):
+class PrefixItems(AnnotationApplicator):
     """Enforce JSON Schema `prefixItems`: positional (tuple-style) array validation.
 
     Element `i` is validated against `prefixItems[i]`; elements past the prefix are validated

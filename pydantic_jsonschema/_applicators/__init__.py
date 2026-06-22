@@ -30,7 +30,7 @@ The converter collects them and calls `bind_namespace` once conversion finishes.
 [spec]: https://json-schema.org/draft/2020-12/json-schema-core#section-10
 """
 
-from ._base import Applicator
+from ._base import AnnotationApplicator, Applicator, ObjectApplicator
 from ._contains import Contains
 from ._dependent_schemas import DependentSchemas
 from ._if_then_else import IfThenElse
@@ -41,11 +41,13 @@ from ._prefix_items import PrefixItems
 from ._property_names import PropertyNames
 
 __all__ = [
+    "AnnotationApplicator",
     "Applicator",
     "Contains",
     "DependentSchemas",
     "IfThenElse",
     "Not",
+    "ObjectApplicator",
     "OneOf",
     "PatternProperties",
     "PrefixItems",

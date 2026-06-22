@@ -42,6 +42,7 @@ from pydantic_jsonschema._applicators import (
     DependentSchemas,
     IfThenElse,
     Not,
+    ObjectApplicator,
     OneOf,
     PatternProperties,
     PrefixItems,
@@ -121,22 +122,6 @@ class FormatValidator(Protocol):
         value: PythonType,
     ) -> PythonType:
         """Process the raw value before Pydantic's standard validation."""
-        ...
-
-
-class ObjectApplicator(Protocol):
-    """An object-level applicator (`propertyNames` / `patternProperties` / `dependentSchemas`).
-
-    It validates the raw mapping and re-emits its JSON Schema keyword, letting the converter apply
-    it to an object model uniformly — both for validation and for `model_json_schema()` round-trip.
-    """
-
-    def validate(self, data: PythonType, /) -> PythonType:
-        """Validate the raw mapping, returning it unchanged or raising `ValueError`."""
-        ...
-
-    def json_schema_keyword(self) -> JsonSchemaValue:
-        """Return this applicator's keyword fragment for the dumped JSON Schema."""
         ...
 
 

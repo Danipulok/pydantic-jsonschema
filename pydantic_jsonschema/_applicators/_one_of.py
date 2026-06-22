@@ -10,12 +10,12 @@ from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 
-from ._base import AnnotationType, Applicator
+from ._base import AnnotationApplicator, AnnotationType
 
 __all__ = ["OneOf"]
 
 
-class OneOf(Applicator):
+class OneOf(AnnotationApplicator):
     """Enforce JSON Schema `oneOf` semantics: exactly one branch must match.
 
     Python `Union` accepts a value when *any* branch matches (`anyOf` semantics),

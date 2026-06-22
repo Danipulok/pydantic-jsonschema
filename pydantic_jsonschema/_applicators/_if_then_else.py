@@ -7,12 +7,12 @@ from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 
-from ._base import AnnotationType, Applicator
+from ._base import AnnotationApplicator, AnnotationType, ObjectApplicator
 
 __all__ = ["IfThenElse"]
 
 
-class IfThenElse(Applicator):
+class IfThenElse(AnnotationApplicator, ObjectApplicator):
     """Enforce JSON Schema `if` / `then` / `else` conditional application.
 
     If the instance validates against `if`, it must also validate against `then`; otherwise it
