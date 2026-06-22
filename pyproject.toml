@@ -144,7 +144,16 @@ ignore = [
 "tests/*" = [
     "S101",     # Use of `assert` detected
 ]
-"tests/test_converters.py" = [
+"tests/applicators/test_dependent_schemas.py" = [
+    "E501",     # Long lines in `inline_snapshot` literals (Pydantic error messages)
+]
+"tests/applicators/test_pattern_properties.py" = [
+    "E501",     # Long lines in `inline_snapshot` literals (Pydantic error messages)
+]
+"tests/applicators/test_property_names.py" = [
+    "E501",     # Long lines in `inline_snapshot` literals (Pydantic error messages)
+]
+"tests/converters/test_discriminator.py" = [
     "E501",     # Long lines in `inline_snapshot` literals (Pydantic error messages)
 ]
 "pydantic_jsonschema/formats/_types.py" = [
