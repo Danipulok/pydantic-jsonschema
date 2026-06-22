@@ -96,3 +96,42 @@ class TestDependentSchemas:
                 }
             ]
         )
+
+
+class TestDependentSchemasJsonSchema:
+    """`dependentSchemas` round-trips into the dumped JSON Schema."""
+
+    def test_dependent_schemas_round_trips(self) -> None:
+        """A converted model re-emits its `dependentSchemas` keyword on dump."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "dependentSchemas": {
+                        "a": {
+                            "type": "object",
+                            "properties": {"b": {"type": "integer"}},
+                            "required": ["b"],
+                        },
+                    },
+                }
+            )
+        )
+
+        assert model.model_json_schema() == snapshot(
+            {
+                "additionalProperties": True,
+                "dependentSchemas": {
+                    "a": {
+                        "additionalProperties": True,
+                        "properties": {"b": {"title": "B", "type": "integer"}},
+                        "required": ["b"],
+                        "title": "Model",
+                        "type": "object",
+                    }
+                },
+                "properties": {},
+                "title": "Model",
+                "type": "object",
+            }
+        )

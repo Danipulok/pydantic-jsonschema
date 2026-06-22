@@ -5,26 +5,16 @@
 # and flags every `is not MISSING` check as a non-overlapping identity comparison.
 # mypy: disable-error-code="comparison-overlap"
 
-from typing import Any, Protocol, Union, cast
+from typing import Any, Union, cast
 
-from pydantic import model_validator
 from pydantic.experimental.missing_sentinel import MISSING
 
 __all__ = [
-    "before_validator",
     "make_union",
     "unwrap",
 ]
 
 type PythonType = Any
-
-
-class _Validatable(Protocol):
-    """A subschema applicator exposing a whole-value `before`-validator entry point."""
-
-    def validate(self, data: PythonType, /) -> PythonType:
-        """Validate the raw input, returning it unchanged or raising `ValueError`."""
-        ...
 
 
 def unwrap[T](value: T, /, *, default: T) -> T:
@@ -50,17 +40,3 @@ def make_union(args: list[Any], /) -> type:
     :returns: The `Union[...]` annotation.
     """
     return cast("type", Union[tuple(args)])  # noqa: UP007
-
-
-def before_validator(key: str, /, *, applicator: _Validatable) -> dict[str, PythonType]:
-    """Wrap an applicator's `validate` as a `before` `model_validator` `__validators__` fragment.
-
-    :param key: The `__validators__` key for the validator.
-    :param applicator: The registered applicator whose `validate` runs on the raw input.
-    :returns: A single-entry `create_model(__validators__=...)` mapping.
-    """
-
-    def _check(data: PythonType) -> PythonType:
-        return applicator.validate(data)
-
-    return {key: model_validator(mode="before")(_check)}

@@ -107,3 +107,25 @@ class TestPatternProperties:
                 }
             ]
         )
+
+
+class TestPatternPropertiesJsonSchema:
+    """`patternProperties` round-trips into the dumped JSON Schema."""
+
+    def test_pattern_properties_round_trips(self) -> None:
+        """A converted model re-emits its `patternProperties` keyword on dump."""
+        model = to_model(
+            Schema.model_validate(
+                {"type": "object", "patternProperties": {"^x": {"type": "integer"}}}
+            )
+        )
+
+        assert model.model_json_schema() == snapshot(
+            {
+                "additionalProperties": True,
+                "patternProperties": {"^x": {"type": "integer"}},
+                "properties": {},
+                "title": "Model",
+                "type": "object",
+            }
+        )
