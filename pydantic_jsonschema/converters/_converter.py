@@ -741,7 +741,11 @@ class SchemaConverter:
         *,
         kind: Literal["anyOf", "oneOf"],
     ) -> list[type | ForwardRef]:
-        """Convert union sub-schemas to annotations.
+        """Convert union sub-schemas to annotations, baking in each branch's constraints.
+
+        Branches go through `_constrained_annotation` (not plain `_schema_to_annotation`), so a
+        branch's own field-level constraints (`minimum`, `maxLength`, `pattern`, ...) are enforced
+        instead of being dropped — otherwise a constraint-only branch collapses to `Any`.
 
         :param union_schemas: Sub-schemas of an `anyOf` / `oneOf` composition.
         :param kind: Composition keyword for path tracking (`anyOf` or `oneOf`).
@@ -750,7 +754,7 @@ class SchemaConverter:
         union_args: list[type | ForwardRef] = []
         for index, sub_schema in enumerate(union_schemas):
             with self._track_path(f"{kind}[{index}]"):
-                union_args.append(self._schema_to_annotation(sub_schema))
+                union_args.append(self._constrained_annotation(sub_schema, union_branch=True))
         return union_args
 
     def _schema_to_annotation(
@@ -840,6 +844,8 @@ class SchemaConverter:
         self,
         schema: Schema | Reference,
         /,
+        *,
+        union_branch: bool = False,
     ) -> AnnotationType:
         """Build a subschema annotation with field-level constraints baked in.
 
@@ -849,6 +855,10 @@ class SchemaConverter:
         `pattern`, `multipleOf`, ...), so they are re-applied here as `Annotated` `Field` metadata.
 
         :param schema: The subschema (or reference) to convert.
+        :param union_branch: `True` for `anyOf` / `oneOf` branches — drop non-validating metadata
+            (`title` / `description` / `examples`, which would leak into the dumped union) and skip
+            constraints on an untyped (`Any`) branch (a bound on `Any` makes Pydantic raise
+            `TypeError` on non-comparable input).
         :returns: The annotation, wrapped with `Field(...)` when it carries field-level constraints.
         """
         annotation = self._schema_to_annotation(schema)
@@ -856,8 +866,9 @@ class SchemaConverter:
             return annotation
 
         annotation = self._apply_validators(annotation, schema)
-        kwargs = build_field_kwargs(schema)
-        if kwargs:
+        kwargs = build_field_kwargs(schema, include_metadata=not union_branch)
+
+        if kwargs and not (union_branch and annotation is Any):
             annotation = cast("type", Annotated[annotation, Field(**kwargs)])
         return annotation
 

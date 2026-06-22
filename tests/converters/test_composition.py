@@ -482,3 +482,38 @@ class TestCompositionWithSiblingType:
 
         with pytest.raises(ValidationError):
             model({"k": 1})  # type: ignore[call-arg]
+
+
+class TestCompositionBranchConstraints:
+    """`anyOf` / `oneOf` branches keep their own field-level constraints."""
+
+    def test_anyof_branch_constraints_enforced(self) -> None:
+        """An `anyOf` of constrained branches rejects a value outside every branch's range."""
+        schema_raw: SchemaRaw = {
+            "anyOf": [
+                {"type": "integer", "minimum": 0, "maximum": 10},
+                {"type": "integer", "minimum": 100, "maximum": 200},
+            ],
+        }
+        model = to_model(Schema.model_validate(schema_raw))
+
+        assert model(5).model_dump() == snapshot(5)  # type: ignore[call-arg]
+        assert model(150).model_dump() == snapshot(150)  # type: ignore[call-arg]
+
+        with pytest.raises(ValidationError):
+            model(50)  # type: ignore[call-arg]  # in neither range
+
+    def test_oneof_branch_constraints_enforced(self) -> None:
+        """`oneOf` branch constraints make exactly-one-branch dispatch meaningful."""
+        schema_raw: SchemaRaw = {
+            "oneOf": [
+                {"type": "integer", "minimum": 0, "maximum": 10},
+                {"type": "integer", "minimum": 100, "maximum": 200},
+            ],
+        }
+        model = to_model(Schema.model_validate(schema_raw))
+
+        assert model(5).model_dump() == snapshot(5)  # type: ignore[call-arg]
+
+        with pytest.raises(ValidationError):
+            model(50)  # type: ignore[call-arg]  # matches no branch

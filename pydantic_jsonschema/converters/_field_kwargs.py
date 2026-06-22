@@ -48,19 +48,25 @@ class _FieldKwargs(TypedDict, total=False):
     pattern: str | None
 
 
-def build_field_kwargs(schema: Schema, /) -> _FieldKwargs:  # noqa: C901
+def build_field_kwargs(schema: Schema, /, *, include_metadata: bool = True) -> _FieldKwargs:  # noqa: C901
     """Build `FieldInfo` kwargs, only including constraints that are explicitly set.
 
     :param schema: Schema to extract constraints and metadata from.
+    :param include_metadata: When `False`, omit non-validating metadata (`title` / `description` /
+        `examples`). Used for union branches, where these are not field metadata and would otherwise
+        leak into the dumped `anyOf` / `oneOf` (e.g. a `title` on a discriminated `$ref` branch).
     :returns: Keyword arguments for `FieldInfo`.
     """
     kwargs: _FieldKwargs = {}
-    if schema.examples is not MISSING:
-        kwargs["examples"] = schema.examples
-    if schema.title is not MISSING:
-        kwargs["title"] = schema.title
-    if schema.description is not MISSING:
-        kwargs["description"] = schema.description
+
+    if include_metadata:
+        if schema.examples is not MISSING:
+            kwargs["examples"] = schema.examples
+        if schema.title is not MISSING:
+            kwargs["title"] = schema.title
+        if schema.description is not MISSING:
+            kwargs["description"] = schema.description
+
     if schema.minimum is not MISSING:
         kwargs["ge"] = schema.minimum
     if schema.exclusive_minimum is not MISSING:
