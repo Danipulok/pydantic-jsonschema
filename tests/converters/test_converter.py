@@ -10,6 +10,7 @@ from pydantic_jsonschema import (
     SchemaConverter,
     to_model,
 )
+from pydantic_jsonschema.exceptions import SchemaConversionError
 from pydantic_jsonschema.types import Schema
 
 if TYPE_CHECKING:
@@ -382,6 +383,14 @@ class TestLiteralTypes:
 
         with pytest.raises(ValidationError):
             model(field=invalid_value)
+
+    def test_empty_enum_raises_conversion_error(self) -> None:
+        """An empty `enum` raises a clean `SchemaConversionError`, not a bare `AssertionError`."""
+        with pytest.raises(SchemaConversionError) as exc_info:
+            to_model(Schema.model_validate({"enum": []}))
+        assert str(exc_info.value) == snapshot(
+            "SchemaConversionError(message='`enum` must contain at least one value')"
+        )
 
 
 class TestAdditionalProperties:

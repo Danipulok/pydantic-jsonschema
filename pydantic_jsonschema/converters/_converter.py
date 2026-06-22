@@ -933,6 +933,13 @@ class SchemaConverter:
         :returns: `Literal` annotation.
         """
         values = schema.enum if schema.enum is not MISSING else (schema.const,)
+
+        # An empty `enum` has no valid value; `Literal[()]` makes Pydantic raise a bare
+        # `AssertionError` deep in schema generation, so reject it with a library error instead.
+        if not values:
+            msg = "`enum` must contain at least one value"
+            raise SchemaConversionError(msg)
+
         literal_type = Literal[tuple(values)]  # type: ignore[valid-type]
         return cast("type", literal_type)
 
