@@ -52,6 +52,7 @@ from ._field_kwargs import FieldKindType, build_field_kwargs, get_field_default
 from ._helpers import before_validator, make_union, unwrap
 from ._metadata import annotate, array_metadata, object_dict_metadata
 from ._object_keywords import build_dependent_required, build_property_count
+from ._refs import DEFS_KEY, get_inline_defs
 
 __all__ = [
     "SchemaConverter",
@@ -61,9 +62,6 @@ __all__ = [
 
 # Default model name
 _DEFAULT_MODEL_NAME: Final[str] = "Model"
-# JSON Schema 2020-12 definitions key
-# See: https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.4
-_DEFS_KEY: Final[str] = "$defs"
 # A discriminated union needs at least two members for Pydantic to tag-dispatch.
 _MIN_DISCRIMINATED_UNION_MEMBERS: Final[int] = 2
 
@@ -265,7 +263,7 @@ class SchemaConverter:
         :raises SchemaConversionError: If schema contains `$defs` (only allowed in root).
         """
         if schema.defs is not MISSING:
-            msg = f"{_DEFS_KEY} is only allowed in root schema, not in nested schemas"
+            msg = f"{DEFS_KEY} is only allowed in root schema, not in nested schemas"
             raise SchemaConversionError(msg)
 
         return self._build_model(schema, model_name=model_name)
@@ -482,108 +480,6 @@ class SchemaConverter:
         property_names = self._register(PropertyNames(branch=branch))
         return before_validator("_validate_property_names", marker=property_names)
 
-    def _check_alias_target(
-        self,
-        defs: dict[str, Schema | Reference],
-        /,
-        *,
-        reference: Reference,
-        seen_names: list[str],
-    ) -> str:
-        """Validate a single alias step and return the target definition name.
-
-        :param defs: Raw `$defs` mapping.
-        :param reference: Alias reference to validate.
-        :param seen_names: Definition names already visited in the chain.
-        :returns: Target definition name.
-        :raises SchemaReferenceError: If the target is external, circular, or missing.
-        """
-        alias_name: str = seen_names[0]
-        local_ref_prefix: str = f"#/{_DEFS_KEY}/"
-
-        if not reference.ref.startswith(local_ref_prefix):
-            msg = (
-                f"Cannot resolve {_DEFS_KEY} alias `{alias_name}`: "
-                f"external reference `{reference.ref}`"
-            )
-            raise SchemaReferenceError(
-                message=msg,
-                path=seen_names.copy(),
-            )
-
-        target_name: str = reference.ref.removeprefix(local_ref_prefix)
-        if target_name in seen_names:
-            msg = f"Circular {_DEFS_KEY} alias chain: {' -> '.join([*seen_names, target_name])}"
-            raise SchemaReferenceError(
-                message=msg,
-                path=seen_names.copy(),
-            )
-
-        if target_name not in defs:
-            msg = (
-                f"Cannot resolve {_DEFS_KEY} alias `{alias_name}`: unknown target `{reference.ref}`"
-            )
-            raise SchemaReferenceError(
-                message=msg,
-                path=seen_names.copy(),
-            )
-
-        return target_name
-
-    def _resolve_def_alias(
-        self,
-        defs: dict[str, Schema | Reference],
-        /,
-        *,
-        name: str,
-    ) -> Schema:
-        """Resolve a `$defs` entry to a concrete schema, following alias chains.
-
-        :param defs: Raw `$defs` mapping.
-        :param name: Definition name to resolve.
-        :returns: Concrete schema for the definition.
-        :raises SchemaReferenceError: If an alias chain is circular, points to a
-            missing definition, or targets an external reference.
-        """
-        seen_names: list[str] = [name]
-        current: Schema | Reference = defs[name]
-
-        while isinstance(current, Reference):
-            target_name = self._check_alias_target(
-                defs,
-                reference=current,
-                seen_names=seen_names,
-            )
-            seen_names.append(target_name)
-            current = defs[target_name]
-
-        return current
-
-    def _get_inline_defs(
-        self,
-        schema: Schema,
-        /,
-    ) -> dict[Ref, Schema]:
-        """Extract inline schema defs from `$defs` field.
-
-        `Reference` entries (def aliases) are resolved to their target schemas.
-
-        :param schema: Schema to extract defs from.
-        :returns: Mapping of reference paths to schemas.
-        :raises SchemaReferenceError: If a def alias cannot be resolved.
-        """
-        if schema.defs is MISSING:
-            return {}
-
-        result_defs: dict[Ref, Schema] = {}
-        for name in schema.defs:
-            ref_path = f"#/{_DEFS_KEY}/{name}"
-            result_defs[ref_path] = self._resolve_def_alias(
-                schema.defs,
-                name=name,
-            )
-        return result_defs
-
     def _build_defs_cache(
         self,
         schema: Schema,
@@ -593,7 +489,7 @@ class SchemaConverter:
 
         :param schema: Schema to extract defs from.
         """
-        defs = self._get_inline_defs(schema)
+        defs = get_inline_defs(schema)
 
         for ref, schema_def in defs.items():
             self._defs_cache[ref] = schema_def
