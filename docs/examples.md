@@ -11,7 +11,7 @@ Real-world examples showing how to use Pydantic JSON Schema in practice.
 | Example                         | Shows                                                     | Run command                                   |
 |---------------------------------|-----------------------------------------------------------|-----------------------------------------------|
 | `examples/nested_schemas.py`    | Nested objects, arrays, `$defs`, and `$ref` reuse         | `uv run python examples/nested_schemas.py`    |
-| `examples/custom_validators.py` | Custom `formats`, normalization, and validation           | `uv run python examples/custom_validators.py` |
+| `examples/custom_formats.py`    | Custom `formats`, normalization, and validation           | `uv run python examples/custom_formats.py`    |
 
 ## Complex Nested Schemas
 
@@ -56,7 +56,7 @@ It demonstrates:
 Run it with:
 
 ```bash
-uv run python examples/custom_validators.py
+uv run python examples/custom_formats.py
 ```
 
 Expected output:
@@ -67,7 +67,7 @@ WDG-1234-PRO
 ```
 
 ```python
---8<-- "examples/custom_validators.py"
+--8<-- "examples/custom_formats.py"
 ```
 
 ## Next Steps

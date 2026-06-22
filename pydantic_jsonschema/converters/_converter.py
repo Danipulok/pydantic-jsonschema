@@ -115,7 +115,7 @@ class FormatValidator(Protocol):
     # `def validate_sku(value: str) -> str` from matching the protocol.
     #
     # Reproduce with `value: JsonValue`:
-    #   uv run mypy examples/custom_validators.py
+    #   uv run mypy examples/custom_formats.py
     #   # -> error: Dict entry 0 has incompatible type "str": "Callable[[str], str]"
     def __call__(
         self,
