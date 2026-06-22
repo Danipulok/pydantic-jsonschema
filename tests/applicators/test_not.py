@@ -153,3 +153,35 @@ class TestNotJsonSchema:
         assert model.model_json_schema()["properties"]["x"] == snapshot(
             {"not": {"const": 5, "type": "integer"}, "title": "X", "type": "integer"}
         )
+
+    def test_not_root_object_round_trips(self) -> None:
+        """A root-object `not` (applied via the model wrapper) also re-emits its keyword."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "properties": {"role": {"type": "string"}},
+                    "not": {
+                        "type": "object",
+                        "properties": {"secret": {"type": "integer"}},
+                        "required": ["secret"],
+                    },
+                }
+            )
+        )
+
+        assert model.model_json_schema() == snapshot(
+            {
+                "additionalProperties": True,
+                "not": {
+                    "additionalProperties": True,
+                    "properties": {"secret": {"title": "Secret", "type": "integer"}},
+                    "required": ["secret"],
+                    "title": "Model",
+                    "type": "object",
+                },
+                "properties": {"role": {"title": "Role", "type": "string"}},
+                "title": "Model",
+                "type": "object",
+            }
+        )

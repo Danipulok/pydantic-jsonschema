@@ -54,8 +54,12 @@ class Not(Applicator):
     ) -> JsonSchemaValue:
         """Restore the `not` keyword on dump (the wrap-validator drops it otherwise)."""
         json_schema = handler(schema)
-        json_schema["not"] = self._get_adapter().json_schema()
+        json_schema.update(self.json_schema_keyword())
         return json_schema
+
+    def json_schema_keyword(self) -> JsonSchemaValue:
+        """Return the `not` keyword fragment for the dumped JSON Schema."""
+        return {"not": self._get_adapter().json_schema()}
 
     def matches(
         self,
@@ -69,7 +73,7 @@ class Not(Applicator):
         """
         return self._validates(self._get_adapter(), value)
 
-    def check(
+    def validate(
         self,
         value: AnnotationType,
         /,
@@ -106,5 +110,5 @@ class Not(Applicator):
         :returns: The validated value.
         :raises ValueError: When the value matches the `not` subschema.
         """
-        self.check(value)
+        self.validate(value)
         return handler(value)

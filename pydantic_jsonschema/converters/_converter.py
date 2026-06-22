@@ -30,7 +30,6 @@ from pydantic import (
     RootModel,
     TypeAdapter,
     create_model,
-    model_validator,
 )
 from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.fields import FieldInfo
@@ -237,15 +236,12 @@ class SchemaConverter:
         if issubclass(model, RootModel):
             return model
 
+        applicators: list[ObjectApplicator] = []
         if schema.not_ is not MISSING:
-            model = self._wrap_root_assertion(model, self._build_not(schema), key="_validate_not")
+            applicators.append(self._build_not(schema))
         if self._has_conditional(schema):
-            model = self._wrap_root_assertion(
-                model,
-                self._build_conditional(schema),
-                key="_validate_conditional",
-            )
-        return model
+            applicators.append(self._build_conditional(schema))
+        return self._wrap_object_applicators(model, applicators)
 
     def _register[ApplicatorT: Applicator](
         self,
@@ -459,6 +455,15 @@ class SchemaConverter:
         Each applicator runs as a `before` validator on the raw mapping and re-emits its keyword
         via `json_schema_keyword`, both delegated from the subclass's Pydantic hooks. A `ForwardRef`
         subschema resolves lazily once `bind_namespace` runs, so both hooks fire after binding.
+
+        Why a *subclass* and not `Annotated[model, *applicators]`: object applicators apply to the
+        whole object, so Pydantic must see their hooks on the model itself. `to_model` returns this
+        model as a class the caller instantiates (`User(...)` / `User.model_validate(...)`); an
+        `Annotated[...]` is not a class and cannot be returned as the root model. A nested object
+        (used as a field type) could instead carry the applicators as `Annotated` and skip the
+        subclass, but subclassing covers root and nested through one path. The classmethod hooks are
+        Pydantic's own extension points — subclassing is merely where they get defined for a model
+        built at runtime by `create_model` (which has no place to declare them otherwise).
 
         :param model: The freshly built object model.
         :param applicators: Object applicators to attach (the model is returned as-is when empty).
@@ -1014,55 +1019,6 @@ class SchemaConverter:
                 else_branch=else_branch,
             )
         )
-
-    def _wrap_root_assertion(
-        self,
-        model: type[BaseModel],
-        applicator: Not | IfThenElse,
-        /,
-        *,
-        key: str,
-    ) -> type[BaseModel]:
-        """Wrap a root object model with a `before` validator enforcing a whole-value assertion.
-
-        A root object is a plain `BaseModel` with no host annotation, so `not` / `if` / `then` /
-        `else` cannot ride along as `Annotated` metadata (the path used for every other shape).
-        Instead the applicator's `check` runs as a `before` model validator on the raw input.
-
-        :param model: The root object `BaseModel`.
-        :param applicator: The whole-value applicator (`Not` or `IfThenElse`), already registered.
-        :param key: The `__validators__` key for the validator.
-        :returns: A subclass of `model` applying the assertion.
-        """
-
-        def _check(data: PythonType) -> PythonType:
-            return applicator.check(data)
-
-        return self._wrap_root_before(model, key=key, check=_check)
-
-    @staticmethod
-    def _wrap_root_before(
-        model: type[BaseModel],
-        /,
-        *,
-        key: str,
-        check: PythonType,
-    ) -> type[BaseModel]:
-        """Subclass a root object model, attaching one `before` model validator.
-
-        :param model: The root object `BaseModel`.
-        :param key: The `__validators__` key for the validator.
-        :param check: The `(data) -> data` validation function.
-        :returns: A subclass of `model` with the validator attached.
-        """
-        validators: dict[str, PythonType] = {key: model_validator(mode="before")(check)}
-        wrapped = create_model(
-            model.__name__,
-            __base__=model,
-            __module__=__name__,
-            __validators__=validators,
-        )
-        return cast("type[BaseModel]", wrapped)
 
     def _reference_annotation(
         self,
