@@ -26,6 +26,7 @@ from pydantic import (
     ConfigDict,
     Field,
     RootModel,
+    TypeAdapter,
     create_model,
     model_validator,
 )
@@ -758,7 +759,7 @@ class SchemaConverter:
             # `anyOf` / `oneOf` / `allOf` -> union or nested model; else `type` (or `Any`).
             composition_annotation = self._composition_annotation(schema)
             annotation = (
-                composition_annotation
+                self._apply_sibling_type(composition_annotation, schema)
                 if composition_annotation is not None
                 else self._type_annotation(schema)
             )
@@ -772,6 +773,54 @@ class SchemaConverter:
             annotation = cast("type", Annotated[annotation, self._build_conditional(schema)])
 
         return annotation
+
+    def _apply_sibling_type(
+        self,
+        annotation: type | ForwardRef,
+        schema: Schema,
+        /,
+    ) -> type | ForwardRef:
+        """Enforce a `type` declared alongside `anyOf` / `oneOf` / `allOf`.
+
+        JSON Schema applies all keywords conjunctively, so a value must satisfy both the
+        composition and the sibling `type`. Pydantic has no intersection type, so the sibling
+        `type` runs as a `before`-validator over the composition union; without this the `type`
+        is silently dropped and the union accepts values of any type.
+
+        :param annotation: The composition annotation (union / nested model).
+        :param schema: The schema carrying both a composition keyword and a possible `type`.
+        :returns: The annotation, wrapped to also enforce the sibling `type` when one is present.
+        """
+        if schema.type is MISSING:
+            return annotation
+
+        adapter: TypeAdapter[PythonType] = TypeAdapter(self._host_type_guard(schema))
+
+        def _check(value: PythonType) -> PythonType:
+            adapter.validate_python(value)
+            return value
+
+        return cast("type", Annotated[annotation, BeforeValidator(_check)])
+
+    @staticmethod
+    def _host_type_guard(
+        schema: Schema,
+        /,
+    ) -> type:
+        """Map the sibling `type` to a plain JSON-type guard.
+
+        Unlike `_type_annotation`, this only checks the value's JSON type — it does not build a
+        nested model or attach array applicators, since it guards a value already shaped by the
+        composition.
+
+        :param schema: Schema whose `type` is set (single `DataType` or a list).
+        :returns: A type (or union of types) to validate the value's JSON type against.
+        """
+        if isinstance(schema.type, DataType):
+            return _DATA_TYPE_ANNOTATION_MAPPING[schema.type]
+
+        union_args = [_DATA_TYPE_ANNOTATION_MAPPING[data_type] for data_type in schema.type]
+        return make_union(union_args)
 
     def _constrained_annotation(
         self,
