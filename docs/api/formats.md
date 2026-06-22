@@ -1,5 +1,5 @@
-# Format validators
+# Formats
 
-For usage and examples, see the [Format Validators guide](../formats.md).
+For usage and examples, see the [Formats guide](../formats.md).
 
 ::: pydantic_jsonschema.formats

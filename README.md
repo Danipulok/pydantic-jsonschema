@@ -78,7 +78,7 @@ Turns a `Schema` into a Pydantic model (see [Quick start](#quick-start)). It res
 Python types, and applies string, number, array, and object constraints as Pydantic
 validation.
 
-### 3. Format validators
+### 3. Formats
 
 Built-in validators for every `format` in the JSON Schema spec (`email`, `uri`, `uuid`,
 `date-time`, `hostname`, `json-pointer`, `regex`, and more) — with zero extra

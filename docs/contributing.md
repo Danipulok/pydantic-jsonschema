@@ -166,7 +166,7 @@ When adding or changing behavior:
 | Change                      | Where to document it                   |
 |-----------------------------|----------------------------------------|
 | Converter behavior          | `docs/converters.md`                   |
-| Format validators           | `docs/formats.md`                      |
+| Formats                     | `docs/formats.md`                      |
 | Complete runnable scenarios | `examples/*.py` and `docs/examples.md` |
 | Public API changes          | API docs and public docstrings         |
 | Breaking changes            | Relevant guide and migration notes     |

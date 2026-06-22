@@ -38,7 +38,7 @@ For domain-specific formats such as payment cards, phone numbers, colors, countr
     pip install 'pydantic-extra-types[all]'
     ```
 
-See [Format Validators](formats.md) for supported formats and usage examples.
+See [Formats](formats.md) for supported formats and usage examples.
 
 ## Install from repository
 
@@ -63,5 +63,5 @@ truth for development dependencies, `just` recipes, documentation checks, and PR
 
 - [Schema](schema.md) - Schema models, fields, and serialization
 - [Converters](converters.md) - Create Pydantic models from JSON Schema
-- [Format Validators](formats.md) - Add validation for JSON Schema `format` values
+- [Formats](formats.md) - Add validation for JSON Schema `format` values
 - [Examples](examples.md) - Run complete examples
