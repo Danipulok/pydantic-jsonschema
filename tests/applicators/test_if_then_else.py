@@ -159,3 +159,82 @@ class TestIfThenElse:
                 }
             ]
         )
+
+
+class TestIfThenElseJsonSchema:
+    """`if` / `then` / `else` round-trip into the dumped JSON Schema."""
+
+    def test_if_then_else_round_trips(self) -> None:
+        """A converted model re-emits its `if` / `then` / `else` keywords on dump."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "properties": {
+                        "a": {
+                            "type": "integer",
+                            "if": {"const": 1},
+                            "then": {"const": 1},
+                            "else": {"const": 2},
+                        },
+                    },
+                    "required": ["a"],
+                }
+            )
+        )
+
+        assert model.model_json_schema()["properties"]["a"] == snapshot(
+            {
+                "else": {"const": 2, "type": "integer"},
+                "if": {"const": 1, "type": "integer"},
+                "then": {"const": 1, "type": "integer"},
+                "title": "A",
+                "type": "integer",
+            }
+        )
+
+    def test_if_then_only_round_trips(self) -> None:
+        """`if` / `then` without `else` dumps without an `else` keyword."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "properties": {
+                        "a": {"type": "integer", "if": {"const": 1}, "then": {"const": 1}}
+                    },
+                    "required": ["a"],
+                }
+            )
+        )
+
+        assert model.model_json_schema()["properties"]["a"] == snapshot(
+            {
+                "if": {"const": 1, "type": "integer"},
+                "then": {"const": 1, "type": "integer"},
+                "title": "A",
+                "type": "integer",
+            }
+        )
+
+    def test_if_else_only_round_trips(self) -> None:
+        """`if` / `else` without `then` dumps without a `then` keyword."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "properties": {
+                        "a": {"type": "integer", "if": {"const": 1}, "else": {"const": 2}}
+                    },
+                    "required": ["a"],
+                }
+            )
+        )
+
+        assert model.model_json_schema()["properties"]["a"] == snapshot(
+            {
+                "else": {"const": 2, "type": "integer"},
+                "if": {"const": 1, "type": "integer"},
+                "title": "A",
+                "type": "integer",
+            }
+        )

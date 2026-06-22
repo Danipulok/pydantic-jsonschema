@@ -3,12 +3,18 @@
 See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.1.3
 """
 
-from pydantic import GetCoreSchemaHandler, TypeAdapter
+from typing import Final
+
+from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter
+from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 
 from ._base import AnnotationType, Applicator
 
 __all__ = ["Contains"]
+
+# `minContains` defaults to 1, so it is only re-emitted when it differs.
+_DEFAULT_MIN_CONTAINS: Final[int] = 1
 
 
 class Contains(Applicator):
@@ -46,6 +52,20 @@ class Contains(Applicator):
     ) -> CoreSchema:
         """Wrap the array schema with the match-count check."""
         return core_schema.no_info_after_validator_function(self._validate, handler(source_type))
+
+    def __get_pydantic_json_schema__(
+        self,
+        schema: CoreSchema,
+        handler: GetJsonSchemaHandler,
+    ) -> JsonSchemaValue:
+        """Restore the `contains` / `minContains` / `maxContains` keywords on dump."""
+        json_schema = handler(schema)
+        json_schema["contains"] = self._get_adapter().json_schema()
+        if self._min_contains != _DEFAULT_MIN_CONTAINS:
+            json_schema["minContains"] = self._min_contains
+        if self._max_contains is not None:
+            json_schema["maxContains"] = self._max_contains
+        return json_schema
 
     def _get_adapter(self) -> TypeAdapter[AnnotationType]:
         """Build the `contains` adapter on first use (caches across calls).

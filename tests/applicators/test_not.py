@@ -133,3 +133,23 @@ class TestNot:
                 }
             ]
         )
+
+
+class TestNotJsonSchema:
+    """`not` round-trips into the dumped JSON Schema."""
+
+    def test_not_round_trips(self) -> None:
+        """A converted model re-emits its `not` keyword on `model_json_schema()`."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "properties": {"x": {"type": "integer", "not": {"const": 5}}},
+                    "required": ["x"],
+                }
+            )
+        )
+
+        assert model.model_json_schema()["properties"]["x"] == snapshot(
+            {"not": {"const": 5, "type": "integer"}, "title": "X", "type": "integer"}
+        )

@@ -5,7 +5,8 @@ See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.1.1
 
 from collections.abc import Iterable
 
-from pydantic import GetCoreSchemaHandler, TypeAdapter, ValidationError
+from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter, ValidationError
+from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 
 from ._base import AnnotationType, Applicator
@@ -47,6 +48,21 @@ class PrefixItems(Applicator):
     ) -> CoreSchema:
         """Wrap the array schema with positional validation."""
         return core_schema.no_info_after_validator_function(self._validate, handler(source_type))
+
+    def __get_pydantic_json_schema__(
+        self,
+        schema: CoreSchema,
+        handler: GetJsonSchemaHandler,
+    ) -> JsonSchemaValue:
+        """Restore the `prefixItems` (and tail `items`) keywords on dump."""
+        json_schema = handler(schema)
+        self._build_adapters()
+        json_schema["prefixItems"] = [
+            adapter.json_schema() for adapter in self._prefix_adapters or []
+        ]
+        if self._tail_adapter is not None:
+            json_schema["items"] = self._tail_adapter.json_schema()
+        return json_schema
 
     def _build_adapters(self) -> None:
         """Build the per-position and tail adapters on first use (caches across calls)."""
