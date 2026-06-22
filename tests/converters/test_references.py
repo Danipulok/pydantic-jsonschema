@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from inline_snapshot import snapshot
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from pydantic_jsonschema import (
     SchemaConverter,
@@ -601,3 +601,109 @@ class TestReferences:
                 ],
             }
         )
+
+
+class TestRecursiveReferences:
+    """A `$def` may reference itself or another def cyclically (tree / linked-list shapes)."""
+
+    def test_self_referential_ref(self) -> None:
+        """A def whose property points at itself converts and validates nested data."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {"head": {"$ref": "#/$defs/Node"}},
+            "required": ["head"],
+            "$defs": {
+                "Node": {
+                    "type": "object",
+                    "properties": {
+                        "value": {"type": "integer"},
+                        "next": {"anyOf": [{"$ref": "#/$defs/Node"}, {"type": "null"}]},
+                    },
+                    "required": ["value"],
+                },
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(head={"value": 1, "next": {"value": 2, "next": None}})
+        assert instance.model_dump() == snapshot(
+            {"head": {"value": 1, "next": {"value": 2, "next": None}}}
+        )
+
+    def test_self_referential_ref_rejects_invalid(self) -> None:
+        """The recursive type still enforces its constraints at every depth."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {"head": {"$ref": "#/$defs/Node"}},
+            "required": ["head"],
+            "$defs": {
+                "Node": {
+                    "type": "object",
+                    "properties": {
+                        "value": {"type": "integer"},
+                        "next": {"anyOf": [{"$ref": "#/$defs/Node"}, {"type": "null"}]},
+                    },
+                    "required": ["value"],
+                },
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        with pytest.raises(ValidationError):
+            model(head={"value": 1, "next": {"value": "not-an-int", "next": None}})
+
+    def test_mutually_referential_refs(self) -> None:
+        """Two defs referencing each other convert regardless of `$defs` key order."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {"a": {"$ref": "#/$defs/A"}},
+            "required": ["a"],
+            "$defs": {
+                "B": {
+                    "type": "object",
+                    "properties": {
+                        "label": {"type": "string"},
+                        "a": {"anyOf": [{"$ref": "#/$defs/A"}, {"type": "null"}]},
+                    },
+                    "required": ["label"],
+                },
+                "A": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer"},
+                        "b": {"anyOf": [{"$ref": "#/$defs/B"}, {"type": "null"}]},
+                    },
+                    "required": ["id"],
+                },
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(a={"id": 1, "b": {"label": "x", "a": None}})
+        assert instance.model_dump() == snapshot({"a": {"id": 1, "b": {"label": "x", "a": None}}})
+
+    def test_direct_self_referential_ref(self) -> None:
+        """A direct (non-composition) optional `$ref` to the def being built defers correctly."""
+        schema_raw: SchemaRaw = {
+            "type": "object",
+            "properties": {"head": {"$ref": "#/$defs/Node"}},
+            "required": ["head"],
+            "$defs": {
+                "Node": {
+                    "type": "object",
+                    "properties": {
+                        "value": {"type": "integer"},
+                        "child": {"$ref": "#/$defs/Node"},
+                    },
+                    "required": ["value"],
+                },
+            },
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        instance = model(head={"value": 1, "child": {"value": 2}})
+        assert instance.model_dump() == snapshot({"head": {"value": 1, "child": {"value": 2}}})
