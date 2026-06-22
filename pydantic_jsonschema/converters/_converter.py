@@ -145,6 +145,7 @@ class SchemaConverter:
         self._models_cache: dict[SchemaHash, type[BaseModel]] = {}
         self._resolution_path: list[str] = []  # Track path for error reporting
         self._applicators: list[Applicator] = []
+        self._building: set[Ref] = set()  # Defs whose model is mid-construction
 
     @staticmethod
     def _hash_schema(
@@ -492,9 +493,16 @@ class SchemaConverter:
         """
         defs = get_inline_defs(schema)
 
+        # Convert each def with its ref marked in-progress, so a body that references the def
+        # currently being built (a recursive / mutual `$ref`) defers to a `ForwardRef` instead
+        # of recursing forever. `_rebuild_def_models` binds those refs once every model exists.
         for ref, schema_def in defs.items():
             self._defs_cache[ref] = schema_def
-            self._convert_nested_schema(schema_def)
+            self._building.add(ref)
+            try:
+                self._convert_nested_schema(schema_def)
+            finally:
+                self._building.discard(ref)
 
         self._rebuild_def_models(defs)
 
@@ -616,7 +624,13 @@ class SchemaConverter:
                 schema_for_field: Schema
 
                 if isinstance(field_schema, Reference):
-                    annotation = self._get_model(field_schema.ref)
+                    # Defer a recursive / mutual ref (its target def is still building) to a
+                    # `ForwardRef`, bound later by `_rebuild_def_models`. Otherwise resolve
+                    # eagerly, so an unknown `$ref` still raises here instead of silently deferring.
+                    if field_schema.ref in self._building:
+                        annotation = ForwardRef(sanitize_identifier(field_schema.ref))
+                    else:
+                        annotation = self._get_model(field_schema.ref)
                     # A local `$ref` carries its own field metadata in `$defs`; an unknown
                     # ref (external / pre-built) contributes none, so fall back to an empty schema.
                     schema_for_field = self._defs_cache.get(field_schema.ref, Schema())
@@ -966,6 +980,12 @@ class SchemaConverter:
         :param reference: Reference to resolve.
         :returns: Resolved model or `ForwardRef` for later resolution.
         """
+        # A ref to a def whose model is still being built (a recursive or mutual `$ref`)
+        # must defer: returning its half-built model would recurse forever. The `ForwardRef`
+        # is bound once every def model exists (`_rebuild_def_models` / `_bind_forward_refs`).
+        if reference.ref in self._building:
+            return ForwardRef(sanitize_identifier(reference.ref))
+
         if reference.ref in self._refs or reference.ref in self._defs_cache:
             return self._get_model(reference.ref)
 
@@ -982,6 +1002,13 @@ class SchemaConverter:
         :returns: `Literal` annotation.
         """
         values = schema.enum if schema.enum is not MISSING else (schema.const,)
+
+        # An empty `enum` has no valid value; `Literal[()]` makes Pydantic raise a bare
+        # `AssertionError` deep in schema generation, so reject it with a library error instead.
+        if not values:
+            msg = "`enum` must contain at least one value"
+            raise SchemaConversionError(msg)
+
         literal_type = Literal[tuple(values)]  # type: ignore[valid-type]
         return cast("type", literal_type)
 

@@ -40,7 +40,7 @@ Run `just` to list all available commands.
 | Format code                       | `just format`          | `ruff format` and autofix-only `ruff check`          |
 | Lint everything                   | `just lint`            | `ruff`, `mypy`, `codespell`, and `markdownlint-cli2` |
 | Run tests                         | `just test`            | `pytest` with coverage reporting                     |
-| Run all supported Python versions | `just test-all-python` | Python 3.12, 3.13, and 3.14 test runs                |
+| Run all supported Python versions | `just test-all-python` | Python 3.12, 3.13, 3.14, and 3.15 test runs          |
 | Generate HTML coverage            | `just testcov`         | `just test` plus `coverage html`                     |
 | Run pre-commit hooks              | `just precommit`       | `pre-commit run --all-files`                         |
 | Run the full local gate           | `just all`             | format, lint, tests, and docs build                  |
