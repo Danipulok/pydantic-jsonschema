@@ -112,3 +112,52 @@ class TestPrefixItems:
                 }
             ]
         )
+
+
+class TestPrefixItemsJsonSchema:
+    """`prefixItems` (and tail `items`) round-trip into the dumped JSON Schema."""
+
+    def test_prefix_items_round_trips(self) -> None:
+        """A converted model re-emits its `prefixItems` and tail `items` on dump."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "properties": {
+                        "a": {
+                            "type": "array",
+                            "prefixItems": [{"type": "string"}, {"type": "integer"}],
+                            "items": {"type": "boolean"},
+                        },
+                    },
+                    "required": ["a"],
+                }
+            )
+        )
+
+        assert model.model_json_schema()["properties"]["a"] == snapshot(
+            {
+                "items": {"type": "boolean"},
+                "prefixItems": [{"type": "string"}, {"type": "integer"}],
+                "title": "A",
+                "type": "array",
+            }
+        )
+
+    def test_prefix_items_without_tail_round_trips(self) -> None:
+        """`prefixItems` with no `items` tail dumps without an `items` keyword."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "properties": {
+                        "a": {"type": "array", "prefixItems": [{"type": "string"}]},
+                    },
+                    "required": ["a"],
+                }
+            )
+        )
+
+        assert model.model_json_schema()["properties"]["a"] == snapshot(
+            {"items": {}, "prefixItems": [{"type": "string"}], "title": "A", "type": "array"}
+        )

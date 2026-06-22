@@ -3,7 +3,8 @@
 See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2
 """
 
-from pydantic import GetCoreSchemaHandler, TypeAdapter
+from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter
+from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 
 from ._base import AnnotationType, Applicator
@@ -50,6 +51,21 @@ class IfThenElse(Applicator):
     ) -> CoreSchema:
         """Wrap the value schema with the conditional check (on the raw input)."""
         return core_schema.no_info_wrap_validator_function(self._validate, handler(source_type))
+
+    def __get_pydantic_json_schema__(
+        self,
+        schema: CoreSchema,
+        handler: GetJsonSchemaHandler,
+    ) -> JsonSchemaValue:
+        """Restore the `if` / `then` / `else` keywords on dump."""
+        json_schema = handler(schema)
+        if_adapter = self._build_adapters()
+        json_schema["if"] = if_adapter.json_schema()
+        if self._then_adapter is not None:
+            json_schema["then"] = self._then_adapter.json_schema()
+        if self._else_adapter is not None:
+            json_schema["else"] = self._else_adapter.json_schema()
+        return json_schema
 
     def _build_adapters(self) -> TypeAdapter[AnnotationType]:
         """Build the `if` / `then` / `else` adapters on first use (caches across calls).

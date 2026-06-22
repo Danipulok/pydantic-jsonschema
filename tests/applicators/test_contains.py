@@ -125,3 +125,53 @@ class TestContains:
                 }
             ]
         )
+
+
+class TestContainsJsonSchema:
+    """`contains` / `minContains` / `maxContains` round-trip into the dumped JSON Schema."""
+
+    def test_contains_round_trips(self) -> None:
+        """A converted model re-emits its `contains` bounds on `model_json_schema()`."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "properties": {
+                        "a": {
+                            "type": "array",
+                            "contains": {"type": "integer"},
+                            "minContains": 2,
+                            "maxContains": 4,
+                        },
+                    },
+                    "required": ["a"],
+                }
+            )
+        )
+
+        assert model.model_json_schema()["properties"]["a"] == snapshot(
+            {
+                "contains": {"type": "integer"},
+                "items": {},
+                "maxContains": 4,
+                "minContains": 2,
+                "title": "A",
+                "type": "array",
+            }
+        )
+
+    def test_contains_default_bounds_round_trips(self) -> None:
+        """Default `minContains` (1) and absent `maxContains` are not emitted on dump."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "properties": {"a": {"type": "array", "contains": {"type": "integer"}}},
+                    "required": ["a"],
+                }
+            )
+        )
+
+        assert model.model_json_schema()["properties"]["a"] == snapshot(
+            {"contains": {"type": "integer"}, "items": {}, "title": "A", "type": "array"}
+        )
