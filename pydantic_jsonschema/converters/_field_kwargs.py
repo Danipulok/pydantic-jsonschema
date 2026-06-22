@@ -12,6 +12,8 @@ from pydantic.experimental.missing_sentinel import MISSING
 
 from pydantic_jsonschema.types import DataType, Schema
 
+from ._utils import unwrap
+
 __all__ = [
     "FieldKindType",
     "build_field_kwargs",
@@ -119,8 +121,8 @@ def _get_min_length(schema: Schema, /) -> int | None:
     :returns: `minItems` for arrays, `minLength` for strings, `None` if unset.
     """
     if schema.type == DataType.ARRAY:
-        return schema.min_items if schema.min_items is not MISSING else None
-    return schema.min_length if schema.min_length is not MISSING else None
+        return unwrap(schema.min_items, default=None)
+    return unwrap(schema.min_length, default=None)
 
 
 def _get_max_length(schema: Schema, /) -> int | None:
@@ -130,5 +132,5 @@ def _get_max_length(schema: Schema, /) -> int | None:
     :returns: `maxItems` for arrays, `maxLength` for strings, `None` if unset.
     """
     if schema.type == DataType.ARRAY:
-        return schema.max_items if schema.max_items is not MISSING else None
-    return schema.max_length if schema.max_length is not MISSING else None
+        return unwrap(schema.max_items, default=None)
+    return unwrap(schema.max_length, default=None)

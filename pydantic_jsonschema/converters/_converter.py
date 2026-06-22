@@ -16,7 +16,6 @@ from typing import (
     Literal,
     Protocol,
     TypeAliasType,
-    Union,
     cast,
     get_origin,
 )
@@ -52,6 +51,8 @@ from ._discriminator import discriminator_property
 from ._field_kwargs import FieldKindType, build_field_kwargs, get_field_default
 from ._metadata import annotate, array_metadata, object_dict_metadata
 from ._object_keywords import build_dependent_required, build_property_count
+from ._refs import DEFS_KEY, get_inline_defs
+from ._utils import before_validator, make_union, unwrap
 
 __all__ = [
     "SchemaConverter",
@@ -61,9 +62,6 @@ __all__ = [
 
 # Default model name
 _DEFAULT_MODEL_NAME: Final[str] = "Model"
-# JSON Schema 2020-12 definitions key
-# See: https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.4
-_DEFS_KEY: Final[str] = "$defs"
 # A discriminated union needs at least two members for Pydantic to tag-dispatch.
 _MIN_DISCRIMINATED_UNION_MEMBERS: Final[int] = 2
 
@@ -265,7 +263,7 @@ class SchemaConverter:
         :raises SchemaConversionError: If schema contains `$defs` (only allowed in root).
         """
         if schema.defs is not MISSING:
-            msg = f"{_DEFS_KEY} is only allowed in root schema, not in nested schemas"
+            msg = f"{DEFS_KEY} is only allowed in root schema, not in nested schemas"
             raise SchemaConversionError(msg)
 
         return self._build_model(schema, model_name=model_name)
@@ -289,7 +287,7 @@ class SchemaConverter:
         if cache_key in self._models_cache:
             return self._models_cache[cache_key]
 
-        title: str = schema.title if schema.title is not MISSING else ""
+        title: str = unwrap(schema.title, default="")
         name: str = model_name or sanitize_identifier(title) or self._default_model_name
 
         model = self._create_model(schema, model_name=name)
@@ -381,7 +379,7 @@ class SchemaConverter:
         created_model = create_model(  # type: ignore[call-overload]
             model_name,
             __config__=model_config,
-            __doc__=schema.description if schema.description is not MISSING else None,
+            __doc__=unwrap(schema.description, default=None),
             __base__=base_classes,
             __module__=__name__,
             __validators__=validators,
@@ -434,11 +432,7 @@ class SchemaConverter:
                 branches[trigger] = self._constrained_annotation(sub_schema)
 
         dependent_schemas = self._register(DependentSchemas(branches=branches))
-
-        def _check(data: PythonType) -> PythonType:
-            return dependent_schemas.validate(data)
-
-        return {"_validate_dependent_schemas": model_validator(mode="before")(_check)}
+        return before_validator("_validate_dependent_schemas", marker=dependent_schemas)
 
     def _build_pattern_properties(
         self,
@@ -462,11 +456,7 @@ class SchemaConverter:
                 branches[pattern] = self._constrained_annotation(sub_schema)
 
         pattern_properties = self._register(PatternProperties(branches=branches))
-
-        def _check(data: PythonType) -> PythonType:
-            return pattern_properties.validate(data)
-
-        return {"_validate_pattern_properties": model_validator(mode="before")(_check)}
+        return before_validator("_validate_pattern_properties", marker=pattern_properties)
 
     def _build_property_names(
         self,
@@ -488,113 +478,7 @@ class SchemaConverter:
             branch = self._constrained_annotation(schema.property_names)
 
         property_names = self._register(PropertyNames(branch=branch))
-
-        def _check(data: PythonType) -> PythonType:
-            return property_names.validate(data)
-
-        return {"_validate_property_names": model_validator(mode="before")(_check)}
-
-    def _check_alias_target(
-        self,
-        defs: dict[str, Schema | Reference],
-        /,
-        *,
-        reference: Reference,
-        seen_names: list[str],
-    ) -> str:
-        """Validate a single alias step and return the target definition name.
-
-        :param defs: Raw `$defs` mapping.
-        :param reference: Alias reference to validate.
-        :param seen_names: Definition names already visited in the chain.
-        :returns: Target definition name.
-        :raises SchemaReferenceError: If the target is external, circular, or missing.
-        """
-        alias_name: str = seen_names[0]
-        local_ref_prefix: str = f"#/{_DEFS_KEY}/"
-
-        if not reference.ref.startswith(local_ref_prefix):
-            msg = (
-                f"Cannot resolve {_DEFS_KEY} alias `{alias_name}`: "
-                f"external reference `{reference.ref}`"
-            )
-            raise SchemaReferenceError(
-                message=msg,
-                path=seen_names.copy(),
-            )
-
-        target_name: str = reference.ref.removeprefix(local_ref_prefix)
-        if target_name in seen_names:
-            msg = f"Circular {_DEFS_KEY} alias chain: {' -> '.join([*seen_names, target_name])}"
-            raise SchemaReferenceError(
-                message=msg,
-                path=seen_names.copy(),
-            )
-
-        if target_name not in defs:
-            msg = (
-                f"Cannot resolve {_DEFS_KEY} alias `{alias_name}`: unknown target `{reference.ref}`"
-            )
-            raise SchemaReferenceError(
-                message=msg,
-                path=seen_names.copy(),
-            )
-
-        return target_name
-
-    def _resolve_def_alias(
-        self,
-        defs: dict[str, Schema | Reference],
-        /,
-        *,
-        name: str,
-    ) -> Schema:
-        """Resolve a `$defs` entry to a concrete schema, following alias chains.
-
-        :param defs: Raw `$defs` mapping.
-        :param name: Definition name to resolve.
-        :returns: Concrete schema for the definition.
-        :raises SchemaReferenceError: If an alias chain is circular, points to a
-            missing definition, or targets an external reference.
-        """
-        seen_names: list[str] = [name]
-        current: Schema | Reference = defs[name]
-
-        while isinstance(current, Reference):
-            target_name = self._check_alias_target(
-                defs,
-                reference=current,
-                seen_names=seen_names,
-            )
-            seen_names.append(target_name)
-            current = defs[target_name]
-
-        return current
-
-    def _get_inline_defs(
-        self,
-        schema: Schema,
-        /,
-    ) -> dict[Ref, Schema]:
-        """Extract inline schema defs from `$defs` field.
-
-        `Reference` entries (def aliases) are resolved to their target schemas.
-
-        :param schema: Schema to extract defs from.
-        :returns: Mapping of reference paths to schemas.
-        :raises SchemaReferenceError: If a def alias cannot be resolved.
-        """
-        if schema.defs is MISSING:
-            return {}
-
-        result_defs: dict[Ref, Schema] = {}
-        for name in schema.defs:
-            ref_path = f"#/{_DEFS_KEY}/{name}"
-            result_defs[ref_path] = self._resolve_def_alias(
-                schema.defs,
-                name=name,
-            )
-        return result_defs
+        return before_validator("_validate_property_names", marker=property_names)
 
     def _build_defs_cache(
         self,
@@ -605,7 +489,7 @@ class SchemaConverter:
 
         :param schema: Schema to extract defs from.
         """
-        defs = self._get_inline_defs(schema)
+        defs = get_inline_defs(schema)
 
         for ref, schema_def in defs.items():
             self._defs_cache[ref] = schema_def
@@ -722,10 +606,8 @@ class SchemaConverter:
         """Build Pydantic fields from schema properties."""
         fields: dict[str, tuple[Any, FieldInfo]] = {}
 
-        properties: dict[str, Reference | Schema] = (
-            schema.properties if schema.properties is not MISSING else {}
-        )
-        required_names: list[str] = schema.required if schema.required is not MISSING else []
+        properties: dict[str, Reference | Schema] = unwrap(schema.properties, default={})
+        required_names: list[str] = unwrap(schema.required, default=[])
 
         for field_name, field_schema in properties.items():
             with self._track_path(f"properties.{field_name}"):
@@ -1067,8 +949,7 @@ class SchemaConverter:
         # `anyOf` -> `Union`:
         if schema.any_of is not MISSING:
             union_args = self._union_args(schema.any_of, kind="anyOf")
-            union_annotation = Union[tuple(union_args)]  # type: ignore[valid-type]  # noqa: UP007
-            return cast("type", union_annotation)
+            return make_union(union_args)
 
         # `oneOf` -> discriminated union or exactly-one-branch validation:
         if schema.one_of is not MISSING:
@@ -1109,8 +990,7 @@ class SchemaConverter:
             and len(union_args) >= _MIN_DISCRIMINATED_UNION_MEMBERS
             and not any(isinstance(arg, ForwardRef) for arg in union_args)
         ):
-            union_annotation = Union[tuple(union_args)]  # type: ignore[valid-type]  # noqa: UP007
-            discriminated = Annotated[union_annotation, Field(discriminator=discriminator)]  # type: ignore[valid-type]
+            discriminated = Annotated[make_union(union_args), Field(discriminator=discriminator)]  # type: ignore[valid-type]
             return cast("type", discriminated)
 
         one_of_validator = self._register(OneOf(branches=union_args))
@@ -1136,8 +1016,7 @@ class SchemaConverter:
             if isinstance(schema.type, DataType):
                 return _DATA_TYPE_ANNOTATION_MAPPING[schema.type]
             union_args = [_DATA_TYPE_ANNOTATION_MAPPING[data_type] for data_type in schema.type]
-            union_annotation = Union[tuple(union_args)]  # type: ignore[valid-type]  # noqa: UP007
-            return cast("type", union_annotation)
+            return make_union(union_args)
 
         return Any
 
@@ -1220,8 +1099,8 @@ class SchemaConverter:
             branch = self._constrained_annotation(schema.contains)
 
         # `minContains` defaults to 1; `maxContains` is unbounded when absent.
-        min_contains = schema.min_contains if schema.min_contains is not MISSING else 1
-        max_contains = schema.max_contains if schema.max_contains is not MISSING else None
+        min_contains = unwrap(schema.min_contains, default=1)
+        max_contains = unwrap(schema.max_contains, default=None)
 
         return self._register(
             Contains(branch=branch, min_contains=min_contains, max_contains=max_contains)

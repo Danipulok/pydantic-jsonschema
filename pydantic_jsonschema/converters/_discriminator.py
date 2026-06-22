@@ -16,6 +16,8 @@ from pydantic.experimental.missing_sentinel import MISSING
 
 from pydantic_jsonschema.types import Reference, Schema
 
+from ._utils import unwrap
+
 __all__ = ["discriminator_property"]
 
 type TagType = str | int | None  # Scalar discriminator tag value (`bool` is an `int`)
@@ -94,7 +96,7 @@ def _branch_tag_values(
     :param schema: Object branch schema.
     :returns: Mapping of property name to its constant tag value.
     """
-    required: set[str] = set(schema.required) if schema.required is not MISSING else set()
+    required: set[str] = set(unwrap(schema.required, default=[]))
     tags: dict[str, TagType] = {}
     for name, prop in schema.properties.items():
         if name not in required or isinstance(prop, Reference):
