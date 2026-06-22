@@ -4,6 +4,7 @@ See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.4
 """
 
 from pydantic import TypeAdapter
+from pydantic.json_schema import JsonSchemaValue
 
 from ._base import AnnotationType, Applicator
 
@@ -43,6 +44,14 @@ class DependentSchemas(Applicator):
                 trigger: self._build_adapter(branch) for trigger, branch in self._branches.items()
             }
         return self._adapters
+
+    def json_schema_keyword(self) -> JsonSchemaValue:
+        """Return the `dependentSchemas` keyword fragment for the dumped JSON Schema."""
+        return {
+            "dependentSchemas": {
+                trigger: adapter.json_schema() for trigger, adapter in self._get_adapters().items()
+            }
+        }
 
     def validate(
         self,

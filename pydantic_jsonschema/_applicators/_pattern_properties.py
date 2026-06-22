@@ -6,6 +6,7 @@ See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.2.2
 import re
 
 from pydantic import TypeAdapter
+from pydantic.json_schema import JsonSchemaValue
 
 from ._base import AnnotationType, Applicator
 
@@ -46,6 +47,14 @@ class PatternProperties(Applicator):
                 for pattern, branch in self._branches.items()
             ]
         return self._compiled
+
+    def json_schema_keyword(self) -> JsonSchemaValue:
+        """Return the `patternProperties` keyword fragment for the dumped JSON Schema."""
+        return {
+            "patternProperties": {
+                pattern.pattern: adapter.json_schema() for pattern, adapter in self._get_compiled()
+            }
+        }
 
     def validate(
         self,

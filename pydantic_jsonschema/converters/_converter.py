@@ -25,13 +25,16 @@ from pydantic import (
     BeforeValidator,
     ConfigDict,
     Field,
+    GetCoreSchemaHandler,
+    GetJsonSchemaHandler,
     RootModel,
     TypeAdapter,
     create_model,
-    model_validator,
 )
 from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.fields import FieldInfo
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import CoreSchema, core_schema
 
 from pydantic_jsonschema._applicators import (
     Applicator,
@@ -53,7 +56,7 @@ from ._field_kwargs import FieldKindType, build_field_kwargs, get_field_default
 from ._metadata import annotate, array_metadata, object_dict_metadata
 from ._object_keywords import build_dependent_required, build_property_count
 from ._refs import DEFS_KEY, get_inline_defs
-from ._utils import before_validator, make_union, unwrap
+from ._utils import make_union, unwrap
 
 __all__ = [
     "SchemaConverter",
@@ -118,6 +121,22 @@ class FormatValidator(Protocol):
         value: PythonType,
     ) -> PythonType:
         """Process the raw value before Pydantic's standard validation."""
+        ...
+
+
+class ObjectApplicator(Protocol):
+    """An object-level applicator (`propertyNames` / `patternProperties` / `dependentSchemas`).
+
+    It validates the raw mapping and re-emits its JSON Schema keyword, letting the converter apply
+    it to an object model uniformly — both for validation and for `model_json_schema()` round-trip.
+    """
+
+    def validate(self, data: PythonType, /) -> PythonType:
+        """Validate the raw mapping, returning it unchanged or raising `ValueError`."""
+        ...
+
+    def json_schema_keyword(self) -> JsonSchemaValue:
+        """Return this applicator's keyword fragment for the dumped JSON Schema."""
         ...
 
 
@@ -217,15 +236,12 @@ class SchemaConverter:
         if issubclass(model, RootModel):
             return model
 
+        applicators: list[ObjectApplicator] = []
         if schema.not_ is not MISSING:
-            model = self._wrap_root_assertion(model, self._build_not(schema), key="_validate_not")
+            applicators.append(self._build_not(schema))
         if self._has_conditional(schema):
-            model = self._wrap_root_assertion(
-                model,
-                self._build_conditional(schema),
-                key="_validate_conditional",
-            )
-        return model
+            applicators.append(self._build_conditional(schema))
+        return self._wrap_object_applicators(model, applicators)
 
     def _register[ApplicatorT: Applicator](
         self,
@@ -375,6 +391,7 @@ class SchemaConverter:
         fields = self._build_fields(schema)
         model_config = self._build_model_config(schema)
         validators = self._build_object_validators(schema)
+        applicators = self._build_object_applicators(schema)
 
         # For some reason, `create_model` "accepts" `fields` values as `tuple[str, Any]`,
         # when in reality it accepts `tuple[type, FieldInfo]`
@@ -387,19 +404,19 @@ class SchemaConverter:
             __validators__=validators,
             **fields,
         )
-        return cast("type[BaseModel]", created_model)
+        return self._wrap_object_applicators(cast("type[BaseModel]", created_model), applicators)
 
     def _build_object_validators(
         self,
         schema: Schema,
         /,
     ) -> dict[str, PythonType]:
-        """Collect the `model_validator`s for an object model from every keyword builder.
+        """Collect the `model_validator`s for an object model's non-applicator keywords.
 
-        Each `_build_*` builder returns a (possibly empty) `__validators__` fragment; merging them
-        yields the full mapping. To support a new object-level keyword, add a builder and spread it
-        here. Stateless builders are `@staticmethod`; converter-aware ones (subschemas need
-        conversion + namespace binding) are instance methods.
+        Covers object keywords with no subschema (`minProperties` / `maxProperties` /
+        `dependentRequired`). Subschema-bearing keywords (`propertyNames` / `patternProperties` /
+        `dependentSchemas`) are object applicators, applied via `_wrap_object_applicators` so they
+        also round-trip into `model_json_schema()`.
 
         :param schema: Object schema to read keywords from.
         :returns: A `create_model(__validators__=...)` mapping (empty when no keyword applies).
@@ -407,80 +424,151 @@ class SchemaConverter:
         return {
             **build_property_count(schema),
             **build_dependent_required(schema),
-            **self._build_dependent_schemas(schema),
-            **self._build_pattern_properties(schema),
-            **self._build_property_names(schema),
         }
+
+    def _build_object_applicators(
+        self,
+        schema: Schema,
+        /,
+    ) -> list[ObjectApplicator]:
+        """Collect the object-level applicators declared on an object schema.
+
+        :param schema: Object schema to read keywords from.
+        :returns: The `dependentSchemas` / `patternProperties` / `propertyNames` applicators
+            present on the schema (empty when none apply).
+        """
+        builders = (
+            self._build_dependent_schemas(schema),
+            self._build_pattern_properties(schema),
+            self._build_property_names(schema),
+        )
+        return [applicator for applicator in builders if applicator is not None]
+
+    def _wrap_object_applicators(
+        self,
+        model: type[BaseModel],
+        applicators: list[ObjectApplicator],
+        /,
+    ) -> type[BaseModel]:
+        """Subclass an object model so its applicators validate and round-trip into JSON Schema.
+
+        Each applicator runs as a `before` validator on the raw mapping and re-emits its keyword
+        via `json_schema_keyword`, both delegated from the subclass's Pydantic hooks. A `ForwardRef`
+        subschema resolves lazily once `bind_namespace` runs, so both hooks fire after binding.
+
+        Why a *subclass* and not `Annotated[model, *applicators]`: object applicators apply to the
+        whole object, so Pydantic must see their hooks on the model itself. `to_model` returns this
+        model as a class the caller instantiates (`User(...)` / `User.model_validate(...)`); an
+        `Annotated[...]` is not a class and cannot be returned as the root model. A nested object
+        (used as a field type) could instead carry the applicators as `Annotated` and skip the
+        subclass, but subclassing covers root and nested through one path. The classmethod hooks are
+        Pydantic's own extension points — subclassing is merely where they get defined for a model
+        built at runtime by `create_model` (which has no place to declare them otherwise).
+
+        :param model: The freshly built object model.
+        :param applicators: Object applicators to attach (the model is returned as-is when empty).
+        :returns: A subclass applying every applicator, or the model unchanged.
+        """
+        if not applicators:
+            return model
+
+        def get_core_schema(
+            _cls: type[BaseModel],
+            source: AnnotationType,
+            handler: GetCoreSchemaHandler,
+        ) -> CoreSchema:
+            schema = handler(source)
+            for applicator in applicators:
+                schema = core_schema.no_info_before_validator_function(applicator.validate, schema)
+            return schema
+
+        def get_json_schema(
+            _cls: type[BaseModel],
+            schema: CoreSchema,
+            handler: GetJsonSchemaHandler,
+        ) -> JsonSchemaValue:
+            json_schema = handler(schema)
+            for applicator in applicators:
+                json_schema.update(applicator.json_schema_keyword())
+            return json_schema
+
+        wrapped = type(
+            model.__name__,
+            (model,),
+            {
+                "__get_pydantic_core_schema__": classmethod(get_core_schema),
+                "__get_pydantic_json_schema__": classmethod(get_json_schema),
+                "__module__": __name__,
+            },
+        )
+        return cast("type[BaseModel]", wrapped)
 
     def _build_dependent_schemas(
         self,
         schema: Schema,
         /,
-    ) -> dict[str, PythonType]:
-        """Build the `dependentSchemas` validator for an object model.
+    ) -> DependentSchemas | None:
+        """Build the `dependentSchemas` applicator for an object model.
 
-        Registers the validator so its `ForwardRef` subschemas (a dependent pointing at a `$ref`)
-        are namespace-bound after the whole schema is converted.
+        Registers it so its `ForwardRef` subschemas (a dependent pointing at a `$ref`) are
+        namespace-bound after the whole schema is converted.
 
         :param schema: Object schema.
-        :returns: A `__validators__` mapping (empty when `dependentSchemas` is absent).
+        :returns: A `DependentSchemas` applicator, or `None` when `dependentSchemas` is absent.
         """
         if schema.dependent_schemas is MISSING:
-            return {}
+            return None
 
         branches: dict[str, PythonType] = {}
         for trigger, sub_schema in schema.dependent_schemas.items():
             with self._track_path(f"dependentSchemas.{trigger}"):
                 branches[trigger] = self._constrained_annotation(sub_schema)
 
-        dependent_schemas = self._register(DependentSchemas(branches=branches))
-        return before_validator("_validate_dependent_schemas", applicator=dependent_schemas)
+        return self._register(DependentSchemas(branches=branches))
 
     def _build_pattern_properties(
         self,
         schema: Schema,
         /,
-    ) -> dict[str, PythonType]:
-        """Build the `patternProperties` validator for an object model.
+    ) -> PatternProperties | None:
+        """Build the `patternProperties` applicator for an object model.
 
-        Registers the validator so its `ForwardRef` subschemas (a pattern value pointing at a
-        `$ref`) are namespace-bound after the whole schema is converted.
+        Registers it so its `ForwardRef` subschemas (a pattern value pointing at a `$ref`) are
+        namespace-bound after the whole schema is converted.
 
         :param schema: Object schema.
-        :returns: A `__validators__` mapping (empty when `patternProperties` is absent).
+        :returns: A `PatternProperties` applicator, or `None` when `patternProperties` is absent.
         """
         if schema.pattern_properties is MISSING:
-            return {}
+            return None
 
         branches: dict[str, PythonType] = {}
         for pattern, sub_schema in schema.pattern_properties.items():
             with self._track_path(f"patternProperties.{pattern}"):
                 branches[pattern] = self._constrained_annotation(sub_schema)
 
-        pattern_properties = self._register(PatternProperties(branches=branches))
-        return before_validator("_validate_pattern_properties", applicator=pattern_properties)
+        return self._register(PatternProperties(branches=branches))
 
     def _build_property_names(
         self,
         schema: Schema,
         /,
-    ) -> dict[str, PythonType]:
-        """Build the `propertyNames` validator for an object model.
+    ) -> PropertyNames | None:
+        """Build the `propertyNames` applicator for an object model.
 
-        Registers the validator so its `ForwardRef` subschema (a `propertyNames` pointing at a
-        `$ref`) is namespace-bound after the whole schema is converted.
+        Registers it so its `ForwardRef` subschema (a `propertyNames` pointing at a `$ref`) is
+        namespace-bound after the whole schema is converted.
 
         :param schema: Object schema.
-        :returns: A `__validators__` mapping (empty when `propertyNames` is absent).
+        :returns: A `PropertyNames` applicator, or `None` when `propertyNames` is absent.
         """
         if schema.property_names is MISSING:
-            return {}
+            return None
 
         with self._track_path("propertyNames"):
             branch = self._constrained_annotation(schema.property_names)
 
-        property_names = self._register(PropertyNames(branch=branch))
-        return before_validator("_validate_property_names", applicator=property_names)
+        return self._register(PropertyNames(branch=branch))
 
     def _build_defs_cache(
         self,
@@ -931,55 +1019,6 @@ class SchemaConverter:
                 else_branch=else_branch,
             )
         )
-
-    def _wrap_root_assertion(
-        self,
-        model: type[BaseModel],
-        applicator: Not | IfThenElse,
-        /,
-        *,
-        key: str,
-    ) -> type[BaseModel]:
-        """Wrap a root object model with a `before` validator enforcing a whole-value assertion.
-
-        A root object is a plain `BaseModel` with no host annotation, so `not` / `if` / `then` /
-        `else` cannot ride along as `Annotated` metadata (the path used for every other shape).
-        Instead the applicator's `check` runs as a `before` model validator on the raw input.
-
-        :param model: The root object `BaseModel`.
-        :param applicator: The whole-value applicator (`Not` or `IfThenElse`), already registered.
-        :param key: The `__validators__` key for the validator.
-        :returns: A subclass of `model` applying the assertion.
-        """
-
-        def _check(data: PythonType) -> PythonType:
-            return applicator.check(data)
-
-        return self._wrap_root_before(model, key=key, check=_check)
-
-    @staticmethod
-    def _wrap_root_before(
-        model: type[BaseModel],
-        /,
-        *,
-        key: str,
-        check: PythonType,
-    ) -> type[BaseModel]:
-        """Subclass a root object model, attaching one `before` model validator.
-
-        :param model: The root object `BaseModel`.
-        :param key: The `__validators__` key for the validator.
-        :param check: The `(data) -> data` validation function.
-        :returns: A subclass of `model` with the validator attached.
-        """
-        validators: dict[str, PythonType] = {key: model_validator(mode="before")(check)}
-        wrapped = create_model(
-            model.__name__,
-            __base__=model,
-            __module__=__name__,
-            __validators__=validators,
-        )
-        return cast("type[BaseModel]", wrapped)
 
     def _reference_annotation(
         self,

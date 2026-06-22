@@ -59,13 +59,18 @@ class IfThenElse(Applicator):
     ) -> JsonSchemaValue:
         """Restore the `if` / `then` / `else` keywords on dump."""
         json_schema = handler(schema)
-        if_adapter = self._build_adapters()
-        json_schema["if"] = if_adapter.json_schema()
-        if self._then_adapter is not None:
-            json_schema["then"] = self._then_adapter.json_schema()
-        if self._else_adapter is not None:
-            json_schema["else"] = self._else_adapter.json_schema()
+        json_schema.update(self.json_schema_keyword())
         return json_schema
+
+    def json_schema_keyword(self) -> JsonSchemaValue:
+        """Return the `if` / `then` / `else` keyword fragment for the dumped JSON Schema."""
+        if_adapter = self._build_adapters()
+        keyword: JsonSchemaValue = {"if": if_adapter.json_schema()}
+        if self._then_adapter is not None:
+            keyword["then"] = self._then_adapter.json_schema()
+        if self._else_adapter is not None:
+            keyword["else"] = self._else_adapter.json_schema()
+        return keyword
 
     def _build_adapters(self) -> TypeAdapter[AnnotationType]:
         """Build the `if` / `then` / `else` adapters on first use (caches across calls).
@@ -83,7 +88,7 @@ class IfThenElse(Applicator):
             self._else_adapter = self._build_adapter(self._else)
         return if_adapter
 
-    def check(
+    def validate(
         self,
         value: AnnotationType,
         /,
@@ -118,5 +123,5 @@ class IfThenElse(Applicator):
         :returns: The validated value.
         :raises ValueError: When the conditional check fails.
         """
-        self.check(value)
+        self.validate(value)
         return handler(value)

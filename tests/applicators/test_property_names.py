@@ -69,3 +69,23 @@ class TestPropertyNames:
                 }
             ]
         )
+
+
+class TestPropertyNamesJsonSchema:
+    """`propertyNames` round-trips into the dumped JSON Schema."""
+
+    def test_property_names_round_trips(self) -> None:
+        """A converted model re-emits its `propertyNames` keyword on `model_json_schema()`."""
+        model = to_model(
+            Schema.model_validate({"type": "object", "propertyNames": {"pattern": "^[a-z]+$"}})
+        )
+
+        assert model.model_json_schema() == snapshot(
+            {
+                "additionalProperties": True,
+                "properties": {},
+                "propertyNames": {},
+                "title": "Model",
+                "type": "object",
+            }
+        )

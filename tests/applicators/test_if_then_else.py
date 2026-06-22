@@ -238,3 +238,30 @@ class TestIfThenElseJsonSchema:
                 "type": "integer",
             }
         )
+
+    def test_if_then_root_object_round_trips(self) -> None:
+        """A root-object `if`/`then` (applied via the model wrapper) also re-emits its keywords."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "properties": {"country": {"type": "string"}, "zip": {"type": "string"}},
+                    "if": {"properties": {"country": {"const": "US"}}, "required": ["country"]},
+                    "then": {"required": ["zip"]},
+                }
+            )
+        )
+
+        assert model.model_json_schema() == snapshot(
+            {
+                "additionalProperties": True,
+                "if": {},
+                "properties": {
+                    "country": {"title": "Country", "type": "string"},
+                    "zip": {"title": "Zip", "type": "string"},
+                },
+                "then": {},
+                "title": "Model",
+                "type": "object",
+            }
+        )
