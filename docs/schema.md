@@ -299,5 +299,5 @@ print(dumped["x-order"])
 ## Next Steps
 
 - [Converters](converters.md) - Convert schemas to Pydantic models
-- [Format Validators](formats.md) - Add validation for `format` values
+- [Formats](formats.md) - Add validation for `format` values
 - [API Reference](api/types.md) - Full API docs for schema types

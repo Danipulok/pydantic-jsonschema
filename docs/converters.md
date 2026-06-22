@@ -118,7 +118,7 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | `dependentSchemas`                           | conditionally applied object subschema      | `DependentSchemas` validator        |
 | `patternProperties`                          | regex-keyed property-value subschemas       | `PatternProperties` validator       |
 | `propertyNames`                              | schema every property name must match       | `PropertyNames` validator           |
-| `format` with validators                     | configured format validation                | see [Format Validators](formats.md) |
+| `format` with validators                     | configured format validation                | see [Formats](formats.md)           |
 | `title`, `model_name`, `default_model_name`  | generated class name                        | `User`, `CustomUser`, `Model`       |
 
 ## Unsupported Keywords
@@ -138,9 +138,9 @@ but do not affect the generated model.
   branch is validated as a plain `dict[str, Any]` — sibling `properties` are not applied.
 - On objects that declare both `properties` and a schema-valued `additionalProperties`,
   extra fields are accepted (`extra="allow"`) but their values are not validated against the `additionalProperties` schema.
-- `format` is metadata unless a matching entry is passed in `format_validators` — see [Format Validators](formats.md).
+- `format` is metadata unless a matching entry is passed in `format_validators` — see [Formats](formats.md).
   Built-in aliases cover all 19 spec-defined formats;
-  `idn-*` formats use the stdlib IDNA 2003 codec and `regex` uses the Python `re` dialect (see the differences from the specification in [Format Validators](formats.md)).
+  `idn-*` formats use the stdlib IDNA 2003 codec and `regex` uses the Python `re` dialect (see the differences from the specification in [Formats](formats.md)).
 - `not` is only as precise as the converter's coverage of its subschema. A subschema that maps to
   `Any` (an empty schema, or `required` without `type` / `properties`) matches every value, so
   `not` then rejects everything.
@@ -658,5 +658,5 @@ print(Model.__name__)
 
 ## Next Steps
 
-- [Format Validators](formats.md) - Add custom validation for special formats
+- [Formats](formats.md) - Add custom validation for special formats
 - [Examples](examples.md) - See real-world applications

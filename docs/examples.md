@@ -42,7 +42,7 @@ Great article!
 --8<-- "examples/nested_schemas.py"
 ```
 
-## Custom Format Validators
+## Custom Formats
 
 Use this example when JSON Schema `format` values need project-specific validation.
 
@@ -73,5 +73,5 @@ WDG-1234-PRO
 ## Next Steps
 
 - [Converters](converters.md) - Learn about creating models
-- [Format Validators](formats.md) - Add custom validation
+- [Formats](formats.md) - Add custom validation
 - [Contributing](contributing.md) - Help improve the library

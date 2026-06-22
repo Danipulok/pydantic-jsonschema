@@ -1,4 +1,4 @@
-# Format Validators
+# Formats
 
 JSON Schema `format` values describe semantic constraints such as email addresses, UUIDs, URIs, or
 domain-specific identifiers. Pydantic JSON Schema only enforces those constraints when you pass a
