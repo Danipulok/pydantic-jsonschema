@@ -1,7 +1,7 @@
 """Built-in JSON Schema format types.
 
 All format types are defined as Pydantic-compatible type aliases using `Annotated`.
-These types can be used in schemas or passed as `format_validators` to `SchemaConverter`.
+These types can be used in schemas or passed as `formats` to `SchemaConverter`.
 """
 
 import uuid

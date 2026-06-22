@@ -44,7 +44,7 @@ product_schema = Schema.model_validate(
 
 Product = to_model(
     product_schema,
-    format_validators={
+    formats={
         "sku": validate_sku,
         "price": validate_price,
     },

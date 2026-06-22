@@ -94,7 +94,7 @@ schema = Schema.model_validate({
     "required": ["email"],
 })
 
-User = to_model(schema, format_validators={"email": Email})
+User = to_model(schema, formats={"email": Email})
 
 print(User(email="alice@example.com").email)
 #> alice@example.com

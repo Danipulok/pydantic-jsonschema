@@ -2,7 +2,7 @@
 
 JSON Schema `format` values describe semantic constraints such as email addresses, UUIDs, URIs, or
 domain-specific identifiers. Pydantic JSON Schema only enforces those constraints when you pass a
-matching entry in `format_validators`.
+matching entry in `formats`.
 
 Without a matching validator, `format` is treated as metadata and the normal JSON Schema type still
 applies.
@@ -16,9 +16,9 @@ See [Installation](install.md#third-party-validator-libraries) for the install c
 
 ## Basic Usage
 
-The key in `format_validators` must match the schema's `format` value.
+The key in `formats` must match the schema's `format` value.
 
-```python title="format_validators.py"
+```python title="formats.py"
 from pydantic import ValidationError
 
 from pydantic_jsonschema import Schema, to_model
@@ -41,7 +41,7 @@ print(loose_user.email)
 
 StrictUser = to_model(
     schema,
-    format_validators={
+    formats={
         "email": Email,
         "uuid": UUID,
     },
@@ -64,7 +64,7 @@ except ValidationError as er:
 ## Provided Format Aliases
 
 The `pydantic_jsonschema.formats` module exports aliases that can be passed to
-`format_validators`.
+`formats`.
 
 | JSON Schema `format`    | Alias                 | Validates                                                    |
 |-------------------------|-----------------------|--------------------------------------------------------------|
@@ -111,7 +111,7 @@ schema = Schema.model_validate(
 
 User = to_model(
     schema,
-    format_validators={
+    formats={
         "email": Email,
         "uri": Uri,
         "date-time": DateTime,
@@ -132,7 +132,7 @@ print(type(user.created_at).__name__)
 
 ## Third-Party Pydantic Types
 
-If you want to use third-party or custom format validators, you can pass them via `format_validators`.
+If you want to use third-party or custom format validators, you can pass them via `formats`.
 Here's an example involving `pydantic-extra-types` package.
 
 ```python title="extra_types.py"
@@ -153,7 +153,7 @@ schema = Schema.model_validate(
 
 Checkout = to_model(
     schema,
-    format_validators={
+    formats={
         "payment-card": PaymentCardNumber,
         "color": Color,
     },
@@ -213,7 +213,7 @@ schema = Schema.model_validate(
     }
 )
 
-Product = to_model(schema, format_validators={"sku": validate_sku})
+Product = to_model(schema, formats={"sku": validate_sku})
 
 product = Product(sku="abc-1234-xyz")
 print(product.sku)
@@ -228,7 +228,7 @@ except ValidationError as er:
 
 ## Validator Types
 
-`format_validators` accepts these validator forms:
+`formats` accepts these validator forms:
 
 | Validator form   | Example                    | Behavior                                                       |
 |------------------|----------------------------|----------------------------------------------------------------|
@@ -252,7 +252,7 @@ def normalize_phone(value: JsonValue) -> str:
     return f"({digits[:3]}) {digits[3:6]}-{digits[6:]}"
 
 
-format_validators = {"phone": normalize_phone}
+formats = {"phone": normalize_phone}
 ```
 
 ### Pydantic Types
@@ -261,7 +261,7 @@ format_validators = {"phone": normalize_phone}
 from pydantic import HttpUrl
 from pydantic_extra_types.color import Color
 
-format_validators = {
+formats = {
     "color": Color,
     "url": HttpUrl,
 }
@@ -285,7 +285,7 @@ PositivePrice = Annotated[
     AfterValidator(round_price),
 ]
 
-format_validators = {"price": PositivePrice}
+formats = {"price": PositivePrice}
 ```
 
 ## Execution Order
