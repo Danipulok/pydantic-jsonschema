@@ -7,12 +7,12 @@ from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 
-from ._base import AnnotationType, Applicator
+from ._base import AnnotationApplicator, AnnotationType, ObjectApplicator
 
 __all__ = ["Not"]
 
 
-class Not(Applicator):
+class Not(AnnotationApplicator, ObjectApplicator):
     """Enforce JSON Schema `not`: the instance must NOT validate against the subschema.
 
     Used two ways, both checking the *raw* input (before the host type coerces it):

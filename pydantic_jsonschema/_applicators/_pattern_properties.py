@@ -8,12 +8,12 @@ import re
 from pydantic import TypeAdapter
 from pydantic.json_schema import JsonSchemaValue
 
-from ._base import AnnotationType, Applicator
+from ._base import AnnotationType, ObjectApplicator
 
 __all__ = ["PatternProperties"]
 
 
-class PatternProperties(Applicator):
+class PatternProperties(ObjectApplicator):
     """Enforce JSON Schema `patternProperties`: regex-keyed property-value subschemas.
 
     Every property whose name matches a regex must have a value validating against that regex's
