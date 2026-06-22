@@ -49,10 +49,10 @@ from pydantic_jsonschema.types import DataType, Reference, Schema
 
 from ._discriminator import discriminator_property
 from ._field_kwargs import FieldKindType, build_field_kwargs, get_field_default
-from ._helpers import before_validator, make_union, unwrap
 from ._metadata import annotate, array_metadata, object_dict_metadata
 from ._object_keywords import build_dependent_required, build_property_count
 from ._refs import DEFS_KEY, get_inline_defs
+from ._utils import before_validator, make_union, unwrap
 
 __all__ = [
     "SchemaConverter",

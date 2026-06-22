@@ -1,4 +1,4 @@
-"""Small shared helpers for the converter package."""
+"""Small shared utilities for the converter package."""
 
 # NOTE: `Schema` fields use `X | MISSING` unions (see `_schema.py`). mypy doesn't
 # recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch

@@ -12,7 +12,7 @@ from pydantic.experimental.missing_sentinel import MISSING
 
 from pydantic_jsonschema.types import DataType, Schema
 
-from ._helpers import unwrap
+from ._utils import unwrap
 
 __all__ = [
     "FieldKindType",
