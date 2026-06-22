@@ -76,12 +76,13 @@ nav:
   - Installation: install.md
   - Schema: schema.md
   - Converters: converters.md
+  - Applicators: applicators.md
   - Format Validators: formats.md
   - Examples: examples.md
   - API Reference:
     - Schema model: api/types.md
     - Converters: api/converters.md
-    - OneOf: api/one_of.md
+    - Applicators: api/applicators.md
     - Format validators: api/formats.md
     - Exceptions: api/exceptions.md
   - Development:
