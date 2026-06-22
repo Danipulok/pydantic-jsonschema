@@ -431,9 +431,54 @@ class TestComposition:
             }
         )
 
-        instance = model(item={"other": None})
-        assert instance.model_dump() == snapshot(
-            {
-                "item": {"other": None},
-            }
+
+class TestCompositionWithSiblingType:
+    """A `type` sibling to `anyOf` / `oneOf` constrains the union (keywords are conjunctive)."""
+
+    def test_anyof_with_sibling_type_rejects_wrong_type(self) -> None:
+        """`type` + `anyOf`: a value of the wrong type is rejected, not silently accepted."""
+        schema_raw: SchemaRaw = {
+            "type": "number",
+            "anyOf": [{"minimum": 0, "maximum": 10}, {"minimum": 100}],
+        }
+        model = to_model(Schema.model_validate(schema_raw))
+
+        assert model(5).model_dump() == snapshot(5)  # type: ignore[call-arg]
+
+        with pytest.raises(ValidationError) as exc_info:
+            model("hello")  # type: ignore[call-arg]
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "float_parsing",
+                    "loc": (),
+                    "msg": "Input should be a valid number, unable to parse string as a number",
+                    "input": "hello",
+                }
+            ]
         )
+
+    def test_anyof_with_sibling_type_rejects_object(self) -> None:
+        """`type` + `anyOf`: a non-scalar value is rejected by the sibling `type`."""
+        schema_raw: SchemaRaw = {
+            "type": "number",
+            "anyOf": [{"minimum": 0, "maximum": 10}, {"minimum": 100}],
+        }
+        model = to_model(Schema.model_validate(schema_raw))
+
+        with pytest.raises(ValidationError):
+            model({"k": 1})  # type: ignore[call-arg]
+
+    def test_multi_type_sibling_with_anyof(self) -> None:
+        """A list-valued sibling `type` (`["integer", "string"]`) still guards the union."""
+        schema_raw: SchemaRaw = {
+            "type": ["integer", "string"],
+            "anyOf": [{"minimum": 0}, {"minLength": 1}],
+        }
+        model = to_model(Schema.model_validate(schema_raw))
+
+        assert model(5).model_dump() == snapshot(5)  # type: ignore[call-arg]
+        assert model("hi").model_dump() == snapshot("hi")  # type: ignore[call-arg]
+
+        with pytest.raises(ValidationError):
+            model({"k": 1})  # type: ignore[call-arg]

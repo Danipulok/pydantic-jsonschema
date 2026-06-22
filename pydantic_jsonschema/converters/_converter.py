@@ -26,6 +26,7 @@ from pydantic import (
     ConfigDict,
     Field,
     RootModel,
+    TypeAdapter,
     create_model,
     model_validator,
 )
@@ -787,6 +788,54 @@ class SchemaConverter:
 
         return annotation
 
+    def _apply_sibling_type(
+        self,
+        annotation: type,
+        schema: Schema,
+        /,
+    ) -> type:
+        """Enforce a `type` declared alongside `anyOf` / `oneOf` / `allOf`.
+
+        JSON Schema applies all keywords conjunctively, so a value must satisfy both the
+        composition and the sibling `type`. Pydantic has no intersection type, so the sibling
+        `type` runs as a `before`-validator over the composition union; without this the `type`
+        is silently dropped and the union accepts values of any type.
+
+        :param annotation: The composition annotation (union / nested model).
+        :param schema: The schema carrying both a composition keyword and a possible `type`.
+        :returns: The annotation, wrapped to also enforce the sibling `type` when one is present.
+        """
+        if schema.type is MISSING:
+            return annotation
+
+        adapter: TypeAdapter[PythonType] = TypeAdapter(self._host_type_guard(schema))
+
+        def _check(value: PythonType) -> PythonType:
+            adapter.validate_python(value)
+            return value
+
+        return cast("type", Annotated[annotation, BeforeValidator(_check)])
+
+    @staticmethod
+    def _host_type_guard(
+        schema: Schema,
+        /,
+    ) -> type:
+        """Map the sibling `type` to a plain JSON-type guard.
+
+        Unlike `_type_annotation`, this only checks the value's JSON type — it does not build a
+        nested model or attach array applicators, since it guards a value already shaped by the
+        composition.
+
+        :param schema: Schema whose `type` is set (single `DataType` or a list).
+        :returns: A type (or union of types) to validate the value's JSON type against.
+        """
+        if isinstance(schema.type, DataType):
+            return _DATA_TYPE_ANNOTATION_MAPPING[schema.type]
+
+        union_args = [_DATA_TYPE_ANNOTATION_MAPPING[data_type] for data_type in schema.type]
+        return make_union(union_args)
+
     def _constrained_annotation(
         self,
         schema: Schema | Reference,
@@ -970,23 +1019,25 @@ class SchemaConverter:
     ) -> type | None:
         """Convert `anyOf` / `oneOf` / `allOf` composition to an annotation.
 
+        A `type` declared alongside the composition is enforced too — JSON Schema applies all
+        keywords conjunctively (see `_apply_sibling_type`).
+
         :param schema: Schema to convert.
         :returns: Annotation, or `None` if the schema has no composition keyword.
         """
         # `anyOf` -> `Union`:
         if schema.any_of is not MISSING:
-            union_args = self._union_args(schema.any_of, kind="anyOf")
-            return make_union(union_args)
-
+            annotation: type = make_union(self._union_args(schema.any_of, kind="anyOf"))
         # `oneOf` -> discriminated union or exactly-one-branch validation:
-        if schema.one_of is not MISSING:
-            return self._one_of_annotation(schema)
-
+        elif schema.one_of is not MISSING:
+            annotation = self._one_of_annotation(schema)
         # `allOf` -> nested model:
-        if schema.all_of is not MISSING:
-            return self._convert_nested_schema(schema)
+        elif schema.all_of is not MISSING:
+            annotation = self._convert_nested_schema(schema)
+        else:
+            return None
 
-        return None
+        return self._apply_sibling_type(annotation, schema)
 
     def _one_of_annotation(
         self,
