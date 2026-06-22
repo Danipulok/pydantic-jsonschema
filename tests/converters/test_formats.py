@@ -1,4 +1,4 @@
-"""Tests for `format` validators."""
+"""Tests for the `formats` parameter."""
 
 from datetime import UTC, datetime
 from ipaddress import IPv4Address
@@ -25,8 +25,8 @@ if TYPE_CHECKING:
 __all__: list[str] = []
 
 
-class TestFormatValidators:
-    """Tests for `format_validators` support: custom validators and built-in aliases."""
+class TestFormats:
+    """Tests for `formats` support: custom validators and built-in aliases."""
 
     def test_annotated_validator_basic(self) -> None:
         """Test basic Annotated type as validator."""
@@ -45,7 +45,7 @@ class TestFormatValidators:
             "required": ["count"],
         }
         schema = Schema.model_validate(schema_raw)
-        model = to_model(schema, format_validators={"positive": PositiveInt})
+        model = to_model(schema, formats={"positive": PositiveInt})
 
         instance = model(count=5)
         assert instance.model_dump() == snapshot({"count": 5})
@@ -84,7 +84,7 @@ class TestFormatValidators:
             "required": ["count"],
         }
         schema = Schema.model_validate(schema_raw)
-        model = to_model(schema, format_validators={"doubled-even": DoubledEvenInt})
+        model = to_model(schema, formats={"doubled-even": DoubledEvenInt})
 
         instance = model(count=3)
         assert instance.model_dump() == snapshot({"count": 6})
@@ -107,7 +107,7 @@ class TestFormatValidators:
             "required": ["email"],
         }
         schema = Schema.model_validate(schema_raw)
-        model = to_model(schema, format_validators={"email-simple": validate_email_simple})  # type: ignore[dict-item]
+        model = to_model(schema, formats={"email-simple": validate_email_simple})  # type: ignore[dict-item]
 
         instance = model(email="test@example.com")
         assert instance.model_dump() == snapshot({"email": "test@example.com"})
@@ -154,7 +154,7 @@ class TestFormatValidators:
         schema = Schema.model_validate(schema_raw)
         model = to_model(
             schema,
-            format_validators={"positive": PositiveInt, "uppercase": validate_uppercase},  # type: ignore[dict-item]
+            formats={"positive": PositiveInt, "uppercase": validate_uppercase},  # type: ignore[dict-item]
         )
 
         instance = model(count=5, code="ABC")
@@ -224,7 +224,7 @@ class TestFormatValidators:
             "required": ["field"],
         }
         schema = Schema.model_validate(schema_raw)
-        model = to_model(schema, format_validators={"custom": CustomType})
+        model = to_model(schema, formats={"custom": CustomType})
 
         instance = model(field="custom:value")
         assert instance.model_dump() == snapshot(
@@ -248,7 +248,7 @@ class TestFormatValidators:
         schema = Schema.model_validate(schema_raw)
         model = to_model(
             schema,
-            format_validators={
+            formats={
                 "date-time": datetime,
                 "email": Email,
                 "uuid": UUID_FORMAT,
@@ -283,7 +283,7 @@ class TestFormatValidators:
             "required": ["email"],
         }
         schema = Schema.model_validate(schema_raw)
-        model = to_model(schema, format_validators={"email": Email})
+        model = to_model(schema, formats={"email": Email})
 
         instance = model(email="alice@example.com")
         assert instance.model_dump() == snapshot(
@@ -305,7 +305,7 @@ class TestFormatValidators:
             "required": ["created_at"],
         }
         schema = Schema.model_validate(schema_raw)
-        model = to_model(schema, format_validators={"date-time": DateTime})
+        model = to_model(schema, formats={"date-time": DateTime})
 
         instance = model(created_at="2024-01-15T10:30:00Z")
 
@@ -335,7 +335,7 @@ class TestFormatValidators:
             "required": ["id"],
         }
         schema = Schema.model_validate(schema_raw)
-        model = to_model(schema, format_validators={"uuid": UUID_FORMAT})
+        model = to_model(schema, formats={"uuid": UUID_FORMAT})
 
         instance = model(id="550e8400-e29b-41d4-a716-446655440000")
         assert instance.model_dump() == snapshot(
@@ -357,7 +357,7 @@ class TestFormatValidators:
             "required": ["ip"],
         }
         schema = Schema.model_validate(schema_raw)
-        model = to_model(schema, format_validators={"ipv4": IPv4})
+        model = to_model(schema, formats={"ipv4": IPv4})
 
         instance = model(ip="192.168.1.1")
         assert instance.model_dump() == snapshot(
@@ -379,7 +379,7 @@ class TestFormatValidators:
             "required": ["website"],
         }
         schema = Schema.model_validate(schema_raw)
-        model = to_model(schema, format_validators={"uri": Uri})
+        model = to_model(schema, formats={"uri": Uri})
 
         instance = model(website="https://example.com")
         assert instance.model_dump() == snapshot(
@@ -407,7 +407,7 @@ class TestFormatValidators:
         schema = Schema.model_validate(schema_raw)
         model = to_model(
             schema,
-            format_validators={
+            formats={
                 "email": Email,
                 "uri": Uri,
                 "date-time": DateTime,

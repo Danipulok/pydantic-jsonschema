@@ -138,7 +138,7 @@ but do not affect the generated model.
   branch is validated as a plain `dict[str, Any]` — sibling `properties` are not applied.
 - On objects that declare both `properties` and a schema-valued `additionalProperties`,
   extra fields are accepted (`extra="allow"`) but their values are not validated against the `additionalProperties` schema.
-- `format` is metadata unless a matching entry is passed in `format_validators` — see [Formats](formats.md).
+- `format` is metadata unless a matching entry is passed in `formats` — see [Formats](formats.md).
   Built-in aliases cover all 19 spec-defined formats;
   `idn-*` formats use the stdlib IDNA 2003 codec and `regex` uses the Python `re` dialect (see the differences from the specification in [Formats](formats.md)).
 - `not` is only as precise as the converter's coverage of its subschema. A subschema that maps to
@@ -633,7 +633,7 @@ from pydantic_jsonschema import Schema, SchemaConverter
 converter = SchemaConverter(
     default_model_name="MyModel",
     refs={},
-    format_validators={},
+    formats={},
 )
 schema = Schema.model_validate({})
 
@@ -652,9 +652,9 @@ print(Model.__name__)
 |-------------------------------------------|--------------------------------------|--------------------------------------------------------------|
 | One generated model                       | `to_model(schema, model_name="...")` | Shortest path and clear class name                           |
 | Existing model for a `$ref`               | `refs={"#/$defs/Name": Model}`       | Keeps generated models connected to your own classes         |
-| Repeated conversions with shared settings | `SchemaConverter(...)`               | Reuses `refs`, `format_validators`, and `default_model_name` |
+| Repeated conversions with shared settings | `SchemaConverter(...)`               | Reuses `refs`, `formats`, and `default_model_name`           |
 | Clear validation errors                   | `model_name` or schema `title`       | Avoids generic `Model` in error output                       |
-| Custom `format` handling                  | `format_validators`                  | Adds validation for strings or domain-specific values        |
+| Custom `format` handling                  | `formats`                            | Adds validation for strings or domain-specific values        |
 
 ## Next Steps
 
