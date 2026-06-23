@@ -1,6 +1,5 @@
 """Test that code examples in documentation work correctly."""
 
-from collections.abc import Iterable
 from pathlib import Path
 from typing import Final, Literal
 
@@ -22,7 +21,7 @@ def get_example_files() -> list[Path]:
     return sorted(path for path in examples_dir.glob("*.py") if path.name != "__init__.py")
 
 
-def get_examples() -> Iterable[CodeExample]:
+def get_examples() -> list[CodeExample]:
     """Find all Python code examples in documentation files.
 
     :returns: A list of Python code examples.
@@ -33,7 +32,11 @@ def get_examples() -> Iterable[CodeExample]:
     # NOTE: `examples.md` uses `--8<--` file inclusion, so its code blocks are not standalone.
     paths = [readme, *(path for path in docs_dir.glob("*.md") if path.name != "examples.md")]
 
-    return find_examples(*paths)
+    # NOTE: `list(...)` is required — `find_examples` returns a generator, and `parametrize`
+    # deprecated non-`Collection` iterables (`PytestRemovedIn10Warning`, surfaced by the ceiling
+    # test on a newer pytest). Reproduce:
+    #   uv run --upgrade pytest -W error -q   # -> error during collection of `tests/test_docs.py`
+    return list(find_examples(*paths))
 
 
 @pytest.mark.parametrize("example", get_examples(), ids=str)
