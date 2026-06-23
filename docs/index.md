@@ -100,6 +100,7 @@ print(post.author.name)
 - [Installation](install.md) - Install the package and third-party validator libraries
 - [Schema](schema.md) - Schema models, fields, and serialization
 - [Converters](converters.md) - Learn how schema conversion works
+- [Applicators](applicators.md) - Validate `not`, `oneOf`, `if`/`then`/`else`, and other subschema keywords
 - [Formats](formats.md) - Add validation for JSON Schema `format` values
 - [Examples](examples.md) - Run complete examples
 - [Contributing](contributing.md) - Help improve the library
