@@ -20,6 +20,7 @@ jobs:
   title:
     name: Validate PR title
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       # NOTE: PR title must follow Conventional Commits because squash-merge
