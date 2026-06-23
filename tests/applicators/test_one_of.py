@@ -1,44 +1,42 @@
-"""Tests for the `OneOf` exactly-one-branch validator."""
-
-from typing import Annotated, ForwardRef
+"""Tests for the `oneOf` applicator."""
 
 import pytest
 from inline_snapshot import snapshot
-from pydantic import BaseModel, TypeAdapter, ValidationError
+from pydantic import ValidationError
 
-from pydantic_jsonschema import Schema, to_model
-from pydantic_jsonschema.applicators import OneOf
+from pydantic_jsonschema import to_model
+from pydantic_jsonschema.types import Schema
 from tests.conftest import dump_errors
 
 __all__: list[str] = []
 
 
-class Pet(BaseModel):
-    """Sample model used as a `ForwardRef` target."""
+class TestOneOf:
+    """Tests for `oneOf` enforcement: a value must match exactly one branch.
 
-    name: str
+    A plain Python `Union` accepts a value matching *any* branch, so the converter wraps
+    non-discriminated `oneOf` in a validator that counts matching branches and rejects a value
+    matching zero or more than one. (Object branches tagged by a shared constant promote to a
+    native discriminated union instead — see `tests/converters/test_discriminator.py`.)
+    """
 
+    def test_exactly_one_branch_accepted(self) -> None:
+        """A value matching exactly one branch is accepted; matching several is rejected."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"value": {"oneOf": [{"type": "integer"}, {"type": "number"}]}},
+                "required": ["value"],
+            }
+        )
+        model = to_model(schema)
 
-class TestOneOfValidation:
-    """Validation semantics: exactly one branch must match."""
+        # `1.5` is not a valid integer, so it matches only the `number` branch.
+        assert model.model_validate({"value": 1.5}).model_dump() == snapshot({"value": 1.5})
 
-    def test_single_match_accepted(self) -> None:
-        """Value matching exactly one branch is accepted."""
-
-        class Model(BaseModel):
-            value: Annotated[int | float, OneOf(branches=[int, float])]
-
-        instance = Model(value=1.5)
-        assert instance.value == snapshot(1.5)
-
-    def test_multiple_matches_rejected(self) -> None:
-        """Value matching more than one branch is rejected."""
-
-        class Model(BaseModel):
-            value: Annotated[int | float, OneOf(branches=[int, float])]
-
+        # `1` validates as both `integer` and `number`, so it matches two branches.
         with pytest.raises(ValidationError) as exc_info:
-            Model(value=1)
+            model.model_validate({"value": 1})
 
         assert dump_errors(exc_info.value) == snapshot(
             [
@@ -52,13 +50,18 @@ class TestOneOfValidation:
         )
 
     def test_zero_matches_rejected(self) -> None:
-        """Value matching no branch is rejected."""
-
-        class Model(BaseModel):
-            value: Annotated[str | bool, OneOf(branches=[str, bool])]
+        """A value matching no branch is rejected."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"value": {"oneOf": [{"type": "integer"}, {"type": "number"}]}},
+                "required": ["value"],
+            }
+        )
+        model = to_model(schema)
 
         with pytest.raises(ValidationError) as exc_info:
-            Model(value=[1, 2, 3])
+            model.model_validate({"value": "text"})
 
         assert dump_errors(exc_info.value) == snapshot(
             [
@@ -66,30 +69,20 @@ class TestOneOfValidation:
                     "type": "value_error",
                     "loc": ("value",),
                     "msg": "Value error, Input matches 0 `oneOf` branches, expected exactly 1",
-                    "input": [1, 2, 3],
+                    "input": "text",
                 }
             ]
         )
 
-    def test_branches_accept_any_iterable(self) -> None:
-        """`branches` accepts any iterable, not only sequences."""
-        one_of = OneOf(branches=iter([int, str]))
+    def test_one_of_scalar_root(self) -> None:
+        """`oneOf` on a scalar root value enforces exactly-one-branch semantics."""
+        schema = Schema.model_validate({"oneOf": [{"type": "integer"}, {"type": "number"}]})
+        model = to_model(schema)
 
-        class Model(BaseModel):
-            value: Annotated[int | str, one_of]
-
-        instance = Model(value="text")
-        assert instance.value == snapshot("text")
-
-    def test_as_annotation(self) -> None:
-        """`as_annotation` builds a self-contained validated union annotation."""
-        one_of = OneOf(branches=[int, float])
-        adapter: TypeAdapter[int | float] = TypeAdapter(one_of.as_annotation())
-
-        assert adapter.validate_python(1.5) == snapshot(1.5)
+        assert model.model_validate(1.5).model_dump() == snapshot(1.5)
 
         with pytest.raises(ValidationError) as exc_info:
-            adapter.validate_python(1)
+            model.model_validate(1)
 
         assert dump_errors(exc_info.value) == snapshot(
             [
@@ -102,88 +95,67 @@ class TestOneOfValidation:
             ]
         )
 
-    def test_forward_ref_branch_resolved_after_binding(self) -> None:
-        """`ForwardRef` branches resolve through the bound namespace."""
-        one_of = OneOf(branches=[ForwardRef("Pet"), type(None)])
-        one_of.bind_namespace({"Pet": Pet})
-
-        class Model(BaseModel):
-            value: Annotated[Pet | None, one_of]
-
-        instance = Model(value={"name": "Rex"})
-        assert instance.value == snapshot(Pet(name="Rex"))
-
-        instance = Model(value=None)
-        assert instance.value is None
-
-
-class TestOneOfJsonSchema:
-    """JSON Schema dump: `oneOf` round-trips instead of `anyOf`."""
-
-    def test_dump_uses_one_of(self) -> None:
-        """Union branches dump as `oneOf`."""
-
-        class Model(BaseModel):
-            value: Annotated[int | float, OneOf(branches=[int, float])]
-
-        assert Model.model_json_schema() == snapshot(
-            {
-                "properties": {
-                    "value": {
-                        "oneOf": [{"type": "integer"}, {"type": "number"}],
-                        "title": "Value",
-                    }
-                },
-                "required": ["value"],
-                "title": "Model",
-                "type": "object",
-            }
-        )
-
-    def test_single_branch_dump_has_no_union(self) -> None:
-        """Single-branch `oneOf` dumps as the plain branch schema."""
-
-        class Model(BaseModel):
-            value: Annotated[str, OneOf(branches=[str])]
-
-        assert Model.model_json_schema() == snapshot(
-            {
-                "properties": {"value": {"title": "Value", "type": "string"}},
-                "required": ["value"],
-                "title": "Model",
-                "type": "object",
-            }
-        )
-
-    def test_converted_model_dump_round_trips_one_of(self) -> None:
-        """Model converted from a `oneOf` schema dumps `oneOf` back."""
+    def test_one_of_ref_branch(self) -> None:
+        """A recursive `$ref` branch resolves lazily through the bound namespace."""
         schema = Schema.model_validate(
             {
                 "type": "object",
-                "properties": {
-                    "value": {
-                        "oneOf": [
-                            {"type": "integer"},
-                            {"type": "number"},
-                        ],
+                "properties": {"tree": {"$ref": "#/$defs/Node"}},
+                "required": ["tree"],
+                "$defs": {
+                    "Node": {
+                        "type": "object",
+                        "properties": {
+                            "value": {"type": "integer"},
+                            "next": {"oneOf": [{"$ref": "#/$defs/Node"}, {"type": "null"}]},
+                        },
+                        "required": ["value"],
                     },
                 },
-                "required": ["value"],
             }
         )
         model = to_model(schema)
 
-        assert model.model_json_schema() == snapshot(
-            {
-                "additionalProperties": True,
-                "properties": {
-                    "value": {
-                        "oneOf": [{"type": "integer"}, {"type": "number"}],
-                        "title": "Value",
-                    }
-                },
-                "required": ["value"],
-                "title": "Model",
-                "type": "object",
-            }
+        leaf = model.model_validate({"tree": {"value": 1, "next": None}})
+        assert leaf.model_dump() == snapshot({"tree": {"value": 1, "next": None}})
+
+        nested = model.model_validate({"tree": {"value": 1, "next": {"value": 2, "next": None}}})
+        assert nested.model_dump() == snapshot(
+            {"tree": {"value": 1, "next": {"value": 2, "next": None}}}
+        )
+
+
+class TestOneOfJsonSchema:
+    """`oneOf` round-trips into the dumped JSON Schema instead of `anyOf`."""
+
+    def test_multi_branch_dumps_one_of(self) -> None:
+        """A multi-branch `oneOf` re-emits `oneOf` (not `anyOf`) on `model_json_schema()`."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "properties": {"value": {"oneOf": [{"type": "integer"}, {"type": "number"}]}},
+                    "required": ["value"],
+                }
+            )
+        )
+
+        assert model.model_json_schema()["properties"]["value"] == snapshot(
+            {"oneOf": [{"type": "integer"}, {"type": "number"}], "title": "Value"}
+        )
+
+    def test_single_branch_dumps_plain(self) -> None:
+        """A single-branch `oneOf` dumps as the plain branch schema (no `oneOf` wrapper)."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "properties": {"value": {"oneOf": [{"type": "string"}]}},
+                    "required": ["value"],
+                }
+            )
+        )
+
+        assert model.model_json_schema()["properties"]["value"] == snapshot(
+            {"title": "Value", "type": "string"}
         )
