@@ -78,6 +78,8 @@ test-all-python: install-all-python
     UV_PROJECT_ENVIRONMENT=.venv315 uv run --python 3.15 --no-default-groups --group test coverage run -p -m pytest
     uv run coverage combine
     uv run coverage report
+    just ci-test-floor
+    just ci-test-ceil
 
 # Run tests and generate an HTML coverage report
 testcov: test
@@ -217,6 +219,20 @@ ci-test:
     uv run coverage report
     uv run coverage xml
 
+# Test the dependency FLOOR: lowest Python + lowest direct deps our bounds allow.
+# `--resolution lowest-direct` re-resolves direct deps to their declared minimums (e.g.
+# `pydantic>=2.13.0` -> `2.13.0`), proving the floor actually resolves and passes. Isolated env
+# (never touches `.venv`); no coverage gate.
+ci-test-floor:
+    UV_PROJECT_ENVIRONMENT=.venv-floor uv run --python 3.12 --resolution lowest-direct --no-default-groups --group test pytest
+
+# Test the dependency CEILING: latest stable Python + highest resolvable deps.
+# `--upgrade` ignores the lockfile pins and re-resolves to the latest allowed versions (within
+# `exclude-newer`), catching breakage from a new dependency release before it reaches the lockfile.
+# Isolated env; no coverage gate.
+ci-test-ceil:
+    UV_PROJECT_ENVIRONMENT=.venv-ceil uv run --python 3.14 --upgrade --no-default-groups --group test pytest
+
 # Build package and check metadata in CI
 ci-build:
     rm -rf dist/
@@ -266,5 +282,7 @@ clean:
     rm -rf .coverage
     rm -rf htmlcov
     rm -rf site
+    rm -rf .venv-floor
+    rm -rf .venv-ceil
     find . -type d -name __pycache__ -exec rm -rf {} +
     find . -type f -name "*.pyc" -delete

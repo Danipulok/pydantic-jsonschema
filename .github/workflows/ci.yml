@@ -101,6 +101,46 @@ jobs:
           files: ./coverage.xml
           flags: python-${{ matrix.python-version }}
 
+  # Dependency floor / ceiling: the recipes pin Python and resolution, `uv` provisions the
+  # interpreter, so no `setup-python` is needed.
+  test-floor:
+    name: Test (dependency floor)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install `uv`
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+
+      - name: Install `just`
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+
+      - name: Run tests at the dependency floor
+        run: just ci-test-floor
+
+  test-ceil:
+    name: Test (dependency ceiling)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install `uv`
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+
+      - name: Install `just`
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+
+      - name: Run tests at the dependency ceiling
+        run: just ci-test-ceil
+
   audit:
     name: Audit
     needs: [lint, test]
@@ -157,7 +197,7 @@ jobs:
   check:
     name: CI ok
     if: always()
-    needs: [lint, test, audit, docs]
+    needs: [lint, test, test-floor, test-ceil, audit, docs]
     runs-on: ubuntu-latest
     permissions: {}
 
