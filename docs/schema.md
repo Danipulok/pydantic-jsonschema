@@ -172,7 +172,7 @@ All members: `NULL`, `STRING`, `NUMBER`, `INTEGER`, `BOOLEAN`, `ARRAY`, `OBJECT`
 ## Field Reference
 
 `Schema` fields map directly to JSON Schema keywords. Other or custom keywords are preserved via `extra="allow"`.
-Some declared keywords round-trip through parsing and serialization but are not yet consumed by the converter.
+The converter consumes every declared keyword (`format` is annotation-only unless a matching entry is passed in [`formats`](formats.md), per the spec). Unknown or custom keywords round-trip through parsing and serialization without affecting the generated model.
 
 ### Composition
 
