@@ -1,6 +1,6 @@
 """Small shared utilities for the converter package."""
 
-# NOTE: `Schema` fields use `X | MISSING` unions (see `_schema.py`). mypy doesn't
+# NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
 # recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
 # and flags every `is not MISSING` check as a non-overlapping identity comparison.
 # mypy: disable-error-code="comparison-overlap"

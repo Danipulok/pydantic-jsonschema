@@ -1,11 +1,11 @@
-"""Tests for `_schema.py` JSON Schema models."""
+"""Tests for `schema.py` JSON Schema models."""
 
 from typing import TYPE_CHECKING, Any
 
 import pytest
 from inline_snapshot import snapshot
 
-from pydantic_jsonschema._schema import DataType, Reference, Schema
+from pydantic_jsonschema.schema import DataType, Reference, Schema
 
 if TYPE_CHECKING:
     from tests.conftest import SchemaRaw

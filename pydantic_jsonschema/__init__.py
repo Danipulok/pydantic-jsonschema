@@ -3,7 +3,7 @@
 from importlib.metadata import version as _metadata_version
 
 from pydantic_jsonschema.converters import SchemaConverter, to_model
-from pydantic_jsonschema.types import DataType, Reference, Schema
+from pydantic_jsonschema.schema import DataType, Reference, Schema
 
 __all__ = [
     "DataType",

@@ -5,7 +5,7 @@ promoted to a native Pydantic discriminated union (`Field(discriminator=...)`) i
 probing `OneOf` validator.
 """
 
-# NOTE: `Schema` fields use `X | MISSING` unions (see `_schema.py`). mypy doesn't
+# NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
 # recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
 # and flags every `is not MISSING` check as a non-overlapping identity comparison.
 # mypy: disable-error-code="comparison-overlap"
@@ -14,7 +14,7 @@ from types import NoneType
 
 from pydantic.experimental.missing_sentinel import MISSING
 
-from pydantic_jsonschema.types import Reference, Schema
+from pydantic_jsonschema.schema import Reference, Schema
 
 from ._utils import unwrap
 
