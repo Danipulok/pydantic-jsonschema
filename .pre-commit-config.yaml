@@ -69,14 +69,12 @@ repos:
         always_run: true
         pass_filenames: false
 
-      # Scoped (not `always_run`): the dependency audit only matters when deps change,
-      # and the workflow audit only when a workflow changes.
       - id: audit
         name: Audit dependencies
         entry: just
         args: [audit]
         language: system
-        files: '^(pyproject\.toml|uv\.lock)$'
+        always_run: true
         pass_filenames: false
 
       - id: audit-workflows
@@ -84,5 +82,5 @@ repos:
         entry: just
         args: [audit-workflows]
         language: system
-        files: '^\.github/workflows/.*\.ya?ml$'
+        always_run: true
         pass_filenames: false
