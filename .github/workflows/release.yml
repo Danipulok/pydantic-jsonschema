@@ -65,6 +65,29 @@ jobs:
         with:
           attestations: true
 
+  smoke-test:
+    name: Smoke-test the published package
+    needs: [publish-pypi]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: {}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up `uv` + `just`
+        uses: ./.github/actions/setup
+
+      # PyPI needs a moment to make a fresh upload installable.
+      - name: Wait for `PyPI` to propagate the release
+        run: sleep 30
+
+      - name: Install from `PyPI` and verify
+        run: just ci-smoke-test "${GITHUB_REF_NAME#v}"
+
   github-release:
     name: Create GitHub Release
     needs: [build, publish-pypi]

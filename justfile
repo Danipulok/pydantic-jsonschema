@@ -239,6 +239,12 @@ ci-build:
     uv build
     uvx twine check dist/*
 
+# Smoke-test a just-published release: install it from PyPI into a throwaway env and verify it
+# imports and converts. `--isolated --no-project` ignores the local source; `--exclude-newer-package`
+# lifts our `exclude-newer` cutoff for the fresh release (it is younger than the cooldown window).
+ci-smoke-test version:
+    uv run --isolated --no-project --exclude-newer-package "pydantic-jsonschema=2099-01-01" --with "pydantic-jsonschema=={{ version }}" python -c "from pydantic_jsonschema import Schema, to_model; print(to_model(Schema.model_validate({'type': 'object', 'properties': {'x': {'type': 'integer'}}, 'required': ['x']}))(x=1).model_dump())"
+
 # Build documentation in CI
 ci-docs-build: docs-build
 
