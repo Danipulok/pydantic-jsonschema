@@ -71,7 +71,8 @@ class Schema(BaseModel):
     Declares the JSON Schema 2020-12 validation and applicator keywords; any other or
     custom keyword is still preserved via ``extra="allow"`` per spec §4.3.1 / §6.5.
 
-    Not every declared keyword is consumed by the converter yet: unsupported ones
+    The converter consumes every declared keyword (`format` is annotation-only unless a
+    matching `formats` entry is supplied, per the spec). Unknown or custom keywords still
     round-trip through parsing and serialization but do not affect the generated model.
 
     See:
