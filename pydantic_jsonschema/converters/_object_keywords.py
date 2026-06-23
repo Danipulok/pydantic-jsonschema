@@ -22,13 +22,13 @@ from ._utils import unwrap
 
 __all__ = [
     "build_dependent_required",
-    "build_property_count",
+    "build_property_count_bounds",
 ]
 
 type PythonType = Any
 
 
-def build_property_count(schema: Schema, /) -> dict[str, PythonType]:
+def build_property_count_bounds(schema: Schema, /) -> dict[str, PythonType]:
     """`minProperties` / `maxProperties`: bound the number of properties of an object model.
 
     Counts the raw input mapping's keys before field parsing. That key count is exactly the
