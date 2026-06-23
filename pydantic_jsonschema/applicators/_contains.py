@@ -3,7 +3,7 @@
 See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.1.3
 """
 
-from typing import Final
+from typing import Final, override
 
 from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter
 from pydantic.json_schema import JsonSchemaValue
@@ -45,6 +45,7 @@ class Contains(AnnotationApplicator):
         self._max_contains: int | None = max_contains
         self._adapter: TypeAdapter[AnnotationType] | None = None
 
+    @override
     def __get_pydantic_core_schema__(
         self,
         source_type: AnnotationType,
@@ -53,6 +54,7 @@ class Contains(AnnotationApplicator):
         """Wrap the array schema with the match-count check."""
         return core_schema.no_info_after_validator_function(self._validate, handler(source_type))
 
+    @override
     def __get_pydantic_json_schema__(
         self,
         schema: CoreSchema,

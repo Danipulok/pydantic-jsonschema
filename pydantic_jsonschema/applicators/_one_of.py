@@ -4,7 +4,7 @@ See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.3
 """
 
 from collections.abc import Iterable
-from typing import Annotated, Union
+from typing import Annotated, Union, override
 
 from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter
 from pydantic.json_schema import JsonSchemaValue
@@ -48,6 +48,7 @@ class OneOf(AnnotationApplicator):
         union_annotation = Union[self._branches]  # type: ignore[name-defined]  # noqa: UP007
         return Annotated[union_annotation, self]
 
+    @override
     def __get_pydantic_core_schema__(
         self,
         source_type: AnnotationType,
@@ -56,6 +57,7 @@ class OneOf(AnnotationApplicator):
         """Wrap the union schema with the exactly-one-branch check."""
         return core_schema.no_info_wrap_validator_function(self._validate, handler(source_type))
 
+    @override
     def __get_pydantic_json_schema__(
         self,
         schema: CoreSchema,

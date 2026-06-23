@@ -3,6 +3,8 @@
 See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.4
 """
 
+from typing import override
+
 from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
@@ -39,6 +41,7 @@ class Not(AnnotationApplicator, ObjectApplicator):
         self._branch: AnnotationType = branch
         self._adapter: TypeAdapter[AnnotationType] | None = None
 
+    @override
     def __get_pydantic_core_schema__(
         self,
         source_type: AnnotationType,
@@ -47,6 +50,7 @@ class Not(AnnotationApplicator, ObjectApplicator):
         """Wrap the value schema with the `not` check (on the raw input)."""
         return core_schema.no_info_wrap_validator_function(self._validate, handler(source_type))
 
+    @override
     def __get_pydantic_json_schema__(
         self,
         schema: CoreSchema,
@@ -57,6 +61,7 @@ class Not(AnnotationApplicator, ObjectApplicator):
         json_schema.update(self.json_schema_keyword())
         return json_schema
 
+    @override
     def json_schema_keyword(self) -> JsonSchemaValue:
         """Return the `not` keyword fragment for the dumped JSON Schema."""
         return {"not": self._get_adapter().json_schema()}
@@ -73,6 +78,7 @@ class Not(AnnotationApplicator, ObjectApplicator):
         """
         return self._validates(self._get_adapter(), value)
 
+    @override
     def validate(
         self,
         value: AnnotationType,

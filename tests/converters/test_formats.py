@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 from ipaddress import IPv4Address
-from typing import TYPE_CHECKING, Annotated, Any, TypeAliasType
+from typing import TYPE_CHECKING, Annotated, Any, TypeAliasType, override
 from uuid import UUID
 
 import pytest
@@ -202,6 +202,7 @@ class TestFormats:
                     raise ValueError(msg)
                 self.value = value
 
+            @override
             def __str__(self) -> str:
                 return self.value
 

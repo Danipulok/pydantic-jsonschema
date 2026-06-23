@@ -4,6 +4,7 @@ See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.1.1
 """
 
 from collections.abc import Iterable
+from typing import override
 
 from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter, ValidationError
 from pydantic.json_schema import JsonSchemaValue
@@ -41,6 +42,7 @@ class PrefixItems(AnnotationApplicator):
         self._prefix_adapters: list[TypeAdapter[AnnotationType]] | None = None
         self._tail_adapter: TypeAdapter[AnnotationType] | None = None
 
+    @override
     def __get_pydantic_core_schema__(
         self,
         source_type: AnnotationType,
@@ -49,6 +51,7 @@ class PrefixItems(AnnotationApplicator):
         """Wrap the array schema with positional validation."""
         return core_schema.no_info_after_validator_function(self._validate, handler(source_type))
 
+    @override
     def __get_pydantic_json_schema__(
         self,
         schema: CoreSchema,

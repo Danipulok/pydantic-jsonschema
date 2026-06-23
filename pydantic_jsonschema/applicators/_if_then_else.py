@@ -3,6 +3,8 @@
 See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2
 """
 
+from typing import override
+
 from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, TypeAdapter
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
@@ -44,6 +46,7 @@ class IfThenElse(AnnotationApplicator, ObjectApplicator):
         self._then_adapter: TypeAdapter[AnnotationType] | None = None
         self._else_adapter: TypeAdapter[AnnotationType] | None = None
 
+    @override
     def __get_pydantic_core_schema__(
         self,
         source_type: AnnotationType,
@@ -52,6 +55,7 @@ class IfThenElse(AnnotationApplicator, ObjectApplicator):
         """Wrap the value schema with the conditional check (on the raw input)."""
         return core_schema.no_info_wrap_validator_function(self._validate, handler(source_type))
 
+    @override
     def __get_pydantic_json_schema__(
         self,
         schema: CoreSchema,
@@ -62,6 +66,7 @@ class IfThenElse(AnnotationApplicator, ObjectApplicator):
         json_schema.update(self.json_schema_keyword())
         return json_schema
 
+    @override
     def json_schema_keyword(self) -> JsonSchemaValue:
         """Return the `if` / `then` / `else` keyword fragment for the dumped JSON Schema."""
         if_adapter = self._build_adapters()
@@ -88,6 +93,7 @@ class IfThenElse(AnnotationApplicator, ObjectApplicator):
             self._else_adapter = self._build_adapter(self._else)
         return if_adapter
 
+    @override
     def validate(
         self,
         value: AnnotationType,
