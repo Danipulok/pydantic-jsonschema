@@ -1,7 +1,11 @@
 name: PR
 
+# NOTE: `pull_request_target` is required so the title check works on PRs from
+#       forks (it needs the base-repo token to read PR metadata). This workflow
+#       never checks out or runs untrusted PR code, so the elevated context is
+#       safe — hence the `dangerous-triggers` suppression.
 on:
-  pull_request_target:
+  pull_request_target:  # zizmor: ignore[dangerous-triggers]
     types: [opened, edited, synchronize]
 
 permissions:

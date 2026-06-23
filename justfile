@@ -209,6 +209,15 @@ ci-build:
     uv build
     uvx twine check dist/*
 
+# Audit dependencies for vulnerabilities and abandoned packages in CI
+# Native `uv audit` (OSV-backed): flags known vulnerabilities and archived/abandoned deps.
+ci-audit:
+    uv audit --preview-features audit-command
+
+# Audit GitHub Actions workflows for security issues in CI
+ci-audit-workflows:
+    uvx zizmor --offline .github/workflows/
+
 # Build documentation in CI
 ci-docs-build: docs-build
 

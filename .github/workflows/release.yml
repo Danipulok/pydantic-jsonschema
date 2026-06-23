@@ -5,23 +5,28 @@ on:
     tags:
       - "v*"
 
-permissions:
-  contents: write
-  id-token: write
+# Least privilege: grant nothing by default, scope per job below.
+permissions: {}
 
 jobs:
   build:
     name: Build distribution
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
+          persist-credentials: false
 
+      # No cache: a release publishes artifacts, and a poisoned cache could tamper with them.
       - name: Install `uv`
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+        with:
+          enable-cache: false
 
       - name: Install `just`
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
@@ -40,6 +45,8 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     environment: pypi
+    permissions:
+      id-token: write
 
     steps:
       - name: Download all the dists
@@ -55,15 +62,21 @@ jobs:
     name: Create GitHub Release
     needs: [build, publish-pypi]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
+          persist-credentials: false
 
+      # No cache: a release publishes artifacts, and a poisoned cache could tamper with them.
       - name: Install `uv`
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+        with:
+          enable-cache: false
 
       - name: Install `just`
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
@@ -80,8 +93,10 @@ jobs:
           name: dist
           path: dist/
 
+      # NOTE: `softprops/action-gh-release` is the established release-notes/upload path, so the
+      #       `superfluous-actions` suggestion to use `gh release` is intentionally ignored.
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1  # zizmor: ignore[superfluous-actions]
         with:
           body_path: /tmp/release-notes.md
           files: dist/*
@@ -90,15 +105,22 @@ jobs:
     name: Deploy documentation
     needs: [github-release]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
+      # NOTE: `persist-credentials` stays on — `ci-docs-deploy` force-pushes the built site to the
+      #       `gh-pages` branch, which needs the checkout's token. Hence the `artipacked` ignore.
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0  # zizmor: ignore[artipacked]
         with:
           fetch-depth: 0
 
+      # No cache: a release publishes artifacts, and a poisoned cache could tamper with them.
       - name: Install `uv`
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+        with:
+          enable-cache: false
 
       - name: Install `just`
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
