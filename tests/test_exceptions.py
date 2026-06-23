@@ -3,7 +3,8 @@
 import pytest
 from inline_snapshot import snapshot
 
-from pydantic_jsonschema.exceptions import (
+# Imported from the package root to also assert the top-level re-export.
+from pydantic_jsonschema import (
     FormatValidationError,
     SchemaConversionError,
     SchemaReferenceError,
