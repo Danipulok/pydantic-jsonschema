@@ -282,7 +282,8 @@ clean:
     rm -rf .coverage
     rm -rf htmlcov
     rm -rf site
-    rm -rf .venv-floor
-    rm -rf .venv-ceil
+    # Remove throwaway envs (`.venv312`-`.venv315`, `.venv-floor`, `.venv-ceil`) but keep the
+    # main `.venv` so a clean doesn't force a full re-sync of the working environment.
+    find . -maxdepth 1 -type d -name ".venv*" ! -name ".venv" -exec rm -rf {} +
     find . -type d -name __pycache__ -exec rm -rf {} +
     find . -type f -name "*.pyc" -delete
