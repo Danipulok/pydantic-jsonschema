@@ -48,6 +48,10 @@ jobs:
     env:
       UV_PYTHON: ${{ matrix.python-version }}
       UV_NO_SYNC: "1"
+      # `pydantic-core` ships no `cp315` wheel yet, so on 3.15 `uv` builds it from source via
+      # `cargo`, whose crates.io downloads intermittently fail (transient TLS / unexpected EOF).
+      # Make `cargo` retry each download before the step-level retry kicks in.
+      CARGO_NET_RETRY: "10"
     strategy:
       fail-fast: false
       matrix:
@@ -69,8 +73,19 @@ jobs:
       - name: Install `just`
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
 
+      # Retry the whole install: on 3.15 it builds `pydantic-core` from source, so a flaky
+      # crates.io download (not a code fault) shouldn't fail the run. See `CARGO_NET_RETRY` above.
       - name: Install dependencies
-        run: just ci-install-test
+        run: |
+          for attempt in 1 2 3; do
+            if just ci-install-test; then
+              exit 0
+            fi
+            echo "::warning::Install attempt ${attempt} failed; retrying in 15s"
+            sleep 15
+          done
+          echo "::error::Install failed after 3 attempts"
+          exit 1
 
       - name: Run tests with coverage
         run: just ci-test
