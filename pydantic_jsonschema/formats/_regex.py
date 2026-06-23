@@ -14,7 +14,7 @@ def validate_regex(value: str) -> str:
     """Validate regular expression format per JSON Schema validation, section 7.3.8.
 
     The spec requires the ECMA-262 dialect; this validator compiles with Python `re`,
-    which is a close superset for common patterns (see details in `docs/formats.md`).
+    which is a close superset for common patterns.
 
     :param value: Value to validate.
     :returns: Original value if valid.
