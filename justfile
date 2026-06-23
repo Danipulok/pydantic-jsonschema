@@ -1,3 +1,9 @@
+# Block installing known-malware dependencies (OSV MAL records) before any package code runs.
+# Exported here so every `uv sync` / `uv add` run through `just` is checked — CI and local alike.
+# `malware-check` is a `uv` preview feature; naming it also silences its experimental warning.
+export UV_MALWARE_CHECK := "1"
+export UV_PREVIEW_FEATURES := "malware-check"
+
 # --- General ---
 
 # Default recipe to display help information
