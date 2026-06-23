@@ -14,7 +14,6 @@ from typing import (
     Final,
     ForwardRef,
     Literal,
-    Protocol,
     TypeAliasType,
     cast,
     get_origin,
@@ -91,38 +90,7 @@ type SchemaHash = str  # Schema cache key (JSON hash)
 type FormatName = str  # Format name like "date-time", "uuid"
 type AnnotationType = Any  # `type`, `Annotated`, `Union`, `Literal`, `ForwardRef`, etc.
 type PythonType = Any  # Anything that Pydantic supports
-type FormatValidatorType = (
-    FormatValidator | type | TypeAliasType
-)  # `FormatValidator`, type, or `type` alias
-
-
-class FormatValidator(Protocol):
-    """Callable that validates a raw value for a JSON Schema `format`.
-
-    This describes the *callable* form of a `formats` entry (a value may also be a
-    Pydantic type or an `Annotated` type). The callable receives the raw input before
-    Pydantic's standard validation and returns the validated value, or raises `ValueError`.
-
-    See [validation §7.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-7.1).
-
-    For Pydantic validators, see
-    [annotated validators](https://docs.pydantic.dev/latest/concepts/validators/#annotated-validators)
-    and [after validators](https://docs.pydantic.dev/latest/concepts/validators/#after-validators).
-    """
-
-    # NOTE: `value` must stay `Any`-typed: protocol parameters are contravariant,
-    # so narrowing it (e.g. to `JsonValue`) stops narrow user validators like
-    # `def validate_sku(value: str) -> str` from matching the protocol.
-    #
-    # Reproduce with `value: JsonValue`:
-    #   uv run mypy examples/custom_formats.py
-    #   # -> error: Dict entry 0 has incompatible type "str": "Callable[[str], str]"
-    def __call__(
-        self,
-        value: PythonType,
-    ) -> PythonType:
-        """Process the raw value before Pydantic's standard validation."""
-        ...
+type FormatType = type | TypeAliasType  # A type, `Annotated` type, or PEP 695 `type` alias
 
 
 class SchemaConverter:
@@ -133,17 +101,18 @@ class SchemaConverter:
         *,
         default_model_name: str = _DEFAULT_MODEL_NAME,
         refs: dict[Ref, type[BaseModel]] | None = None,
-        formats: dict[FormatName, FormatValidatorType] | None = None,
+        formats: dict[FormatName, FormatType] | None = None,
     ) -> None:
-        """Initialize converter with optional pre-built refs and format validators.
+        """Initialize converter with optional pre-built refs and format types.
 
         :param default_model_name: Fallback name for models without `title` (default: `Model`).
         :param refs: Pre-built Pydantic models for `$ref` resolution.
-        :param formats: Validators keyed by JSON Schema `format` value.
+        :param formats: Format types (a `type` or `Annotated` type) keyed by JSON Schema
+            `format` value.
         """
         self._default_model_name: str = default_model_name
         self._refs: dict[Ref, type[BaseModel]] = refs or {}
-        self._formats: dict[FormatName, FormatValidatorType] = formats or {}
+        self._formats: dict[FormatName, FormatType] = formats or {}
 
         self._defs_cache: dict[Ref, Schema] = {}
         self._models_cache: dict[SchemaHash, type[BaseModel]] = {}
@@ -720,43 +689,50 @@ class SchemaConverter:
 
         return fields
 
-    def _apply_validators(
+    def _apply_format(
         self,
         annotation: AnnotationType,
         schema: Schema,
         /,
     ) -> AnnotationType:
-        """Apply validator to annotation.
+        """Apply the registered format type for the schema's `format`, if any.
 
-        Handles these validator kinds:
-        - `type` aliases (the built-in format types): unwrapped to their underlying
-          `Annotated` / type, then handled like the cases below.
-        - Annotated types: used directly as annotation (replaces original).
-        - Type classes: used directly as annotation (replaces original).
-        - Callables: wrapped with `BeforeValidator`.
+        A `formats` entry is a Pydantic type that defines how the format is validated; the
+        caller keeps full control over *when* validation runs by choosing the wrapper inside
+        the type (e.g. `AfterValidator` vs `BeforeValidator`):
+        - PEP 695 `type` aliases (the built-in format types): unwrapped to the underlying
+          `Annotated` / type they alias, then handled like the cases below.
+        - `Annotated` types: used directly as the field annotation (replaces the original).
+        - Type classes: used directly as the field annotation (replaces the original).
 
         :param annotation: Original annotation.
-        :param schema: Schema to check for format.
-        :returns: Annotation with validator applied if applicable.
+        :param schema: Schema to check for `format`.
+        :returns: The format type's annotation when a matching entry exists, else `annotation`.
+        :raises SchemaConversionError: If the matching `formats` entry is not a type or
+            `Annotated` type.
         """
         if schema.format is MISSING or schema.format not in self._formats:
             return annotation
 
-        validator = self._formats[schema.format]
+        format_type = self._formats[schema.format]
 
         # Built-in format types (`Email`, `UUID`, ...) are PEP 695 `type` aliases, i.e.
         # `TypeAliasType`. Unwrap to the actual `Annotated` / class they alias so the field
         # annotation stays clean (`str`, `uuid.UUID`) instead of the alias wrapper.
-        if isinstance(validator, TypeAliasType):
-            validator = validator.__value__
+        if isinstance(format_type, TypeAliasType):
+            format_type = format_type.__value__
 
-        if get_origin(validator) is Annotated:
-            return validator
+        if get_origin(format_type) is Annotated:
+            return format_type
 
-        if isinstance(validator, type):
-            return validator
+        if isinstance(format_type, type):
+            return format_type
 
-        return Annotated[annotation, BeforeValidator(validator)]
+        msg = (
+            f"`formats[{schema.format!r}]` must be a type or `Annotated` type, "
+            f"got `{format_type!r}`"
+        )
+        raise SchemaConversionError(msg)
 
     @staticmethod
     def _build_model_config(
@@ -793,7 +769,7 @@ class SchemaConverter:
         else:
             valid_annotation = annotation
 
-        valid_annotation = self._apply_validators(valid_annotation, schema)
+        valid_annotation = self._apply_format(valid_annotation, schema)
 
         default = get_field_default(schema, field_kind=field_kind)
 
@@ -938,7 +914,7 @@ class SchemaConverter:
         if isinstance(schema, Reference):
             return annotation
 
-        annotation = self._apply_validators(annotation, schema)
+        annotation = self._apply_format(annotation, schema)
         kwargs = build_field_kwargs(schema, include_metadata=not union_branch)
 
         if kwargs and not (union_branch and annotation is Any):
@@ -1250,13 +1226,14 @@ def to_model(
     *,
     model_name: str | None = None,
     refs: dict[Ref, type[BaseModel]] | None = None,
-    formats: dict[FormatName, FormatValidatorType] | None = None,
+    formats: dict[FormatName, FormatType] | None = None,
 ) -> type[BaseModel]:
     """Convert schema to Pydantic model.
 
     :param schema: Schema to convert.
     :param refs: Pre-built reference models.
-    :param formats: Custom format validators (callables, types, or Annotated).
+    :param formats: Format types (a `type` or `Annotated` type) keyed by JSON Schema
+        `format` value.
     :param model_name: Name for the generated model.
     :returns: Pydantic model class.
     """

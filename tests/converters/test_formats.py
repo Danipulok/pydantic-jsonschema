@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 from ipaddress import IPv4Address
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, TypeAliasType
 from uuid import UUID
 
 import pytest
@@ -14,6 +14,7 @@ from pydantic_core import CoreSchema, core_schema
 from pydantic_jsonschema import (
     to_model,
 )
+from pydantic_jsonschema.exceptions import SchemaConversionError
 from pydantic_jsonschema.formats import UUID as UUID_FORMAT
 from pydantic_jsonschema.formats import DateTime, Email, IPv4, Uri
 from pydantic_jsonschema.schema import Schema
@@ -26,7 +27,7 @@ __all__: list[str] = []
 
 
 class TestFormats:
-    """Tests for `formats` support: custom validators and built-in aliases."""
+    """Tests for `formats` support: custom format types and built-in aliases."""
 
     def test_annotated_validator_basic(self) -> None:
         """Test basic Annotated type as validator."""
@@ -92,8 +93,8 @@ class TestFormats:
         instance = model(count=4)
         assert instance.model_dump() == snapshot({"count": 8})
 
-    def test_callable_validator(self) -> None:
-        """Test callable function as validator."""
+    def test_annotated_str_validator(self) -> None:
+        """Test an `Annotated` string type as a format."""
 
         def validate_email_simple(v: str) -> str:
             if "@" not in v:
@@ -101,13 +102,15 @@ class TestFormats:
                 raise ValueError(msg)
             return v
 
+        EmailSimple = Annotated[str, AfterValidator(validate_email_simple)]  # noqa: N806
+
         schema_raw: SchemaRaw = {
             "type": "object",
             "properties": {"email": {"type": "string", "format": "email-simple"}},
             "required": ["email"],
         }
         schema = Schema.model_validate(schema_raw)
-        model = to_model(schema, formats={"email-simple": validate_email_simple})  # type: ignore[dict-item]
+        model = to_model(schema, formats={"email-simple": EmailSimple})
 
         instance = model(email="test@example.com")
         assert instance.model_dump() == snapshot({"email": "test@example.com"})
@@ -127,7 +130,7 @@ class TestFormats:
         )
 
     def test_mixed_validators(self) -> None:
-        """Test multiple validator types in one schema."""
+        """Test multiple format types in one schema."""
 
         def validate_positive(v: int) -> int:
             if v <= 0:
@@ -142,6 +145,7 @@ class TestFormats:
             return v
 
         PositiveInt = Annotated[int, AfterValidator(validate_positive)]  # noqa: N806
+        Uppercase = Annotated[str, AfterValidator(validate_uppercase)]  # noqa: N806
 
         schema_raw: SchemaRaw = {
             "type": "object",
@@ -154,7 +158,7 @@ class TestFormats:
         schema = Schema.model_validate(schema_raw)
         model = to_model(
             schema,
-            formats={"positive": PositiveInt, "uppercase": validate_uppercase},  # type: ignore[dict-item]
+            formats={"positive": PositiveInt, "uppercase": Uppercase},
         )
 
         instance = model(count=5, code="ABC")
@@ -440,3 +444,55 @@ class TestFormats:
                 "ip": IPv4Address("192.168.1.1"),
             }
         )
+
+
+class TestFormatAcceptedForms:
+    """A `formats` entry must be a type or `Annotated` type; any other form is rejected."""
+
+    @pytest.mark.parametrize(
+        ("format_type", "value", "expected"),
+        [
+            pytest.param(
+                Annotated[str, AfterValidator(str.upper)],
+                "abc",
+                "ABC",
+                id="raw-annotated",
+            ),
+            pytest.param(IPv4Address, "1.2.3.4", IPv4Address("1.2.3.4"), id="plain-class"),
+            pytest.param(Email, "alice@example.com", "alice@example.com", id="type-alias"),
+        ],
+    )
+    def test_accepted_forms(
+        self,
+        format_type: type | TypeAliasType,
+        value: str,
+        expected: object,
+    ) -> None:
+        """Each accepted form (raw `Annotated`, plain class, PEP 695 alias) is applied."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"field": {"type": "string", "format": "custom"}},
+                "required": ["field"],
+            }
+        )
+        model = to_model(schema, formats={"custom": format_type})
+
+        assert model(field=value).model_dump() == {"field": expected}
+
+    def test_bare_callable_rejected(self) -> None:
+        """A bare callable (not a type / `Annotated`) is rejected with a clear error."""
+
+        def normalize(value: str) -> str:
+            return value.strip()
+
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"code": {"type": "string", "format": "code"}},
+                "required": ["code"],
+            }
+        )
+
+        with pytest.raises(SchemaConversionError, match=r"must be a type or `Annotated` type"):
+            to_model(schema, formats={"code": normalize})  # type: ignore[dict-item]

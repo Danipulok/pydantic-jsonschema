@@ -9,7 +9,7 @@ applies.
 
 ## Third-Party Validator Libraries
 
-All built-in format validators work with zero extra dependencies.
+All built-in formats work with zero extra dependencies.
 For domain-specific types, install [`pydantic-extra-types`](https://github.com/pydantic/pydantic-extra-types) or other packages directly.
 
 See [Installation](install.md#third-party-validator-libraries) for the install commands.
@@ -132,7 +132,7 @@ print(type(user.created_at).__name__)
 
 ## Third-Party Pydantic Types
 
-If you want to use third-party or custom format validators, you can pass them via `formats`.
+If you want to use third-party or custom format types, you can pass them via `formats`.
 Here's an example involving `pydantic-extra-types` package.
 
 ```python title="extra_types.py"
@@ -169,15 +169,17 @@ MAC addresses, and phone numbers. See the
 [pydantic-extra-types documentation](https://github.com/pydantic/pydantic-extra-types) for the full
 list.
 
-## Custom Validators
+## Custom Formats
 
-Use a callable when you want to validate or normalize a project-specific format.
+A custom format is a Pydantic type you map to a `format` value — exactly how the built-in
+aliases are defined (`Email = Annotated[str, AfterValidator(...)]`). Wrap your own validation or
+normalization in an `Annotated` type; the wrapper you choose (`AfterValidator`, `BeforeValidator`,
+`Field(...)`) controls how and when it runs, so you keep full control.
 
-Callable validators receive the raw input before Pydantic type coercion. They should return the
-validated value and raise `ValueError` when validation fails.
+```python title="custom_sku_format.py"
+from typing import Annotated
 
-```python title="custom_sku_validator.py"
-from pydantic import ValidationError
+from pydantic import AfterValidator, ValidationError
 
 from pydantic_jsonschema import Schema, to_model
 
@@ -204,6 +206,8 @@ def validate_sku(value: str) -> str:
     return value.upper()
 
 
+Sku = Annotated[str, AfterValidator(validate_sku)]
+
 schema = Schema.model_validate(
     {
         "type": "object",
@@ -213,7 +217,7 @@ schema = Schema.model_validate(
     }
 )
 
-Product = to_model(schema, formats={"sku": validate_sku})
+Product = to_model(schema, formats={"sku": Sku})
 
 product = Product(sku="abc-1234-xyz")
 print(product.sku)
@@ -226,38 +230,22 @@ except ValidationError as er:
     #> ValidationError
 ```
 
-## Validator Types
+## Accepted Forms
 
-`formats` accepts these validator forms:
+`formats` maps each format name to a Pydantic type. Two forms are accepted:
 
-| Validator form   | Example                    | Behavior                                                       |
-|------------------|----------------------------|----------------------------------------------------------------|
-| Callable         | `{"sku": validate_sku}`    | Called before Pydantic type validation                         |
-| Pydantic type    | `{"url": HttpUrl}`         | Replaces the generated annotation                              |
-| `Annotated` type | `{"price": PositivePrice}` | Replaces the generated annotation and preserves its validators |
+| Form             | Example                    | Behavior                                            |
+|------------------|----------------------------|-----------------------------------------------------|
+| Type class       | `{"url": HttpUrl}`         | Replaces the generated annotation                   |
+| `Annotated` type | `{"price": PositivePrice}` | Replaces the annotation, preserving its validators  |
 
-### Callable Validators
+A bare callable is **not** accepted — wrap it in `Annotated[...]` so the timing is explicit
+(`Annotated[str, BeforeValidator(fn)]` for raw input, `Annotated[str, AfterValidator(fn)]` for the
+coerced value).
 
-```python title="callable_validator.py"
-from pydantic import JsonValue
+### Type classes
 
-
-def normalize_phone(value: JsonValue) -> str:
-    digits = "".join(character for character in str(value) if character.isdigit())
-
-    if len(digits) != 10:
-        msg = "Phone number must contain 10 digits"
-        raise ValueError(msg)
-
-    return f"({digits[:3]}) {digits[3:6]}-{digits[6:]}"
-
-
-formats = {"phone": normalize_phone}
-```
-
-### Pydantic Types
-
-```python title="pydantic_type_validator.py"
+```python title="type_class_format.py"
 from pydantic import HttpUrl
 from pydantic_extra_types.color import Color
 
@@ -267,40 +255,41 @@ formats = {
 }
 ```
 
-### Annotated Types
+### Annotated types
 
-```python title="annotated_validator.py"
+```python title="annotated_format.py"
 from typing import Annotated
 
-from pydantic import AfterValidator, Field
+from pydantic import AfterValidator, BeforeValidator, Field
 
 
 def round_price(value: float) -> float:
     return round(value, 2)
 
 
-PositivePrice = Annotated[
-    float,
-    Field(gt=0),
-    AfterValidator(round_price),
-]
+def normalize_phone(value: str) -> str:
+    digits = "".join(character for character in value if character.isdigit())
 
-formats = {"price": PositivePrice}
+    if len(digits) != 10:
+        msg = "Phone number must contain 10 digits"
+        raise ValueError(msg)
+
+    return f"({digits[:3]}) {digits[3:6]}-{digits[6:]}"
+
+
+# `AfterValidator` runs on the coerced value; `BeforeValidator` runs on the raw input.
+PositivePrice = Annotated[float, Field(gt=0), AfterValidator(round_price)]
+Phone = Annotated[str, BeforeValidator(normalize_phone)]
+
+formats = {"price": PositivePrice, "phone": Phone}
 ```
 
 ## Execution Order
 
-Execution order depends on the validator form:
-
-| Validator form   | Order                                           |
-|------------------|-------------------------------------------------|
-| Callable         | format callable, then generated type validation |
-| Pydantic type    | Pydantic type validation                        |
-| `Annotated` type | validators defined inside the `Annotated` type  |
-
-For callable validators, the value passed to the function is the raw input value. For Pydantic
-types and `Annotated` types, the validator replaces the generated annotation, so Pydantic runs that
-type's own validation pipeline.
+Each format type replaces the generated annotation and runs its own validation pipeline. With an
+`Annotated` type you set the order explicitly through the wrappers you include: `BeforeValidator`
+runs on the raw input, then Pydantic coerces to the base type, then `AfterValidator` and
+`Field(...)` constraints run on the coerced value.
 
 ## Error Handling
 
