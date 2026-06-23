@@ -54,7 +54,7 @@ from pydantic_jsonschema.schema import DataType, Reference, Schema
 from ._discriminator import discriminator_property
 from ._field_kwargs import FieldKindType, build_field_kwargs, get_field_default
 from ._metadata import annotate, array_metadata, object_dict_metadata
-from ._object_keywords import build_dependent_required, build_property_count
+from ._object_keywords import build_dependent_required, build_property_count_bounds
 from ._refs import DEFS_KEY, get_inline_defs
 from ._utils import make_union, unwrap
 
@@ -376,7 +376,7 @@ class SchemaConverter:
         :returns: A `create_model(__validators__=...)` mapping (empty when no keyword applies).
         """
         return {
-            **build_property_count(schema),
+            **build_property_count_bounds(schema),
             **build_dependent_required(schema),
         }
 
