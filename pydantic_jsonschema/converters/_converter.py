@@ -36,7 +36,8 @@ from pydantic.fields import FieldInfo
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 
-from pydantic_jsonschema._applicators import (
+from pydantic_jsonschema._utils import sanitize_identifier
+from pydantic_jsonschema.applicators import (
     Applicator,
     Contains,
     DependentSchemas,
@@ -48,7 +49,6 @@ from pydantic_jsonschema._applicators import (
     PrefixItems,
     PropertyNames,
 )
-from pydantic_jsonschema._utils import sanitize_identifier
 from pydantic_jsonschema.exceptions import SchemaConversionError, SchemaReferenceError
 from pydantic_jsonschema.types import DataType, Reference, Schema
 

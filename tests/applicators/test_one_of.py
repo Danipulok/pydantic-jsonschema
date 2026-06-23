@@ -7,7 +7,7 @@ from inline_snapshot import snapshot
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from pydantic_jsonschema import Schema, to_model
-from pydantic_jsonschema._applicators import OneOf
+from pydantic_jsonschema.applicators import OneOf
 from tests.conftest import dump_errors
 
 __all__: list[str] = []

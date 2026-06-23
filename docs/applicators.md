@@ -7,7 +7,7 @@ satisfied. The term and the grouping are the spec's own, from
 [core §10, "A Vocabulary for Applying Subschemas"][applicator-vocab].
 
 `pydantic-jsonschema` represents the applicators that have **no native Pydantic equivalent** as a
-small set of validator classes in `pydantic_jsonschema._applicators`. The
+small set of validator classes in `pydantic_jsonschema.applicators`. The
 [converter](converters.md) builds them while turning a `Schema` into a model, and you can also use
 them directly on your own Pydantic models.
 
@@ -65,7 +65,7 @@ match), unlike a plain `Union`:
 ```python title="applicator_one_of.py"
 from pydantic import TypeAdapter, ValidationError
 
-from pydantic_jsonschema._applicators import OneOf
+from pydantic_jsonschema.applicators import OneOf
 
 one_of = OneOf(branches=[int, float])
 adapter = TypeAdapter(one_of.as_annotation())
