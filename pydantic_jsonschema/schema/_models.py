@@ -22,7 +22,6 @@ __all__ = [
     "DataType",
     "Reference",
     "Schema",
-    "SchemaOrRefType",
 ]
 
 type SchemaOrRefType = Reference | Schema

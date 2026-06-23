@@ -7,7 +7,7 @@ repos:
       - id: check-ast
       - id: check-case-conflict
       # NOTE: `check-docstring-first` is intentionally omitted — it misreads PEP 224
-      # attribute docstrings (strings after assignments in `_schema.py` / `_types.py`)
+      # attribute docstrings (strings after assignments in `schema/_models.py` / `formats/_types.py`)
       # as a second module docstring and aborts the commit.
       - id: check-executables-have-shebangs
       - id: check-json
