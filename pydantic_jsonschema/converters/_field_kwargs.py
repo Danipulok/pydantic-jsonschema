@@ -1,6 +1,6 @@
 """`FieldInfo` kwargs and defaults derived from JSON Schema constraints."""
 
-# NOTE: `Schema` fields use `X | MISSING` unions (see `_schema.py`). mypy doesn't
+# NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
 # recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
 # and flags every `is not MISSING` check as a non-overlapping identity comparison.
 # mypy: disable-error-code="comparison-overlap"
@@ -10,7 +10,7 @@ from typing import Any, Final, Literal, TypedDict
 import annotated_types
 from pydantic.experimental.missing_sentinel import MISSING
 
-from pydantic_jsonschema.types import DataType, Schema
+from pydantic_jsonschema.schema import DataType, Schema
 
 from ._utils import unwrap
 

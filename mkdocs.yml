@@ -80,7 +80,7 @@ nav:
   - Formats: formats.md
   - Examples: examples.md
   - API Reference:
-    - Schema model: api/types.md
+    - Schema model: api/schema.md
     - Converters: api/converters.md
     - Applicators: api/applicators.md
     - Formats: api/formats.md

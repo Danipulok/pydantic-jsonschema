@@ -1,6 +1,6 @@
 """Convert a JSON Schema `Schema` into a Pydantic model (`to_model` / `SchemaConverter`)."""
 
-# NOTE: `Schema` fields use `X | MISSING` unions (see `_schema.py`). mypy doesn't
+# NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
 # recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
 # and flags every `is not MISSING` check as a non-overlapping identity comparison.
 # mypy: disable-error-code="comparison-overlap"
@@ -50,7 +50,7 @@ from pydantic_jsonschema.applicators import (
     PropertyNames,
 )
 from pydantic_jsonschema.exceptions import SchemaConversionError, SchemaReferenceError
-from pydantic_jsonschema.types import DataType, Reference, Schema
+from pydantic_jsonschema.schema import DataType, Reference, Schema
 
 from ._discriminator import discriminator_property
 from ._field_kwargs import FieldKindType, build_field_kwargs, get_field_default

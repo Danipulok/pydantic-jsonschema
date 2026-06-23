@@ -11,7 +11,7 @@ from pydantic_jsonschema import (
     to_model,
 )
 from pydantic_jsonschema.exceptions import SchemaConversionError
-from pydantic_jsonschema.types import Schema
+from pydantic_jsonschema.schema import Schema
 
 if TYPE_CHECKING:
     from tests.conftest import SchemaRaw

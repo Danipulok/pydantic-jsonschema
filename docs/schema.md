@@ -300,4 +300,4 @@ print(dumped["x-order"])
 
 - [Converters](converters.md) - Convert schemas to Pydantic models
 - [Formats](formats.md) - Add validation for `format` values
-- [API Reference](api/types.md) - Full API docs for schema types
+- [API Reference](api/schema.md) - Full API docs for schema types

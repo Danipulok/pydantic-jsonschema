@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from pydantic_jsonschema import (
     to_model,
 )
-from pydantic_jsonschema.types import Schema
+from pydantic_jsonschema.schema import Schema
 from tests.conftest import dump_errors
 
 if TYPE_CHECKING:

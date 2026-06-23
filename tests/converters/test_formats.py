@@ -16,7 +16,7 @@ from pydantic_jsonschema import (
 )
 from pydantic_jsonschema.formats import UUID as UUID_FORMAT
 from pydantic_jsonschema.formats import DateTime, Email, IPv4, Uri
-from pydantic_jsonschema.types import Schema
+from pydantic_jsonschema.schema import Schema
 from tests.conftest import dump_errors
 
 if TYPE_CHECKING:

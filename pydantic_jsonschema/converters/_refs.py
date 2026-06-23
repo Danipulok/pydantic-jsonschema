@@ -6,7 +6,7 @@ circular, or dangling targets. They are stateless: alias resolution depends only
 `$defs` mapping, not on converter state.
 """
 
-# NOTE: `Schema` fields use `X | MISSING` unions (see `_schema.py`). mypy doesn't
+# NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
 # recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
 # and flags every `is not MISSING` check as a non-overlapping identity comparison.
 # mypy: disable-error-code="comparison-overlap"
@@ -16,7 +16,7 @@ from typing import Final
 from pydantic.experimental.missing_sentinel import MISSING
 
 from pydantic_jsonschema.exceptions import SchemaReferenceError
-from pydantic_jsonschema.types import Reference, Schema
+from pydantic_jsonschema.schema import Reference, Schema
 
 __all__ = [
     "DEFS_KEY",
