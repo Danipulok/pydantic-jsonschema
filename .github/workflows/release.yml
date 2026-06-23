@@ -55,8 +55,13 @@ jobs:
           name: dist
           path: dist/
 
+      # PEP 740 build attestations (sigstore-signed provenance for each artifact). Already the
+      # default in v1.14.0, but pinned explicitly so a future default change can't silently drop
+      # release provenance. Requires Trusted Publishing + `id-token: write` (set on this job).
       - name: Publish distribution to `PyPI`
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
+        with:
+          attestations: true
 
   github-release:
     name: Create GitHub Release
