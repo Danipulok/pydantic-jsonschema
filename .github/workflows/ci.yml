@@ -122,10 +122,10 @@ jobs:
         run: just ci-install
 
       - name: Audit dependencies
-        run: just ci-audit
+        run: just audit
 
       - name: Audit GitHub Actions workflows
-        run: just ci-audit-workflows
+        run: just audit-workflows
 
   docs:
     name: Build documentation

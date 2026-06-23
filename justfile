@@ -41,12 +41,20 @@ lint:
     uv run codespell
     npx --yes markdownlint-cli2
 
+# Audit dependencies for known vulnerabilities and abandoned packages (OSV-backed `uv audit`)
+audit:
+    uv audit --preview-features audit-command
+
+# Audit GitHub Actions workflows for security issues (`zizmor`)
+audit-workflows:
+    uvx zizmor --offline .github/workflows/
+
 # Run pre-commit on all files
 precommit:
     uv run pre-commit run --all-files
 
 # Run all checks
-all: format lint test docs-build
+all: format lint audit audit-workflows test docs-build
 
 # --- Tests ---
 
@@ -208,15 +216,6 @@ ci-build:
     rm -rf dist/
     uv build
     uvx twine check dist/*
-
-# Audit dependencies for vulnerabilities and abandoned packages in CI
-# Native `uv audit` (OSV-backed): flags known vulnerabilities and archived/abandoned deps.
-ci-audit:
-    uv audit --preview-features audit-command
-
-# Audit GitHub Actions workflows for security issues in CI
-ci-audit-workflows:
-    uvx zizmor --offline .github/workflows/
 
 # Build documentation in CI
 ci-docs-build: docs-build
