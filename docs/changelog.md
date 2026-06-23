@@ -4,6 +4,74 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.0.12] — 2026-06-23
+
+### Added
+
+- round-trip `not`/`contains`/`prefixItems`/`if`-`then`-`else` JSON Schema (#45)
+- enforce `propertyNames` on object conversion (#21)
+- enforce `patternProperties` on object conversion (#20)
+- enforce `if`/`then`/`else` on conversion (#19)
+- enforce `dependentSchemas` on object conversion (#18)
+- enforce `not` on conversion (#17)
+- enforce `prefixItems` positional validation (#16)
+- enforce `dependentRequired` on object conversion (#15)
+- enforce `contains`/`minContains`/`maxContains` on array conversion (#14)
+- enforce `minProperties`/`maxProperties` on object conversion (#13)
+- enforce `uniqueItems` on array conversion (#12)
+- declare remaining JSON Schema 2020-12 keywords (#11)
+
+### Build
+
+- cancel superseded runs via a `concurrency` group (#31)
+- deploy to a single-commit `gh-pages` to stop repo bloat (#22)
+- drop generated `_version.py`, read `__version__` from package metadata (#9)
+
+### Changed
+
+- rename `format_validators` parameter to `formats` (#49)
+- `AnnotationApplicator` / `ObjectApplicator` ABC roles (#47)
+- one format — unified model-wrapper + JSON Schema round-trip (#46)
+- mirror source package structure in `tests/` (#39)
+- drop root `OneOf` re-export (#37)
+- rename `_markers` package to `_applicators` (#34)
+- readability cleanup — helpers + `$defs` alias extraction (#32)
+- split `converters.py` into a package (#29)
+- unify `not`/`if`-`then`-`else` whole-value hooks (#28)
+- unify object-keyword validators into one aggregator (#27)
+- collect markers in one registry via `_register` (#26)
+- add shared `SubschemaMarker` base for marker validators (#25)
+- move marker validators into `_markers` subpackage (#23)
+
+### Documentation
+
+- remove completed section (#48)
+- add Python 3.15 to `test-all-python` row (#43)
+- rename "Format Validators" section to "Formats" (#38)
+- add applicators guide and API page (#36)
+- drop restating `what` comments and docstring noise (#30)
+- fix duplicated copy buttons, refactor `README.md` (#7)
+- refactor `api` reference (#6)
+- refactor all docs (#5)
+- clarify contributor roles in acknowledgments
+
+### Fixed
+
+- enforce field constraints on `anyOf`/`oneOf` branches (#44)
+- enforce sibling `type` with `anyOf`/`oneOf`/`allOf` (#41)
+- support recursive and mutual `$ref` (no more `RecursionError`) (#40)
+- clean error on empty `enum` (#42)
+
+### Other
+
+- scope `ruff`/`mypy` via `pyproject.toml`, drop dead `exclude` (#10)
+- add `__all__` to `tests/conftest.py`
+- add explicit `__all__` to every module and test
+
+### Testing
+
+- full `ValidationError` snapshots + required schema fields (#8)
+
 ## [0.0.11] — 2026-06-18
 
 ### Added
@@ -17,6 +85,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Other
 
+- update to `0.0.11`
 - rework with a summary and absolute contributing link
 - use `chore(version)` message for changelog commit
 - scope `Protocol` exclude pattern to class declarations
@@ -364,6 +433,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - add coverage tests and set `cov-fail-under`
 - add comprehensive test suite
 
+[0.0.12]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.11...v0.0.12>
 [0.0.11]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.10...v0.0.11>
 [0.0.10]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.9...v0.0.10>
 [0.0.9]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.8...v0.0.9>
