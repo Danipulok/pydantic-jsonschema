@@ -138,9 +138,8 @@ but do not affect the generated model.
   branch is validated as a plain `dict[str, Any]` — sibling `properties` are not applied.
 - On objects that declare both `properties` and a schema-valued `additionalProperties`,
   extra fields are accepted (`extra="allow"`) but their values are not validated against the `additionalProperties` schema.
-- `format` is metadata unless a matching entry is passed in `formats` — see [Formats](formats.md).
-  Built-in aliases cover all 19 spec-defined formats;
-  `idn-*` formats use the stdlib IDNA 2003 codec and `regex` uses the Python `re` dialect (see the differences from the specification in [Formats](formats.md)).
+- `format` is metadata unless a matching entry is passed in `formats`. Built-in aliases cover all
+  19 spec-defined formats, some with minor differences from the spec — see [Formats](formats.md).
 - `not` is only as precise as the converter's coverage of its subschema. A subschema that maps to
   `Any` (an empty schema, or `required` without `type` / `properties`) matches every value, so
   `not` then rejects everything.
