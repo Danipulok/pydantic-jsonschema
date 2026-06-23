@@ -123,7 +123,7 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 
 ## Unknown Keywords
 
-All JSON Schema 2020-12 validation and applicator keywords are now enforced on conversion.
+All JSON Schema 2020-12 validation and applicator keywords are enforced on conversion.
 Unknown or custom keywords are still parsed and preserved on the `Schema` model (`extra="allow"`)
 but do not affect the generated model.
 
