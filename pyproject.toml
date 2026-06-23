@@ -178,6 +178,10 @@ addopts = [
     "--strict-markers",     # Raise error for unregistered markers
     "--strict-config",      # Raise error for unknown config options
 ]
+xfail_strict = true         # An `xfail` test that unexpectedly passes is a failure
+filterwarnings = ["error"]  # Any warning is an error — catches deprecations early (e.g. in the
+                            # dependency-ceiling run); add targeted `ignore::...` entries if a
+                            # third-party warning is genuinely out of our control
 
 # https://coverage.readthedocs.io/en/latest/config.html#run
 [tool.coverage.run]
