@@ -35,6 +35,27 @@ repos:
       - id: trailing-whitespace
         args: [ --markdown-linebreak-ext=md ]
 
+  # Validate GitHub Actions workflows and the Dependabot config against their JSON schemas.
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.37.3
+    hooks:
+      - id: check-github-workflows
+      - id: check-dependabot
+
+  # Deep static analysis of the workflows (expression errors, deprecated syntax, shellcheck).
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+
+  # `pre-commit`'s own meta hook: flag `exclude` patterns that no longer match any file.
+  # NOTE: `check-hooks-apply` is intentionally omitted — it would force removing the standard
+  # safety hooks (`check-json` / `check-xml` / ...) that currently match no files but are kept
+  # as cheap insurance for when such files appear.
+  - repo: meta
+    hooks:
+      - id: check-useless-excludes
+
   - repo: local
     hooks:
       - id: format
