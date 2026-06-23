@@ -3,6 +3,8 @@
 See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.2.4
 """
 
+from typing import override
+
 from pydantic import TypeAdapter
 from pydantic.json_schema import JsonSchemaValue
 
@@ -43,10 +45,12 @@ class PropertyNames(ObjectApplicator):
             self._adapter = self._build_adapter(self._branch)
         return self._adapter
 
+    @override
     def json_schema_keyword(self) -> JsonSchemaValue:
         """Return the `propertyNames` keyword fragment for the dumped JSON Schema."""
         return {"propertyNames": self._get_adapter().json_schema()}
 
+    @override
     def validate(
         self,
         data: AnnotationType,

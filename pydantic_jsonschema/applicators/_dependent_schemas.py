@@ -3,6 +3,8 @@
 See: https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.4
 """
 
+from typing import override
+
 from pydantic import TypeAdapter
 from pydantic.json_schema import JsonSchemaValue
 
@@ -45,6 +47,7 @@ class DependentSchemas(ObjectApplicator):
             }
         return self._adapters
 
+    @override
     def json_schema_keyword(self) -> JsonSchemaValue:
         """Return the `dependentSchemas` keyword fragment for the dumped JSON Schema."""
         return {
@@ -53,6 +56,7 @@ class DependentSchemas(ObjectApplicator):
             }
         }
 
+    @override
     def validate(
         self,
         data: AnnotationType,

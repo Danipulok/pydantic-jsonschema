@@ -1,7 +1,7 @@
 """Custom exceptions for schema conversion, reference resolution, and format validation."""
 
 from dataclasses import dataclass, fields
-from typing import Any
+from typing import Any, override
 
 __all__ = [
     "BasePydanticJsonSchemaError",
@@ -22,6 +22,7 @@ class BasePydanticJsonSchemaError(Exception):
         field_values = tuple(getattr(self, field.name) for field in fields(self))
         super().__init__(*field_values)
 
+    @override
     def __str__(self) -> str:
         """Delegate to `repr` for consistent error display."""
         return repr(self)
