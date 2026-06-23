@@ -729,7 +729,8 @@ class SchemaConverter:
             return format_type
 
         msg = (
-            f"`formats[{schema.format!r}]` must be a type or `Annotated` type, got {format_type!r}"
+            f"`formats[{schema.format!r}]` must be a type or `Annotated` type, "
+            f"got `{format_type!r}`"
         )
         raise SchemaConversionError(msg)
 
