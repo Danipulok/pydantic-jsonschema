@@ -29,11 +29,8 @@ jobs:
       - name: Set up `Python`
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
 
-      - name: Install `uv`
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
-
-      - name: Install `just`
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+      - name: Set up `uv` + `just`
+        uses: ./.github/actions/setup
 
       - name: Install dependencies
         run: just ci-install
@@ -71,11 +68,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
 
-      - name: Install `uv`
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
-
-      - name: Install `just`
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+      - name: Set up `uv` + `just`
+        uses: ./.github/actions/setup
 
       # Retry the whole install: on 3.15 it builds `pydantic-core` from source, so a flaky
       # crates.io download (not a code fault) shouldn't fail the run. See `CARGO_NET_RETRY` above.
@@ -113,11 +107,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install `uv`
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
-
-      - name: Install `just`
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+      - name: Set up `uv` + `just`
+        uses: ./.github/actions/setup
 
       - name: Run tests at the dependency floor
         run: just ci-test-floor
@@ -132,11 +123,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install `uv`
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
-
-      - name: Install `just`
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+      - name: Set up `uv` + `just`
+        uses: ./.github/actions/setup
 
       - name: Run tests at the dependency ceiling
         run: just ci-test-ceil
@@ -152,11 +140,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install `uv`
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
-
-      - name: Install `just`
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+      - name: Set up `uv` + `just`
+        uses: ./.github/actions/setup
 
       - name: Install dependencies
         run: just ci-install
@@ -180,11 +165,8 @@ jobs:
       - name: Set up `Python`
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
 
-      - name: Install `uv`
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
-
-      - name: Install `just`
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+      - name: Set up `uv` + `just`
+        uses: ./.github/actions/setup
 
       - name: Install dependencies
         run: just ci-install-docs
