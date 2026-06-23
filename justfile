@@ -239,6 +239,19 @@ ci-build:
     uv build
     uvx twine check dist/*
 
+# Smoke-test a just-published release: install it FROM PyPI into a throwaway env and verify it
+# imports and converts a real schema. `--isolated --no-project` builds the env from the index only
+# (ignores the local source), so this exercises the actual published wheel.
+#
+# NOTE: `--exclude-newer-package "pydantic-jsonschema=2999-12-31"` is required. Our `[tool.uv]
+# exclude-newer = "7 days"` cooldown is read because `just` runs inside the repo, and it rejects the
+# just-released version as "too new" (it is 0 days old). The override lifts the cutoff for OUR
+# package only (a far-future date = no limit); dependencies keep the cooldown. Without it:
+#   uv run --with 'pydantic-jsonschema==<fresh version>' ...
+#   # -> error: ... filtered by `exclude-newer` ... requirements are unsatisfiable
+ci-smoke-test version:
+    uv run --isolated --no-project --exclude-newer-package "pydantic-jsonschema=2999-12-31" --with "pydantic-jsonschema=={{ version }}" python -c "from pydantic_jsonschema import Schema, to_model; print(to_model(Schema.model_validate({'type': 'object', 'properties': {'x': {'type': 'integer'}}, 'required': ['x']}))(x=1).model_dump())"
+
 # Build documentation in CI
 ci-docs-build: docs-build
 
