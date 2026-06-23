@@ -1,0 +1,13 @@
+# https://docs.codecov.com/docs/codecovyml-reference
+coverage:
+  status:
+    project:
+      default:
+        target: 100%
+    patch:
+      default:
+        target: 100%
+
+comment:
+  layout: "diff, flags, files"
+  require_changes: true
