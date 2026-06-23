@@ -80,9 +80,9 @@ validation.
 
 ### 3. Formats
 
-Built-in validators for every `format` in the JSON Schema spec (`email`, `uri`, `uuid`,
+Built-in types for every `format` in the JSON Schema spec (`email`, `uri`, `uuid`,
 `date-time`, `hostname`, `json-pointer`, `regex`, and more) — with zero extra
-dependencies. Pass your own callable for custom formats.
+dependencies. Map your own Pydantic type for custom formats.
 
 ```python
 from pydantic_jsonschema import Schema, to_model

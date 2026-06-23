@@ -1,6 +1,9 @@
-"""Add domain-specific validation with custom format validators."""
+"""Map a JSON Schema `format` to a custom Pydantic type."""
 
 import re
+from typing import Annotated
+
+from pydantic import AfterValidator
 
 from pydantic_jsonschema import Schema, to_model
 
@@ -30,6 +33,13 @@ def validate_price(value: float) -> float:
     return value
 
 
+# A custom format is a Pydantic type, the same shape as the built-in formats
+# (e.g. `Email = Annotated[str, AfterValidator(...)]`). The wrapper you pick
+# (`AfterValidator`, `BeforeValidator`, ...) controls when validation runs.
+Sku = Annotated[str, AfterValidator(validate_sku)]
+Price = Annotated[float, AfterValidator(validate_price)]
+
+
 product_schema = Schema.model_validate(
     {
         "type": "object",
@@ -45,8 +55,8 @@ product_schema = Schema.model_validate(
 Product = to_model(
     product_schema,
     formats={
-        "sku": validate_sku,
-        "price": validate_price,
+        "sku": Sku,
+        "price": Price,
     },
 )
 

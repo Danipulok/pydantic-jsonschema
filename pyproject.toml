@@ -192,6 +192,3 @@ fail_under = 100
 skip_covered = true # Omit fully covered files from report output
 show_missing = true # Show line numbers of missing coverage in report
 precision = 2       # Number of decimal places in coverage percentages
-exclude_lines = [
-    "^class .*\\(Protocol\\):$",     # It's impossible to test `Protocol`
-]
