@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 from ipaddress import IPv4Address
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, TypeAliasType
 from uuid import UUID
 
 import pytest
@@ -128,23 +128,6 @@ class TestFormats:
                 }
             ]
         )
-
-    def test_bare_callable_rejected(self) -> None:
-        """A bare callable (not a type / `Annotated`) is rejected with a clear error."""
-
-        def normalize(value: str) -> str:
-            return value.strip()
-
-        schema = Schema.model_validate(
-            {
-                "type": "object",
-                "properties": {"code": {"type": "string", "format": "code"}},
-                "required": ["code"],
-            }
-        )
-
-        with pytest.raises(SchemaConversionError, match=r"must be a type or `Annotated` type"):
-            to_model(schema, formats={"code": normalize})  # type: ignore[dict-item]
 
     def test_mixed_validators(self) -> None:
         """Test multiple format types in one schema."""
@@ -461,3 +444,55 @@ class TestFormats:
                 "ip": IPv4Address("192.168.1.1"),
             }
         )
+
+
+class TestFormatAcceptedForms:
+    """A `formats` entry must be a type or `Annotated` type; any other form is rejected."""
+
+    @pytest.mark.parametrize(
+        ("format_type", "value", "expected"),
+        [
+            pytest.param(
+                Annotated[str, AfterValidator(str.upper)],
+                "abc",
+                "ABC",
+                id="raw-annotated",
+            ),
+            pytest.param(IPv4Address, "1.2.3.4", IPv4Address("1.2.3.4"), id="plain-class"),
+            pytest.param(Email, "alice@example.com", "alice@example.com", id="type-alias"),
+        ],
+    )
+    def test_accepted_forms(
+        self,
+        format_type: type | TypeAliasType,
+        value: str,
+        expected: object,
+    ) -> None:
+        """Each accepted form (raw `Annotated`, plain class, PEP 695 alias) is applied."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"field": {"type": "string", "format": "custom"}},
+                "required": ["field"],
+            }
+        )
+        model = to_model(schema, formats={"custom": format_type})
+
+        assert model(field=value).model_dump() == {"field": expected}
+
+    def test_bare_callable_rejected(self) -> None:
+        """A bare callable (not a type / `Annotated`) is rejected with a clear error."""
+
+        def normalize(value: str) -> str:
+            return value.strip()
+
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"code": {"type": "string", "format": "code"}},
+                "required": ["code"],
+            }
+        )
+
+        with pytest.raises(SchemaConversionError, match=r"must be a type or `Annotated` type"):
+            to_model(schema, formats={"code": normalize})  # type: ignore[dict-item]
