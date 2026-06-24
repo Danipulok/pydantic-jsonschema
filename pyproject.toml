@@ -79,6 +79,7 @@ test = [
     #   # -> 35 passed, 4 warnings (`general_after_validator_function` is deprecated)
     "pydantic-extra-types>=2.3.0",
     "inline-snapshot>=0.34.0",
+    "hypothesis>=6.100.0",
 ]
 docs = [
     "mike>=2.1.0",

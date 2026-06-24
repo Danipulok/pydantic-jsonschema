@@ -28,3 +28,6 @@ docs/assets/copy-to-llm/
 dist/
 build/
 *.egg-info/
+
+# Hypothesis example database
+.hypothesis/
