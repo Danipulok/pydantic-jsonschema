@@ -190,6 +190,14 @@ ignore = [
     "T201",     # Remove `print`
 ]
 
+# Manually read by `tests/test_docs.py` (`pytest-examples` has no native `pyproject.toml` support).
+[tool.pytest-examples]
+ruff-ignore = [
+    "T201",     # Remove `print`
+    "D",        # Missing docstrings (doc blocks are fragments, no module to document)
+    "PLR2004",  # Magic values in comparisons (e.g. `len(parts) != 3` in `docs/formats.md`)
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = [
