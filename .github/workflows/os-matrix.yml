@@ -1,0 +1,54 @@
+name: OS matrix
+
+# Manual-only cross-OS sanity sweep (e.g. before a release). Not run on PRs: this library has no
+# OS-specific runtime surface (pure in-memory schema -> model logic; no file I/O, paths, or
+# subprocess), so per-PR cross-OS testing is not worth the cost — the PR matrix stays ubuntu-only.
+# PyPy is omitted: its latest is 3.11, below our `requires-python = ">=3.12"`.
+# 3.15 is omitted: it is a prerelease that builds `pydantic-core` from source (no wheel) on every
+# OS, and it is already covered on ubuntu by the main CI.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Cancel superseded runs: a new dispatch on the same ref aborts the in-flight one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.12", "3.13", "3.14"]
+    # `UV_PYTHON` pins `uv` to the matrix interpreter. (No `UV_NO_SYNC`: `ci-test` already runs
+    # `uv run --no-sync`, staying on the test-only env from `ci-install-test` — so the `docs`
+    # group's native deps, e.g. Pillow / imaging, are never pulled on macOS / Windows.)
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up `Python` ${{ matrix.python-version }}
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up `uv` + `just`
+        uses: ./.github/actions/setup
+
+      - name: Install dependencies
+        run: just ci-install-test
+
+      - name: Run tests with coverage
+        run: just ci-test
