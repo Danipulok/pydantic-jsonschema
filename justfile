@@ -44,6 +44,7 @@ lint:
     uv run ruff format --check
     uv run ruff check
     uv run mypy
+    uv run pyright
     uv run codespell
     npx --yes markdownlint-cli2
 
@@ -209,6 +210,7 @@ ci-lint:
     uv run --no-sync ruff format --check
     uv run --no-sync ruff check
     uv run --no-sync mypy
+    uv run --no-sync pyright
     uv run --no-sync codespell
     npx --yes markdownlint-cli2
 

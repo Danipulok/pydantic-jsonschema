@@ -64,6 +64,7 @@ lint = [
     "codespell>=2.4.0",
     "mypy>=1.17.1",
     "pre-commit>=4.0.0",
+    "pyright[nodejs]>=1.1.409",
     "ruff>=0.12.10",
 ]
 test = [
@@ -140,6 +141,37 @@ enable_error_code = [
     "deprecated",
 ]
 files = ["pydantic_jsonschema", "tests", "examples"]
+
+# Second type checker alongside `mypy`: the two disagree often enough that running both
+# catches issues neither finds alone (e.g. `pyright` flagged the `examples/custom_formats.py`
+# alias that used bare `X = Annotated[...]` instead of the canonical `type X = ...`).
+#
+# `tests` are intentionally excluded: `pyright` has no Pydantic plugin, so it (a) cannot resolve
+# field aliases (`$ref`, `if_`, `else_`, `not_`) and (b) flags the deliberate "wrong" inputs our
+# validation tests feed to coercing fields. `mypy` (with `pydantic.mypy`) covers `tests`.
+[tool.pyright]
+# https://github.com/microsoft/pyright/blob/main/docs/configuration.md
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "standard"
+# Scoped to the library source. `tests` and `examples` *consume* the models that `to_model`
+# builds at runtime, whose attributes/types are unknowable statically (`post.comments`,
+# `Reference(ref=...)` wanting the `$ref` alias, raw strings fed to coercing fields) — `pyright`
+# can only add `# pyright: ignore` noise there. `mypy` (+ `pydantic.mypy`) already covers both.
+include = ["pydantic_jsonschema"]
+# `# type: ignore` belongs to `mypy`; `pyright` uses `# pyright: ignore`. Without this, `pyright`
+# flags `mypy`-only ignores as unnecessary (and vice versa) when both checkers run.
+enableTypeIgnoreComments = false
+reportUnusedImport = "error"
+reportUnnecessaryCast = "error"
+reportUnnecessaryComparison = "error"
+reportUnnecessaryIsInstance = "error"
+reportMatchNotExhaustive = "error"
+reportPrivateUsage = "error"
+reportMissingTypeStubs = "error"
+reportUnknownLambdaType = "error"
+reportUnnecessaryTypeIgnoreComment = "error"
+reportDeprecated = "error"
 
 [tool.ruff]
 target-version = "py312"
