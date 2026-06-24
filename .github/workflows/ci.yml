@@ -44,11 +44,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # `UV_PYTHON` pins `uv` to the matrix interpreter — otherwise `uv` skips prereleases
-    # (like the `3.15` beta) and silently picks a stable one. `UV_NO_SYNC` keeps `uv run`
-    # on the test-only env from `ci-install-test` (no `docs` group: `Pillow` has no 3.15 wheel).
+    # (like the `3.15` beta) and silently picks a stable one. (No `UV_NO_SYNC` needed: the
+    # `ci-*` recipes already run `uv run --no-sync`, staying on the `ci-install-test` env.)
     env:
       UV_PYTHON: ${{ matrix.python-version }}
-      UV_NO_SYNC: "1"
       # `pydantic-core` ships no `cp315` wheel yet, so on 3.15 `uv` builds it from source via
       # `cargo`, whose crates.io downloads intermittently fail (transient TLS / unexpected EOF).
       # Make `cargo` retry each download before the step-level retry kicks in.

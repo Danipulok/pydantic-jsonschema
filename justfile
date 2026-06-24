@@ -206,18 +206,18 @@ ci-install-release: _check-uv
 
 # Run linting in CI
 ci-lint:
-    uv run ruff format --check
-    uv run ruff check
-    uv run mypy
-    uv run codespell
+    uv run --no-sync ruff format --check
+    uv run --no-sync ruff check
+    uv run --no-sync mypy
+    uv run --no-sync codespell
     npx --yes markdownlint-cli2
 
 # Run tests with coverage XML output for CI
 ci-test:
-    uv run coverage run -m pytest
-    uv run coverage combine
-    uv run coverage report
-    uv run coverage xml
+    uv run --no-sync coverage run -m pytest
+    uv run --no-sync coverage combine
+    uv run --no-sync coverage report
+    uv run --no-sync coverage xml
 
 # Test the dependency FLOOR: lowest Python + lowest direct deps our bounds allow.
 # `--resolution lowest-direct` re-resolves direct deps to their declared minimums (e.g.
@@ -253,7 +253,8 @@ ci-smoke-test version:
     uv run --isolated --no-project --exclude-newer-package "pydantic-jsonschema=2999-12-31" --with "pydantic-jsonschema=={{ version }}" python -c "from pydantic_jsonschema import Schema, to_model; print(to_model(Schema.model_validate({'type': 'object', 'properties': {'x': {'type': 'integer'}}, 'required': ['x']}))(x=1).model_dump())"
 
 # Build documentation in CI
-ci-docs-build: docs-build
+ci-docs-build:
+    uv run --no-sync mkdocs build
 
 # Deploy versioned docs to a single-commit `gh-pages` in CI (history never grows).
 #
@@ -267,8 +268,8 @@ ci-docs-deploy version: _ci-configure-git
     set -euo pipefail
     # Bring the existing versions local so `mike` preserves them in the new tree.
     git fetch origin gh-pages:gh-pages 2>/dev/null || true
-    uv run mike deploy --update-aliases "{{version}}" latest
-    uv run mike set-default latest
+    uv run --no-sync mike deploy --update-aliases "{{version}}" latest
+    uv run --no-sync mike set-default latest
     # Squash the entire branch to one orphan commit, then replace the remote branch.
     git checkout gh-pages
     git checkout --orphan _gh_pages_squashed

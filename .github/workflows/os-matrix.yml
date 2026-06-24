@@ -27,13 +27,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.12", "3.13", "3.14"]
-    # `UV_PYTHON` pins `uv` to the matrix interpreter. `UV_NO_SYNC` keeps `uv run` (inside
-    # `just ci-test`) on the test-only env built by `ci-install-test` instead of re-syncing to the
-    # full dev env — that would pull the `docs` group's native deps (Pillow / imaging), which are
-    # slow and fragile to install on macOS / Windows and are not needed to run the tests.
+    # `UV_PYTHON` pins `uv` to the matrix interpreter. (No `UV_NO_SYNC`: `ci-test` already runs
+    # `uv run --no-sync`, staying on the test-only env from `ci-install-test` — so the `docs`
+    # group's native deps, e.g. Pillow / imaging, are never pulled on macOS / Windows.)
     env:
       UV_PYTHON: ${{ matrix.python-version }}
-      UV_NO_SYNC: "1"
 
     steps:
       - name: Checkout
