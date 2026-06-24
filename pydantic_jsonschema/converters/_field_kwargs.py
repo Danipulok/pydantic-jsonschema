@@ -5,6 +5,7 @@
 # and flags every `is not MISSING` check as a non-overlapping identity comparison.
 # mypy: disable-error-code="comparison-overlap"
 
+from types import EllipsisType
 from typing import Any, Final, Literal, TypedDict
 
 import annotated_types
@@ -22,10 +23,9 @@ __all__ = [
 
 type FieldKindType = Literal["required", "optional", "root"]  # How a field is used in a model
 
-# Missing value for `default` field
+# Pydantic's "required, no default" marker for a field default (`...`).
 # See: https://github.com/pydantic/pydantic/blob/6800281ba87625346daf5826563740ded8a9851b/pydantic/fields.py#L241-L247
-# For mypy issue, see: https://github.com/python/mypy/issues/7818
-_PYDANTIC_DEFAULT_MISSING: Final[Ellipsis] = ...  # type: ignore[valid-type]
+_PYDANTIC_DEFAULT_MISSING: Final[EllipsisType] = ...
 
 
 class _FieldKwargs(TypedDict, total=False):

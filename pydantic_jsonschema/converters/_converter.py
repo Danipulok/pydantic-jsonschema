@@ -5,7 +5,7 @@
 # and flags every `is not MISSING` check as a non-overlapping identity comparison.
 # mypy: disable-error-code="comparison-overlap"
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from types import NoneType
 from typing import (
@@ -137,7 +137,7 @@ class SchemaConverter:
         self,
         segment: str,
         /,
-    ) -> Iterator[None]:
+    ) -> Generator[None]:
         """Context manager for tracking resolution path.
 
         :param segment: Path segment to add.
@@ -348,15 +348,16 @@ class SchemaConverter:
         applicators = self._build_object_applicators(schema)
 
         # For some reason, `create_model` "accepts" `fields` values as `tuple[str, Any]`,
-        # when in reality it accepts `tuple[type, FieldInfo]`
-        created_model = create_model(  # type: ignore[call-overload]
+        # when in reality it accepts `tuple[type, FieldInfo]`. Neither `mypy` nor `pyright` can
+        # match the `**fields` splat to a `create_model` overload.
+        created_model = create_model(  # type: ignore[call-overload]  # pyright: ignore[reportCallIssue]
             model_name,
             __config__=model_config,
             __doc__=unwrap(schema.description, default=None),
             __base__=base_classes,
             __module__=__name__,
             __validators__=validators,
-            **fields,
+            **fields,  # pyright: ignore[reportArgumentType]
         )
         return self._wrap_object_applicators(cast("type[BaseModel]", created_model), applicators)
 
@@ -1107,7 +1108,9 @@ class SchemaConverter:
             union_args = [_DATA_TYPE_ANNOTATION_MAPPING[data_type] for data_type in schema.type]
             return make_union(union_args)
 
-        return Any
+        # `Any` is a valid annotation but is not a `type`, so `pyright` rejects it under the
+        # `-> type` return; the same `Any`-as-annotation pattern recurs below for `item_type`.
+        return Any  # pyright: ignore[reportReturnType]
 
     def _array_annotation(
         self,
@@ -1124,7 +1127,7 @@ class SchemaConverter:
         # is the homogeneous element type.
         prefix_items = self._build_prefix_items(schema)
 
-        item_type: type | ForwardRef = Any
+        item_type: type | ForwardRef = Any  # pyright: ignore[reportAssignmentType]
         if prefix_items is None and schema.items is not MISSING:
             with self._track_path("items"):
                 item_type = self._schema_to_annotation(schema.items)
