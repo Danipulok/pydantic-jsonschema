@@ -44,8 +44,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # `UV_PYTHON` pins `uv` to the matrix interpreter — otherwise `uv` skips prereleases
-    # (like the `3.15` beta) and silently picks a stable one. (The `justfile` auto-enables
-    # `UV_NO_SYNC`/`UV_FROZEN` in CI, so `just test` runs on the `install-test` env without re-syncing.)
+    # (like the `3.15` beta) and silently picks a stable one. (No `UV_NO_SYNC` here: the
+    # `justfile`'s top-level `UV_NO_SYNC`/`UV_FROZEN` exports auto-enable in CI, so `just test`
+    # runs on the `install-test` env without re-syncing.)
     env:
       UV_PYTHON: ${{ matrix.python-version }}
       # `pydantic-core` ships no `cp315` wheel yet, so on 3.15 `uv` builds it from source via
@@ -54,6 +55,8 @@ jobs:
       CARGO_NET_RETRY: "10"
     strategy:
       fail-fast: false
+      # Canonical Python matrix. Mirrored by `coverage.yml`, `python_versions` in the `justfile`,
+      # and (minus the `3.15` prerelease) `os-matrix.yml`. Keep them in sync.
       matrix:
         python-version: ["3.12", "3.13", "3.14", "3.15"]
 

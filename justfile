@@ -16,8 +16,8 @@ export UV_PREVIEW_FEATURES := "malware-check"
 export UV_NO_SYNC := if env_var_or_default("CI", "") != "" { "true" } else { "false" }
 export UV_FROZEN := if env_var_or_default("CI", "") != "" { "true" } else { "false" }
 
-# Python versions under test — a mirror of the CI matrices. Keep in sync with the `python-version`
-# lists in `.github/workflows/{ci,codspeed,coverage,os-matrix}.yml`.
+# Python versions under test. Mirrors the canonical matrix — `python-version` in `ci.yml`'s `test`
+# job (which `coverage.yml` also mirrors and `os-matrix.yml` subsets, sans `3.15`). Keep in sync.
 python_versions := "3.12 3.13 3.14 3.15"
 # Floor = oldest supported (dependency-floor run); ceiling = newest stable (dependency-ceiling run).
 python_floor := "3.12"
@@ -181,7 +181,8 @@ test-floor:
 
 # Test the dependency CEILING: latest stable Python + highest resolvable deps.
 # `--upgrade` ignores the lockfile pins and re-resolves to the latest allowed versions (within
-# `exclude-newer`), catching breakage from a new dependency release before it reaches the lockfile.
+# `tool.uv.exclude-newer` in `pyproject.toml`), catching breakage from a new dependency release
+# before it reaches the lockfile.
 # Isolated env; no coverage gate. See `test-floor` for why the CI-wide flags are cleared.
 [doc("Test the dependency ceiling (newest stable Python, highest deps)")]
 test-ceil:
@@ -287,9 +288,10 @@ build:
 # (ignores the local source), so this exercises the actual published wheel. `UV_NO_SYNC=false`
 # suppresses uv's "`--no-sync` has no effect with `--no-project`" warning under the CI-wide default.
 #
-# NOTE: `--exclude-newer-package "pydantic-jsonschema=2999-12-31"` is required. Our `[tool.uv]
-# exclude-newer = "7 days"` cooldown is read because `just` runs inside the repo, and it rejects the
-# just-released version as "too new" (it is 0 days old). The override lifts the cutoff for OUR
+# NOTE: `--exclude-newer-package "pydantic-jsonschema=2999-12-31"` is required. Our `exclude-newer`
+# cooldown (canonical: `tool.uv.exclude-newer = "7 days"` in `pyproject.toml`) is read because `just`
+# runs inside the repo, so it rejects the just-released version as "too new" (0 days old). The
+# override lifts the cutoff for OUR
 # package only (a far-future date = no limit); dependencies keep the cooldown. Without it:
 #   uv run --with 'pydantic-jsonschema==<fresh version>' ...
 #   # -> error: ... filtered by `exclude-newer` ... requirements are unsatisfiable
