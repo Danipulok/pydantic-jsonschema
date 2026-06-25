@@ -28,3 +28,6 @@ docs/assets/copy-to-llm/
 dist/
 build/
 *.egg-info/
+
+# On-demand CycloneDX SBOM (`just sbom`) — generated, never committed
+sbom/
