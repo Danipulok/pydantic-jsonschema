@@ -34,18 +34,19 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Install dependencies
-        run: just ci-install
+        run: just install-all
 
       - name: Run linting
-        run: just ci-lint
+        run: just lint
 
   test:
     name: Test Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # `UV_PYTHON` pins `uv` to the matrix interpreter — otherwise `uv` skips prereleases
-    # (like the `3.15` beta) and silently picks a stable one. (No `UV_NO_SYNC` needed: the
-    # `ci-*` recipes already run `uv run --no-sync`, staying on the `ci-install-test` env.)
+    # (like the `3.15` beta) and silently picks a stable one. (No `UV_NO_SYNC` here: the
+    # `justfile`'s top-level `UV_NO_SYNC`/`UV_FROZEN` exports auto-enable in CI, so `just test`
+    # runs on the `install-test` env without re-syncing.)
     env:
       UV_PYTHON: ${{ matrix.python-version }}
       # `pydantic-core` ships no `cp315` wheel yet, so on 3.15 `uv` builds it from source via
@@ -54,6 +55,8 @@ jobs:
       CARGO_NET_RETRY: "10"
     strategy:
       fail-fast: false
+      # Canonical Python matrix. Mirrored by `coverage.yml`, `python_versions` in the `justfile`,
+      # and (minus the `3.15` prerelease) `os-matrix.yml`. Keep them in sync.
       matrix:
         python-version: ["3.12", "3.13", "3.14", "3.15"]
 
@@ -77,7 +80,7 @@ jobs:
       - name: Install dependencies
         run: |
           for attempt in 1 2 3; do
-            if just ci-install-test; then
+            if just install-test; then
               exit 0
             fi
             echo "::warning::Install attempt ${attempt} failed; retrying in 15s"
@@ -87,7 +90,7 @@ jobs:
           exit 1
 
       - name: Run tests with coverage
-        run: just ci-test
+        run: just test
 
       # Coverage is uploaded to `Codecov` from the separate `coverage.yml` (`workflow_run`), which
       # runs in the trusted base-repo context — so fork PRs report coverage without ever exposing
@@ -116,7 +119,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Run tests at the dependency floor
-        run: just ci-test-floor
+        run: just test-floor
 
   test-ceil:
     name: Test (dependency ceiling)
@@ -133,7 +136,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Run tests at the dependency ceiling
-        run: just ci-test-ceil
+        run: just test-ceil
 
   audit:
     name: Audit
@@ -151,7 +154,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Install dependencies
-        run: just ci-install
+        run: just install-all
 
       - name: Audit dependencies
         run: just audit
@@ -177,10 +180,10 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Install dependencies
-        run: just ci-install-docs
+        run: just install-docs
 
       - name: Build documentation
-        run: just ci-docs-build
+        run: just docs-build
 
   # Single required status check: branch protection points only at this job, so matrix legs
   # can be added/removed without editing protection rules. Fails if any needed job failed.
