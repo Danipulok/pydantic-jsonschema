@@ -41,10 +41,10 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Install benchmark dependencies
-        run: just ci-install-benchmark
+        run: just install-benchmark
 
       - name: Run benchmarks
         uses: CodSpeedHQ/action@a4a36bb07c0638b0b4ca52bf1f3dad1b4289e52f # v4
         with:
           mode: simulation
-          run: just ci-benchmark
+          run: just bench

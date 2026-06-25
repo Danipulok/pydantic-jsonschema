@@ -27,9 +27,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.12", "3.13", "3.14"]
-    # `UV_PYTHON` pins `uv` to the matrix interpreter. (No `UV_NO_SYNC`: `ci-test` already runs
-    # `uv run --no-sync`, staying on the test-only env from `ci-install-test` — so the `docs`
-    # group's native deps, e.g. Pillow / imaging, are never pulled on macOS / Windows.)
+    # `UV_PYTHON` pins `uv` to the matrix interpreter. (The `justfile` auto-enables `UV_NO_SYNC` in
+    # CI, so `just test` stays on the test-only env from `install-test` without re-syncing — the
+    # `docs` group's native deps, e.g. Pillow / imaging, are never pulled on macOS / Windows.)
     env:
       UV_PYTHON: ${{ matrix.python-version }}
 
@@ -48,7 +48,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Install dependencies
-        run: just ci-install-test
+        run: just install-test
 
       - name: Run tests with coverage
-        run: just ci-test
+        run: just test
