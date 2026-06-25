@@ -56,6 +56,33 @@ audit:
 audit-workflows:
     uvx zizmor --offline .github/workflows/
 
+# Generate a CycloneDX SBOM of the runtime dependency tree into `sbom/`. On-demand convenience only —
+# deliberately NOT wired into releases: the published wheel's `Requires-Dist` already declares deps,
+# and `uv audit` covers active CVE scanning, so this is just a standardized bill-of-materials for
+# anyone who explicitly needs one. `--no-default-groups` restricts it to runtime deps; `uv export`
+# carries hashes for component integrity. `cyclonedx-py` has no native `uv` lockfile support, hence
+# the `requirements` bridge. See https://github.com/CycloneDX/cyclonedx-python/issues/857
+sbom:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    mkdir -p sbom
+    output_file="sbom/pydantic-jsonschema.cdx.json"
+
+    # Export the runtime dependency tree (pinned, with hashes) as requirements, then convert it to a
+    # CycloneDX document. `cyclonedx-py` reads the requirements from stdin (the trailing `-`).
+    uv export \
+        --frozen \
+        --no-default-groups \
+        --no-emit-project \
+        --format requirements-txt \
+        | uvx --from cyclonedx-bom cyclonedx-py requirements - \
+            --output-format JSON \
+            --spec-version 1.7 \
+            --output-file "$output_file"
+
+    printf 'Wrote %s\n' "$output_file"
+
 # Run pre-commit on all files
 precommit:
     uv run pre-commit run --all-files
@@ -312,6 +339,7 @@ clean:
     rm -rf .coverage
     rm -rf htmlcov
     rm -rf site
+    rm -rf sbom
     # Remove throwaway envs (`.venv312`-`.venv315`, `.venv-floor`, `.venv-ceil`) but keep the
     # main `.venv` so a clean doesn't force a full re-sync of the working environment.
     find . -maxdepth 1 -type d -name ".venv*" ! -name ".venv" -exec rm -rf {} +
