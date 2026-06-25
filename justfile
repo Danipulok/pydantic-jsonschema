@@ -4,15 +4,26 @@
 export UV_MALWARE_CHECK := "1"
 export UV_PREVIEW_FEATURES := "malware-check"
 
+# Python versions under test — a mirror of the CI matrices. Keep in sync with the `python-version`
+# lists in `.github/workflows/{ci,codspeed,coverage,os-matrix}.yml`.
+python_versions := "3.12 3.13 3.14 3.15"
+# Floor = oldest supported (dependency-floor run); ceiling = newest stable (dependency-ceiling run).
+python_floor := "3.12"
+python_ceil := "3.14"
+
 # --- General ---
 
 # Default recipe to display help information
 default:
     @just --list
 
-# Check that `uv` is installed
+# Fail early with an install hint if `uv` is not on `PATH`
 _check-uv:
-    @uv --version > /dev/null || echo "Please install uv: https://docs.astral.sh/uv/getting-started/installation"
+    #!/usr/bin/env bash
+    if ! uv --version > /dev/null 2>&1; then
+        echo "Please install uv: https://docs.astral.sh/uv/getting-started/installation" >&2
+        exit 1
+    fi
 
 # --- Setup ---
 
@@ -23,10 +34,12 @@ install: _check-uv
 
 # Install and synchronize an interpreter for every supported python version
 install-all-python:
-    UV_PROJECT_ENVIRONMENT=.venv312 uv sync --python 3.12 --frozen --no-default-groups --group test
-    UV_PROJECT_ENVIRONMENT=.venv313 uv sync --python 3.13 --frozen --no-default-groups --group test
-    UV_PROJECT_ENVIRONMENT=.venv314 uv sync --python 3.14 --frozen --no-default-groups --group test
-    UV_PROJECT_ENVIRONMENT=.venv315 uv sync --python 3.15 --frozen --no-default-groups --group test
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for version in {{python_versions}}; do
+        UV_PROJECT_ENVIRONMENT=".venv${version//./}" \
+            uv sync --python "$version" --frozen --no-default-groups --group test
+    done
 
 # Update local packages and `uv.lock`
 sync: _check-uv
@@ -39,14 +52,18 @@ format:
     uv run ruff format
     uv run ruff check --fix --fix-only
 
-# Run linting
-lint:
-    uv run ruff format --check
-    uv run ruff check
-    uv run mypy
-    uv run pyright
-    uv run codespell
+# Shared lint commands. `uv_flags` is empty locally (each `uv run` auto-syncs) and `--no-sync` in CI
+# (the environment is already provisioned by `ci-install`), so `lint` / `ci-lint` stay a single source.
+_lint uv_flags="":
+    uv run {{uv_flags}} ruff format --check
+    uv run {{uv_flags}} ruff check
+    uv run {{uv_flags}} mypy
+    uv run {{uv_flags}} pyright
+    uv run {{uv_flags}} codespell
     npx --yes markdownlint-cli2
+
+# Run linting
+lint: (_lint)
 
 # Audit dependencies for known vulnerabilities and abandoned packages (OSV-backed `uv audit`)
 audit:
@@ -62,6 +79,7 @@ audit-workflows:
 # anyone who explicitly needs one. `--no-default-groups` restricts it to runtime deps; `uv export`
 # carries hashes for component integrity. `cyclonedx-py` has no native `uv` lockfile support, hence
 # the `requirements` bridge. See https://github.com/CycloneDX/cyclonedx-python/issues/857
+[doc("Generate a CycloneDX SBOM of the runtime deps into sbom/")]
 sbom:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -92,18 +110,24 @@ all: format lint audit audit-workflows test docs-build
 
 # --- Tests ---
 
+# Shared test commands. `uv_flags` is empty locally and `--no-sync` in CI (see `_lint`); `ci-test`
+# additionally emits `coverage.xml` for upload.
+_test uv_flags="":
+    uv run {{uv_flags}} coverage run -m pytest
+    uv run {{uv_flags}} coverage combine
+    uv run {{uv_flags}} coverage report
+
 # Run tests and show coverage report
-test:
-    uv run coverage run -m pytest
-    uv run coverage combine
-    uv run coverage report
+test: (_test)
 
 # Run tests for every supported python version and show combined coverage report
 test-all-python: install-all-python
-    UV_PROJECT_ENVIRONMENT=.venv312 uv run --python 3.12 --no-default-groups --group test coverage run -p -m pytest
-    UV_PROJECT_ENVIRONMENT=.venv313 uv run --python 3.13 --no-default-groups --group test coverage run -p -m pytest
-    UV_PROJECT_ENVIRONMENT=.venv314 uv run --python 3.14 --no-default-groups --group test coverage run -p -m pytest
-    UV_PROJECT_ENVIRONMENT=.venv315 uv run --python 3.15 --no-default-groups --group test coverage run -p -m pytest
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for version in {{python_versions}}; do
+        UV_PROJECT_ENVIRONMENT=".venv${version//./}" \
+            uv run --python "$version" --no-default-groups --group test coverage run -p -m pytest
+    done
     uv run coverage combine
     uv run coverage report
     just ci-test-floor
@@ -119,6 +143,7 @@ test-fix-snapshots:
 
 # Run the `CodSpeed` benchmarks locally (`-m benchmark` overrides the suite-wide `not benchmark`).
 # Outside CI this measures wall-clock only; the GitHub job instruments it for stable comparisons.
+[doc("Run the CodSpeed benchmarks locally")]
 bench:
     uv run pytest --codspeed -m benchmark tests/benchmarks
 
@@ -235,44 +260,38 @@ ci-install-benchmark: _check-uv
 
 # Install docs dependencies for CI
 ci-install-docs: _check-uv
-    uv sync --group docs
+    uv sync --frozen --group docs
 
 # Install release dependencies for CI
 ci-install-release: _check-uv
-    uv sync --group release
+    uv sync --frozen --group release
 
 # Run linting in CI
-ci-lint:
-    uv run --no-sync ruff format --check
-    uv run --no-sync ruff check
-    uv run --no-sync mypy
-    uv run --no-sync pyright
-    uv run --no-sync codespell
-    npx --yes markdownlint-cli2
+ci-lint: (_lint "--no-sync")
 
 # Run tests with coverage XML output for CI
-ci-test:
-    uv run --no-sync coverage run -m pytest
-    uv run --no-sync coverage combine
-    uv run --no-sync coverage report
+ci-test: (_test "--no-sync")
     uv run --no-sync coverage xml
 
 # Test the dependency FLOOR: lowest Python + lowest direct deps our bounds allow.
 # `--resolution lowest-direct` re-resolves direct deps to their declared minimums (e.g.
 # `pydantic>=2.13.0` -> `2.13.0`), proving the floor actually resolves and passes. Isolated env
 # (never touches `.venv`); no coverage gate.
+[doc("Test the dependency floor (oldest Python, lowest direct deps)")]
 ci-test-floor:
-    UV_PROJECT_ENVIRONMENT=.venv-floor uv run --python 3.12 --resolution lowest-direct --no-default-groups --group test pytest
+    UV_PROJECT_ENVIRONMENT=.venv-floor uv run --python {{python_floor}} --resolution lowest-direct --no-default-groups --group test pytest
 
 # Test the dependency CEILING: latest stable Python + highest resolvable deps.
 # `--upgrade` ignores the lockfile pins and re-resolves to the latest allowed versions (within
 # `exclude-newer`), catching breakage from a new dependency release before it reaches the lockfile.
 # Isolated env; no coverage gate.
+[doc("Test the dependency ceiling (newest stable Python, highest deps)")]
 ci-test-ceil:
-    UV_PROJECT_ENVIRONMENT=.venv-ceil uv run --python 3.14 --upgrade --no-default-groups --group test pytest
+    UV_PROJECT_ENVIRONMENT=.venv-ceil uv run --python {{python_ceil}} --upgrade --no-default-groups --group test pytest
 
 # Run benchmarks in CI. The `CodSpeedHQ/action` wraps this command with its instrumentation; the
 # plugin detects that and records stable measurements instead of wall-clock.
+[doc("Run benchmarks in CI under CodSpeed instrumentation")]
 ci-benchmark:
     uv run --no-sync pytest --codspeed -m benchmark tests/benchmarks
 
@@ -292,6 +311,7 @@ ci-build:
 # package only (a far-future date = no limit); dependencies keep the cooldown. Without it:
 #   uv run --with 'pydantic-jsonschema==<fresh version>' ...
 #   # -> error: ... filtered by `exclude-newer` ... requirements are unsatisfiable
+[doc("Smoke-test a published release installed from PyPI")]
 ci-smoke-test version:
     uv run --isolated --no-project --exclude-newer-package "pydantic-jsonschema=2999-12-31" --with "pydantic-jsonschema=={{ version }}" python -c "from pydantic_jsonschema import Schema, to_model; print(to_model(Schema.model_validate({'type': 'object', 'properties': {'x': {'type': 'integer'}}, 'required': ['x']}))(x=1).model_dump())"
 
@@ -306,6 +326,7 @@ ci-docs-build:
 # deploy locally (no `--push`), then collapse the whole branch into one orphan commit and
 # force-push it — each release replaces `gh-pages` rather than appending to it.
 # See: https://github.com/ag2ai/ag2/pull/2989
+[doc("Deploy versioned docs to a single-commit gh-pages branch in CI")]
 ci-docs-deploy version: _ci-configure-git
     #!/usr/bin/env bash
     set -euo pipefail
