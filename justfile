@@ -90,6 +90,11 @@ testcov: test
 test-fix-snapshots:
     uv run pytest --inline-snapshot=fix
 
+# Run the `CodSpeed` benchmarks locally (`-m benchmark` overrides the suite-wide `not benchmark`).
+# Outside CI this measures wall-clock only; the GitHub job instruments it for stable comparisons.
+bench:
+    uv run pytest --codspeed -m benchmark tests/benchmarks
+
 # --- Documentation ---
 
 # Format documentation examples
@@ -197,6 +202,10 @@ ci-install: _check-uv
 ci-install-test: _check-uv
     uv sync --frozen --no-default-groups --group test
 
+# Install benchmark dependencies only for CI (adds `pytest-codspeed` to the `test` group)
+ci-install-benchmark: _check-uv
+    uv sync --frozen --no-default-groups --group benchmark
+
 # Install docs dependencies for CI
 ci-install-docs: _check-uv
     uv sync --group docs
@@ -234,6 +243,11 @@ ci-test-floor:
 # Isolated env; no coverage gate.
 ci-test-ceil:
     UV_PROJECT_ENVIRONMENT=.venv-ceil uv run --python 3.14 --upgrade --no-default-groups --group test pytest
+
+# Run benchmarks in CI. The `CodSpeedHQ/action` wraps this command with its instrumentation; the
+# plugin detects that and records stable measurements instead of wall-clock.
+ci-benchmark:
+    uv run --no-sync pytest --codspeed -m benchmark tests/benchmarks
 
 # Build package and check metadata in CI
 ci-build:

@@ -1,0 +1,50 @@
+name: CodSpeed
+
+# Continuous benchmarking: runs the `tests/benchmarks/` suite under `CodSpeed`'s simulation
+# instrument and reports performance deltas on each PR (vs the `main` baseline). Not part of the
+# `CI` required-check gate — perf is informational and must never block a merge.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+# Cancel superseded runs: a new push to the same ref aborts the in-flight run for it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmarks:
+    name: Run benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      # Tokenless upload for public repos: `CodSpeed` verifies the run via OIDC, so no
+      # `CODSPEED_TOKEN` secret is needed. See https://docs.codspeed.io/integrations/ci/github-actions
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up `Python`
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+
+      - name: Set up `uv` + `just`
+        uses: ./.github/actions/setup
+
+      - name: Install benchmark dependencies
+        run: just ci-install-benchmark
+
+      - name: Run benchmarks
+        uses: CodSpeedHQ/action@a4a36bb07c0638b0b4ca52bf1f3dad1b4289e52f # v4
+        with:
+          mode: simulation
+          run: just ci-benchmark
