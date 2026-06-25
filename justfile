@@ -65,11 +65,23 @@ audit-workflows:
 sbom:
     #!/usr/bin/env bash
     set -euo pipefail
+
     mkdir -p sbom
-    uv export --frozen --no-default-groups --no-emit-project --format requirements-txt \
+    output_file="sbom/pydantic-jsonschema.cdx.json"
+
+    # Export the runtime dependency tree (pinned, with hashes) as requirements, then convert it to a
+    # CycloneDX document. `cyclonedx-py` reads the requirements from stdin (the trailing `-`).
+    uv export \
+        --frozen \
+        --no-default-groups \
+        --no-emit-project \
+        --format requirements-txt \
         | uvx --from cyclonedx-bom cyclonedx-py requirements - \
-            --of JSON --sv 1.6 --output-file sbom/pydantic-jsonschema.cdx.json
-    printf 'Wrote sbom/pydantic-jsonschema.cdx.json\n'
+            --output-format JSON \
+            --spec-version 1.7 \
+            --output-file "$output_file"
+
+    printf 'Wrote %s\n' "$output_file"
 
 # Run pre-commit on all files
 precommit:
