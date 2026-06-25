@@ -1,0 +1,434 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [0.0.12](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.11...v0.0.12) — 2026-06-23
+
+### Added
+
+- round-trip `not`/`contains`/`prefixItems`/`if`-`then`-`else` JSON Schema (#45)
+- enforce `propertyNames` on object conversion (#21)
+- enforce `patternProperties` on object conversion (#20)
+- enforce `if`/`then`/`else` on conversion (#19)
+- enforce `dependentSchemas` on object conversion (#18)
+- enforce `not` on conversion (#17)
+- enforce `prefixItems` positional validation (#16)
+- enforce `dependentRequired` on object conversion (#15)
+- enforce `contains`/`minContains`/`maxContains` on array conversion (#14)
+- enforce `minProperties`/`maxProperties` on object conversion (#13)
+- enforce `uniqueItems` on array conversion (#12)
+- declare remaining JSON Schema 2020-12 keywords (#11)
+
+### Build
+
+- cancel superseded runs via a `concurrency` group (#31)
+- deploy to a single-commit `gh-pages` to stop repo bloat (#22)
+- drop generated `_version.py`, read `__version__` from package metadata (#9)
+
+### Changed
+
+- rename `format_validators` parameter to `formats` (#49)
+- `AnnotationApplicator` / `ObjectApplicator` ABC roles (#47)
+- one format — unified model-wrapper + JSON Schema round-trip (#46)
+- mirror source package structure in `tests/` (#39)
+- drop root `OneOf` re-export (#37)
+- rename `_markers` package to `_applicators` (#34)
+- readability cleanup — helpers + `$defs` alias extraction (#32)
+- split `converters.py` into a package (#29)
+- unify `not`/`if`-`then`-`else` whole-value hooks (#28)
+- unify object-keyword validators into one aggregator (#27)
+- collect markers in one registry via `_register` (#26)
+- add shared `SubschemaMarker` base for marker validators (#25)
+- move marker validators into `_markers` subpackage (#23)
+
+### Documentation
+
+- remove completed section (#48)
+- add Python 3.15 to `test-all-python` row (#43)
+- rename "Format Validators" section to "Formats" (#38)
+- add applicators guide and API page (#36)
+- drop restating `what` comments and docstring noise (#30)
+- fix duplicated copy buttons, refactor `README.md` (#7)
+- refactor `api` reference (#6)
+- refactor all docs (#5)
+- clarify contributor roles in acknowledgments
+
+### Fixed
+
+- enforce field constraints on `anyOf`/`oneOf` branches (#44)
+- enforce sibling `type` with `anyOf`/`oneOf`/`allOf` (#41)
+- support recursive and mutual `$ref` (no more `RecursionError`) (#40)
+- clean error on empty `enum` (#42)
+
+### Other
+
+- scope `ruff`/`mypy` via `pyproject.toml`, drop dead `exclude` (#10)
+- add `__all__` to `tests/conftest.py`
+- add explicit `__all__` to every module and test
+
+### Testing
+
+- full `ValidationError` snapshots + required schema fields (#8)
+
+## [0.0.11](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.10...v0.0.11) — 2026-06-18
+
+### Added
+
+- map discriminated `oneOf` to Pydantic tagged unions (#4)
+
+### Build
+
+- add `OS Independent`, `Python 3 :: Only`, and code-generator classifiers
+- test against `Python 3.15` beta
+
+### Other
+
+- update to `0.0.11`
+- rework with a summary and absolute contributing link
+- use `chore(version)` message for changelog commit
+- scope `Protocol` exclude pattern to class declarations
+
+### Testing
+
+- make `$ref` cache identity check version-stable
+
+## [0.0.10](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.9...v0.0.10) — 2026-06-17
+
+### Added
+
+- add remaining spec-defined format types (#3)
+
+### Build
+
+- bump the python-dependencies group across 1 directory with 2 updates (#2)
+- bump the github-actions group across 1 directory with 2 updates (#1)
+
+### Documentation
+
+- add `0.0.10` release section
+
+## [0.0.9](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.8...v0.0.9) — 2026-06-12
+
+### Changed
+
+- extract `_rebuild_def_models` from `_build_defs_cache`
+- replace tri-state `is_required` with explicit `field_kind`
+- route defs bookkeeping through `_get_model`
+- hoist `required` lookup out of the fields loop
+
+### Documentation
+
+- add `0.0.9` release section
+- add `llms.txt` export and copy-page-as-Markdown button
+- note unvalidated extras with `properties` + schema `additionalProperties`
+
+### Other
+
+- build docs on every commit
+
+## [0.0.8](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.7...v0.0.8) — 2026-06-12
+
+### Added
+
+- add `pattern` field and map it to Pydantic `pattern` constraint
+
+### Build
+
+- add weekly grouped updates for `uv` and `github-actions`
+- route all workflow steps through `just ci-*` recipes
+
+### Changed
+
+- drop duplicated `_get_model` caching and fix stale docstrings
+- decompose `_build_model` into model-flavor builders
+- split `_schema_to_annotation` into focused handlers
+- reorganize `test_converters.py` into feature-based classes
+- merge `test_types.py` into `test_schema.py` and split into logical classes
+
+### Documentation
+
+- add `0.0.8` release section
+- document unsupported keywords and known limitations
+- link format spec section in module docstring
+
+### Fixed
+
+- map multi-type `object` to `dict[str, Any]` instead of `Any`
+- default optional fields to `MISSING` sentinel instead of `None`
+
+### Other
+
+- group recipes into logical sections
+- clean `dist/` before CI build
+
+### Testing
+
+- add explicit `id` to multi-argument parameter sets
+
+## [0.0.7](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.6...v0.0.7) — 2026-06-12
+
+### Added
+
+- enforce `oneOf` exactly-one-branch semantics via `OneOf` validator
+
+### Build
+
+- raise `pydantic-extra-types` floor to `2.3.0`
+- raise `pydantic` floor to `2.13.0`
+
+### Documentation
+
+- add `0.0.7` release section
+
+### Fixed
+
+- validate root `additionalProperties` values via `RootModel`
+- resolve `Reference` aliases in `$defs`
+
+### Testing
+
+- cover `const: null` conversion to `Literal[None]`
+- replace partial assertions with full `snapshot` comparisons
+- wrap literal assertions with `inline_snapshot`
+
+## [0.0.6](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.5...v0.0.6) — 2026-06-12
+
+### Changed
+
+- remove `JsonType` alias in favor of `pydantic.JsonValue`
+- replace `BeforeValidator` with `AfterValidator` in format aliases
+
+### Documentation
+
+- add `0.0.6` release section
+
+### Other
+
+- remove `Ref` from public `__all__`
+
+## [0.0.5](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.4...v0.0.5) — 2026-06-12
+
+### Changed
+
+- drop `formats-extra` extra in favor of direct `pydantic-extra-types` install
+
+### Documentation
+
+- add `0.0.5` release section
+
+### Other
+
+- forbid \`pragma: no cover
+
+## [0.0.4](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.3...v0.0.4) — 2026-06-12
+
+### Build
+
+- add `just release-auto` command
+
+### Changed
+
+- replace `email-validator` dep with built-in `validate_email`
+
+### Documentation
+
+- add `0.0.4` release section
+
+## [0.0.3](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.2...v0.0.3) — 2026-06-12
+
+### Changed
+
+- replace `fqdn` and `rfc3986` deps with built-in validators
+
+### Documentation
+
+- add `0.0.3` release section
+- add comments explaining template workarounds for markdownlint
+- add manual GitHub Release and docs deploy steps
+- add `just changelog` step to release flow
+
+### Fixed
+
+- fix `cliff.toml` template for valid markdown output
+- update `setup-just` SHA to v4
+
+## [0.0.2](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.1...v0.0.2) — 2026-06-11
+
+### Added
+
+- replace `openapi-pydantic` with our own `Schema`, `Reference` and `DataType`
+
+### Build
+
+- add `docs-alias` recipe and deploy `latest` alias on release
+- route all CI commands through `justfile` recipes
+- add `test` hook to enforce 100% coverage on commit
+
+### Documentation
+
+- add `0.0.2` release section
+- add `inline_snapshot` item to roadmap
+- add `Ruff`, `uv`, `mypy`, and `pre-commit` badges
+- add acknowledgments section
+- add roadmap section
+
+### Fixed
+
+- add `ignore_missing_imports` override for `fqdn`/`rfc3986`
+- add `latest` prefix to installation guide link
+- allow missing AWS credentials config
+- validate URI/IRI component validity, rename `exc` to `er`
+- update copyright year to `2026`
+- deploy `docs` and route `v0.*` to `TestPyPI`
+
+### Other
+
+- remove `TestPyPI` publishing
+
+### Testing
+
+- add tests for invalid URI/IRI reference validation
+
+## [0.0.1](https://github.com/Danipulok/pydantic-jsonschema/releases/tag/v0.0.1) — 2026-06-11
+
+### Added
+
+- export `Reference` in public API
+- add custom `Schema`/`Reference` with `None`-stripping serialization
+- add model validators support in lax mode
+- implement user-provided coerce functions in lax mode
+- implement centralized version management and docs versioning
+- add `__version__` and allow direct references
+- add PyPI metadata to `pyproject.toml`
+- add IRI validators
+- add format validators, public API, lax mode, and schema dumping
+- initial library with converter, formats, and types
+
+### Build
+
+- add PR title validation for Conventional Commits format
+- switch from exclude to include whitelist
+- add tag-based release workflow, `git-cliff` changelog, `just release`
+- switch to `hatch-vcs` for version from git tags
+- configure `hatchling` build targets and exclusions
+- add GitHub Actions workflows for CI and PyPI publishing
+
+### Changed
+
+- simplify `sanitize_identifier` with `re.sub`
+- remove `SchemaFormat` class and `_base.py` module
+- remove all lax model functionality
+- add `TYPE_CHECKING` guard for `JsonType` import
+- add `__all__` to `_version.py`
+- convert builtin formats to Pydantic types
+- remove `extra.py` and related tests
+- move `markdownlint-cli2` to `justfile` lint
+- integrate `codespell` and `markdownlint` into `just lint`
+- remove dead `lax.py` per-file ignores
+- remove `UP007` ignore from `converters.py`
+- remove `FURB162` ignore (timezone)
+- remove complexity ignores (`C901`, `PLR0911`, `PLR0912`)
+- remove `PLR2004` ignore (magic values)
+- remove `A001`/`A004` ignores (shadowing builtins)
+- remove `TRY` ignores (`TRY003`/`004`/`300`/`301`)
+- remove `EM102` ignore (f-string in exceptions)
+- remove `FBT001` ignore (boolean positional args)
+- remove `PLW2901` ignore (loop variable overwrite)
+- remove `RET504` ignore (unnecessary assignment)
+- remove `RUF022` ignore and sort `__all__`
+- remove `ERA001` ignore (commented code)
+- restructure into package, improve tests
+- remove `schema.py` module
+- restructure modules, merge lax into `SchemaConverter`
+- remove `before_validators` support
+- clean up converter logic
+- simplify README and `__init__.py`
+
+### Documentation
+
+- set initial release to `0.0.1`
+- replace placeholder URLs with actual repository URL
+- fix data in license
+- simplify `README.md`, add docs and license badges
+- clarify `format_validators` behavior
+- refresh documentation homepage
+- use tabbed installation guide
+- align workflow and examples docs
+- clarify `object` schema conversion
+- explain `model_name` resolution
+- improve contribution guidelines
+- fix command to use `uv`
+- improve contribution workflow documentation
+- add `CONTRIBUTING.md` symlink to repo root
+- fix `types.md` to reference own module instead of `openapi_pydantic`
+- remove stale lax mode references, fix version path and twine command
+- simplify PR template, fix docstring style to Sphinx
+- apply review feedback across all documentation pages
+- fix install command in `README.md` and update `install.md`
+- add module docstrings
+- fix remaining CSV format examples
+- update examples to use JSON format instead of CSV
+- enhance theme with auto-switch and darker colors
+- resolve TODO items and improve documentation
+- add publishing guide for PyPI releases
+- add `CHANGELOG.md` for version tracking
+- improve documentation and fix examples
+- add complete README documentation
+
+### Fixed
+
+- validate `release` version argument
+- generate changelog for target tag
+- restore fork placeholder in `contributing.md`
+- set `ruff` `target-version` to `py312` to match `requires-python`
+- rename `SchemaConvertionError` to `SchemaConversionError`
+- fix broken optional dependency check in `_validators.py`
+- enforce `additionalProperties` for `object` fields
+- use correct `#>` print output format
+- resolve lint errors and update `uv.lock`
+- move `fqdn`/`rfc3986` back to `formats-base` optional extra
+- add `fqdn` and `rfc3986` to core dependencies
+- configure `codespell` and adjust `markdownlint` integration
+- add necessary ignores for existing lint issues
+
+### Other
+
+- run `lint` hook for non-python changes
+- run `pre-commit` through `uv` in `install`
+- ignore `coverage.xml` artifact
+- add `exclude-newer` supply-chain guard, upgrade all dependencies
+- add `.python-version` with `3.12`
+- ignore `COM812` to fix `ruff format` conflict warning
+- wrap `$defs` and `$ref` in backticks in comments and docstrings
+- merge `.markdownlint.yaml` into `.markdownlint-cli2.yaml`
+- use `# fmt: off` for `#>` markers, remove `ruff.format.exclude`
+- add docstrings to package `__init__.py`, remove `D104` ignore
+- add missing docstrings, remove `D100`/`D104`/`D105`/`D107` ignores
+- reorder `pyproject.toml` sections, `[project]` first
+- replace `pytest-examples` git dep with PyPI release
+- add `just` CI recipes, use `just ci-*` in all workflow jobs
+- pin all actions by SHA, update to latest versions, clean up params
+- improve workflow description
+- fix errors, restore 100% coverage, exclude scratch files
+- update author email, switch `pydantic-extra-types` to PyPI
+- add build artifacts to `.gitignore`
+- remove override for `tests.*`
+- remove override for `pydantic_jsonschema.formats.extra`
+- remove override for `fqdn` and `rfc3986`
+- remove override for `examples.*`
+- add infrastructure (docs site, examples, templates, license)
+- resolve remaining `ruff` lint issues
+- update `.gitignore`
+- enable strict typing for tests
+- add `ruff` linting, `justfile`, and `pre-commit`
+- add `.gitignore`
+
+### Testing
+
+- remove duplicate tests and WHAT-comments
+- add tests for `Schema` `None`-stripping and `Reference` `$ref` key serialization
+- add coverage tests for `LaxSchemaConverter` edge cases
+- add coverage tests and set `cov-fail-under`
+- add comprehensive test suite

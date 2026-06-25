@@ -1,0 +1,2367 @@
+# Pydantic JSON Schema
+
+> Convert JSON Schema to Pydantic models with type-safe validation
+
+Convert JSON Schema definitions into Pydantic models with runtime validation.
+
+# Usage documentation
+
+# Pydantic JSON Schema
+
+Convert JSON Schema definitions into type-safe Pydantic models.
+
+Pydantic can generate JSON Schema from models. Pydantic JSON Schema does the opposite: it takes JSON Schema definitions and creates Pydantic models with runtime validation.
+
+Use it when you need to:
+
+- Validate data against existing JSON Schema definitions.
+- Convert API, configuration, or tool schemas into Pydantic models.
+- Validate LLM-generated data against predefined schemas.
+- Reuse `$defs`, `$ref`, `anyOf`, `oneOf`, and `allOf` in generated models.
+
+## Installation
+
+```bash
+uv add pydantic-jsonschema
+```
+
+```bash
+pip install pydantic-jsonschema
+```
+
+(Requires Python 3.12+)
+
+See the [installation guide](https://danipulok.github.io/pydantic-jsonschema/0.0.10/install/index.md) for third-party validator libraries.
+
+## Quick Start
+
+Convert a JSON Schema object into a Pydantic model:
+
+quick_start.py
+
+```python
+from pydantic_jsonschema import Schema, to_model
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "age": {"type": "integer", "minimum": 0},
+        },
+        "required": ["name"],
+    }
+)
+
+User = to_model(schema, model_name="User")
+
+user = User(name="Alice", age=30)
+print(user.model_dump())
+#> {'name': 'Alice', 'age': 30}
+```
+
+## References
+
+Reuse schemas with JSON Schema `$defs` and `$ref`:
+
+references.py
+
+```python
+from pydantic_jsonschema import Schema, to_model
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "author": {"$ref": "#/$defs/Person"},
+        },
+        "$defs": {
+            "Person": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                },
+                "required": ["name"],
+            }
+        },
+    }
+)
+
+BlogPost = to_model(schema, model_name="BlogPost")
+
+post = BlogPost(author={"name": "Alice"})
+print(post.author.name)
+#> Alice
+```
+
+## Key Features
+
+- **Model conversion** - JSON Schema objects become Pydantic models.
+- **Reference resolution** - `$ref` and `$defs` create reusable nested models.
+- **Schema composition** - `anyOf`, `oneOf`, and `allOf` are converted into Python annotations and models.
+- **Validation constraints** - string, number, array, and object constraints become Pydantic validation.
+- **Custom formats** - JSON Schema `format` values can use built-in or custom validators.
+
+## Next Steps
+
+- [Installation](https://danipulok.github.io/pydantic-jsonschema/0.0.10/install/index.md) - Install the package and third-party validator libraries
+- [Schema](https://danipulok.github.io/pydantic-jsonschema/0.0.10/schema/index.md) - Schema models, fields, and serialization
+- [Converters](https://danipulok.github.io/pydantic-jsonschema/0.0.10/converters/index.md) - Learn how schema conversion works
+- [Format Validators](https://danipulok.github.io/pydantic-jsonschema/0.0.10/formats/index.md) - Add validation for JSON Schema `format` values
+- [Examples](https://danipulok.github.io/pydantic-jsonschema/0.0.10/examples/index.md) - Run complete examples
+- [Contributing](https://danipulok.github.io/pydantic-jsonschema/0.0.10/contributing/index.md) - Help improve the library
+
+# Installation
+
+Pydantic JSON Schema is available on PyPI as [`pydantic-jsonschema`](https://pypi.org/project/pydantic-jsonschema/), so installation is as simple as:
+
+```bash
+uv add pydantic-jsonschema
+```
+
+```bash
+pip install pydantic-jsonschema
+```
+
+(Requires Python 3.12+)
+
+This installs the `pydantic_jsonschema` package with [`pydantic`](https://docs.pydantic.dev/) as the only core dependency.
+
+## Third-party validator libraries
+
+All built-in format validators work with zero extra dependencies. For domain-specific formats such as payment cards, phone numbers, colors, country codes, and MAC addresses, install [`pydantic-extra-types`](https://github.com/pydantic/pydantic-extra-types) directly:
+
+```bash
+uv add 'pydantic-extra-types[all]'
+```
+
+```bash
+pip install 'pydantic-extra-types[all]'
+```
+
+See [Format Validators](https://danipulok.github.io/pydantic-jsonschema/0.0.10/formats/index.md) for supported formats and usage examples.
+
+## Install from repository
+
+If you prefer to install directly from a repository checkout:
+
+```bash
+uv add 'git+https://github.com/Danipulok/pydantic-jsonschema@main'
+```
+
+```bash
+pip install 'git+https://github.com/Danipulok/pydantic-jsonschema@main'
+```
+
+For local development, use the [contributing guide](https://danipulok.github.io/pydantic-jsonschema/0.0.10/contributing/index.md) instead. It is the source of truth for development dependencies, `just` recipes, documentation checks, and PR workflow.
+
+## Next Steps
+
+- [Schema](https://danipulok.github.io/pydantic-jsonschema/0.0.10/schema/index.md) - Schema models, fields, and serialization
+- [Converters](https://danipulok.github.io/pydantic-jsonschema/0.0.10/converters/index.md) - Create Pydantic models from JSON Schema
+- [Format Validators](https://danipulok.github.io/pydantic-jsonschema/0.0.10/formats/index.md) - Add validation for JSON Schema `format` values
+- [Examples](https://danipulok.github.io/pydantic-jsonschema/0.0.10/examples/index.md) - Run complete examples
+
+# Schema Models
+
+The `Schema` and `Reference` classes are Pydantic models that represent JSON Schema objects in Python. They are used as the input to the [converter](https://danipulok.github.io/pydantic-jsonschema/0.0.10/converters/index.md).
+
+## Overview
+
+| Class       | Represents                     | Spec                                                                                    |
+| ----------- | ------------------------------ | --------------------------------------------------------------------------------------- |
+| `Schema`    | A JSON Schema object           | [core](https://json-schema.org/draft/2020-12/json-schema-core)                          |
+| `Reference` | A `$ref` reference to a schema | [core §8.2.3.1](https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.3.1) |
+| `DataType`  | JSON Schema primitive types    | [core §4.2.1](https://json-schema.org/draft/2020-12/json-schema-core#section-4.2.1)     |
+
+## Creating a Schema
+
+There are two equivalent ways to create a `Schema` instance.
+
+### From a dict
+
+Parse a JSON-like dict (e.g. loaded from a file or API response):
+
+schema_from_dict.py
+
+```python
+from pydantic_jsonschema import Schema
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "age": {"type": "integer", "minimum": 0},
+        },
+        "required": ["name"],
+    }
+)
+
+print(schema.type)
+#> object
+print(schema.required)
+#> ['name']
+```
+
+Keys use the original JSON Schema names (`minLength`, `anyOf`, `$defs`). Pydantic handles `camelCase` to `snake_case` conversion automatically via `alias_generator`.
+
+### From Python
+
+Build a schema directly in Python code:
+
+schema_from_python.py
+
+```python
+from pydantic_jsonschema import DataType, Schema
+
+schema = Schema(
+    type=DataType.OBJECT,
+    properties={
+        "name": Schema(type=DataType.STRING),
+        "age": Schema(
+            type=DataType.INTEGER,
+            minimum=0,
+        ),
+    },
+    required=["name"],
+)
+
+print(schema.type)
+#> object
+print(schema.properties["name"].type)
+#> string
+```
+
+Use snake_case field names (`min_length`, `any_of`, `all_of`) and the `DataType` enum.
+
+## Serialization
+
+`Schema` serializes back to valid JSON Schema with `camelCase` keys:
+
+schema_serialization.py
+
+```python
+from pydantic_jsonschema import DataType, Schema
+
+schema = Schema(
+    type=DataType.STRING,
+    min_length=1,
+    max_length=100,
+)
+
+print(schema.model_dump_json(indent=4))
+"""
+{
+    "type": "string",
+    "minLength": 1,
+    "maxLength": 100
+}
+"""
+```
+
+Fields that were not set are excluded automatically — no `None` values leak into the output.
+
+## References and Definitions
+
+JSON Schema uses `$ref` and `$defs` to define reusable schemas.
+
+### `$defs` — shared definitions
+
+Place shared schemas in `$defs` at the root level:
+
+schema_defs.py
+
+```python
+from pydantic_jsonschema import Schema
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "home": {"$ref": "#/$defs/Address"},
+            "work": {"$ref": "#/$defs/Address"},
+        },
+        "$defs": {
+            "Address": {
+                "type": "object",
+                "properties": {
+                    "city": {"type": "string"},
+                    "zip": {"type": "string"},
+                },
+                "required": ["city"],
+            }
+        },
+    }
+)
+
+print(schema.defs["Address"].type)
+#> object
+```
+
+### `$ref` — reference to a definition
+
+A `$ref` in a property becomes a `Reference` instance:
+
+schema_ref.py
+
+```python
+from pydantic_jsonschema import Reference, Schema
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "author": {"$ref": "#/$defs/Person"},
+        },
+    }
+)
+
+author_field = schema.properties["author"]
+print(isinstance(author_field, Reference))
+#> True
+print(author_field.ref)
+#> #/$defs/Person
+```
+
+## DataType Enum
+
+`DataType` maps JSON Schema type names to Python:
+
+datatype_enum.py
+
+```python
+from pydantic_jsonschema import DataType
+
+print(DataType.STRING)
+#> string
+print(DataType.INTEGER)
+#> integer
+print(DataType.OBJECT)
+#> object
+```
+
+All members: `NULL`, `STRING`, `NUMBER`, `INTEGER`, `BOOLEAN`, `ARRAY`, `OBJECT`.
+
+## Field Reference
+
+`Schema` fields map directly to JSON Schema keywords. Only fields used by the converter are declared explicitly. Unknown keywords are preserved via `extra="allow"`.
+
+### Composition
+
+| Python field | JSON Schema | Spec                                                                                      |
+| ------------ | ----------- | ----------------------------------------------------------------------------------------- |
+| `all_of`     | `allOf`     | [core §10.2.1.1](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.1) |
+| `any_of`     | `anyOf`     | [core §10.2.1.2](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.2) |
+| `one_of`     | `oneOf`     | [core §10.2.1.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.3) |
+
+### Subschemas
+
+| Python field            | JSON Schema            | Spec                                                                                      |
+| ----------------------- | ---------------------- | ----------------------------------------------------------------------------------------- |
+| `items`                 | `items`                | [core §10.3.1.2](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.1.2) |
+| `properties`            | `properties`           | [core §10.3.2.1](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.2.1) |
+| `additional_properties` | `additionalProperties` | [core §10.3.2.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.3.2.3) |
+
+### Type and constants
+
+| Python field | JSON Schema | Spec                                                                                            |
+| ------------ | ----------- | ----------------------------------------------------------------------------------------------- |
+| `type`       | `type`      | [validation §6.1.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.1.1) |
+| `enum`       | `enum`      | [validation §6.1.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.1.2) |
+| `const`      | `const`     | [validation §6.1.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.1.3) |
+
+### Numeric constraints
+
+| Python field        | JSON Schema        | Spec                                                                                            |
+| ------------------- | ------------------ | ----------------------------------------------------------------------------------------------- |
+| `multiple_of`       | `multipleOf`       | [validation §6.2.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.2.1) |
+| `maximum`           | `maximum`          | [validation §6.2.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.2.2) |
+| `exclusive_maximum` | `exclusiveMaximum` | [validation §6.2.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.2.3) |
+| `minimum`           | `minimum`          | [validation §6.2.4](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.2.4) |
+| `exclusive_minimum` | `exclusiveMinimum` | [validation §6.2.5](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.2.5) |
+
+### String constraints
+
+| Python field | JSON Schema | Spec                                                                                            |
+| ------------ | ----------- | ----------------------------------------------------------------------------------------------- |
+| `min_length` | `minLength` | [validation §6.3.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.3.2) |
+| `max_length` | `maxLength` | [validation §6.3.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.3.1) |
+| `pattern`    | `pattern`   | [validation §6.3.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.3.3) |
+
+### Array constraints
+
+| Python field | JSON Schema | Spec                                                                                            |
+| ------------ | ----------- | ----------------------------------------------------------------------------------------------- |
+| `min_items`  | `minItems`  | [validation §6.4.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.2) |
+| `max_items`  | `maxItems`  | [validation §6.4.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.1) |
+
+### Object constraints
+
+| Python field | JSON Schema | Spec                                                                                            |
+| ------------ | ----------- | ----------------------------------------------------------------------------------------------- |
+| `required`   | `required`  | [validation §6.5.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.5.3) |
+
+### Format
+
+| Python field | JSON Schema | Spec                                                                                    |
+| ------------ | ----------- | --------------------------------------------------------------------------------------- |
+| `format`     | `format`    | [validation §7](https://json-schema.org/draft/2020-12/json-schema-validation#section-7) |
+
+### Metadata
+
+| Python field  | JSON Schema   | Spec                                                                                        |
+| ------------- | ------------- | ------------------------------------------------------------------------------------------- |
+| `title`       | `title`       | [validation §9.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-9.1) |
+| `description` | `description` | [validation §9.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-9.1) |
+| `default`     | `default`     | [validation §9.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-9.2) |
+| `examples`    | `examples`    | [validation §9.5](https://json-schema.org/draft/2020-12/json-schema-validation#section-9.5) |
+
+### Definitions
+
+| Python field | JSON Schema | Spec                                                                                |
+| ------------ | ----------- | ----------------------------------------------------------------------------------- |
+| `defs`       | `$defs`     | [core §8.2.4](https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.4) |
+
+## Extra Keywords
+
+`Schema` preserves unknown keywords via `extra="allow"`, per JSON Schema spec [§4.3.1](https://json-schema.org/draft/2020-12/json-schema-core#section-4.3.1) and [§6.5](https://json-schema.org/draft/2020-12/json-schema-core#section-6.5):
+
+schema_extra.py
+
+```python
+from pydantic_jsonschema import Schema
+
+schema = Schema.model_validate(
+    {
+        "type": "string",
+        "x-custom-flag": True,
+        "x-order": 5,
+    }
+)
+
+dumped = schema.model_dump()
+print(dumped["x-custom-flag"])
+#> True
+print(dumped["x-order"])
+#> 5
+```
+
+## Next Steps
+
+- [Converters](https://danipulok.github.io/pydantic-jsonschema/0.0.10/converters/index.md) - Convert schemas to Pydantic models
+- [Format Validators](https://danipulok.github.io/pydantic-jsonschema/0.0.10/formats/index.md) - Add validation for `format` values
+- [API Reference](https://danipulok.github.io/pydantic-jsonschema/0.0.10/api/types/index.md) - Full API docs for schema types
+
+# Creating Models from Schemas
+
+This guide shows how to convert JSON Schema into Pydantic models for type-safe validation.
+
+## Basic Conversion
+
+Convert a simple schema to a Pydantic model:
+
+basic_conversion.py
+
+```python
+from pydantic_jsonschema import Schema, to_model
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "username": {"type": "string"},
+            "email": {"type": "string"},
+        },
+        "required": ["username"],
+    }
+)
+
+User = to_model(schema, model_name="User")
+
+user = User(username="alice", email="alice@example.com")
+print(user.username)
+#> alice
+```
+
+The `to_model()` function is a convenience wrapper that creates a model with strict validation.
+
+## Defining Schemas
+
+You can define schemas with the `Schema` class or validate a plain `dict` into `Schema`.
+
+| Input style                  | Best for                                     | Example                                     |
+| ---------------------------- | -------------------------------------------- | ------------------------------------------- |
+| `Schema(...)`                | Python code that builds schemas directly     | `Schema(type=DataType.OBJECT)`              |
+| `Schema.model_validate(...)` | JSON-like data from files, APIs, or literals | `Schema.model_validate({"type": "object"})` |
+
+Both approaches are equivalent after validation.
+
+### Using `Schema`
+
+schema_class.py
+
+```python
+from pydantic_jsonschema import DataType, Schema
+
+schema = Schema(
+    type=DataType.OBJECT,
+    properties={
+        "name": Schema(type=DataType.STRING),
+        "age": Schema(
+            type=DataType.INTEGER,
+            minimum=0,
+        ),
+    },
+    required=["name"],
+)
+```
+
+### Using `model_validate()`
+
+schema_dict.py
+
+```python
+from pydantic_jsonschema import Schema
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "age": {"type": "integer", "minimum": 0},
+        },
+        "required": ["name"],
+    }
+)
+```
+
+## Conversion Map
+
+Use this table as the quick reference for what each JSON Schema feature becomes.
+
+| JSON Schema input                            | Pydantic result                             | Example result                                                                                   |
+| -------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| root `{"type": "object"}`                    | generated `BaseModel` subclass              | empty model with extra handling                                                                  |
+| object property without `properties`         | untyped dictionary field                    | `metadata: dict[str, Any]`                                                                       |
+| `{"type": "string"}`                         | `str`                                       | `name: str`                                                                                      |
+| `{"type": "integer"}`                        | `int`                                       | `age: int`                                                                                       |
+| `{"type": "number"}`                         | `float`                                     | `score: float`                                                                                   |
+| `{"type": "boolean"}`                        | `bool`                                      | `is_active: bool`                                                                                |
+| `{"type": "null"}`                           | `None` type                                 | `value: None`                                                                                    |
+| `{"type": ["string", "integer"]}`            | union annotation                            | `str` or `int`                                                                                   |
+| `{"type": "array", "items": {...}}`          | typed `list[...]`                           | `tags: list[str]`                                                                                |
+| `{"enum": [...]}`                            | `Literal[...]`                              | `Literal["draft", "published"]`                                                                  |
+| `{"const": "active"}`                        | single-value `Literal[...]`                 | `Literal["active"]`                                                                              |
+| `anyOf`                                      | union annotation                            | `str` or `int`                                                                                   |
+| `oneOf`                                      | union with exactly-one-branch validation    | ambiguous matches rejected                                                                       |
+| `allOf`                                      | generated model inheritance or nested model | combined Pydantic model                                                                          |
+| nested object property                       | nested generated model                      | `post.author.name`                                                                               |
+| property with `$ref: "#/$defs/Person"`       | model generated from `$defs.Person`         | shared `Person` field type                                                                       |
+| `$ref` passed through `refs`                 | existing Pydantic model                     | existing `Address` class                                                                         |
+| root object + `additionalProperties: false`  | generated model with `extra="forbid"`       | unknown fields rejected                                                                          |
+| root object + `additionalProperties: {...}`  | typed dictionary root model                 | `RootModel[dict[str, int]]`                                                                      |
+| field object + `additionalProperties: false` | generated empty model field                 | only `{}` is valid                                                                               |
+| field object + `additionalProperties: {...}` | typed dictionary field                      | `dict[str, int]`                                                                                 |
+| `required` entry                             | required Pydantic field                     | `Field required` validation                                                                      |
+| `default`                                    | field default                               | omitted input uses default value                                                                 |
+| `minimum`, `maximum`, `multipleOf`           | numeric constraints                         | `ge`, `le`, `multiple_of`                                                                        |
+| `minLength`, `maxLength`                     | string length constraints                   | `min_length`, `max_length`                                                                       |
+| `pattern`                                    | string regex constraint                     | `pattern`                                                                                        |
+| `minItems`, `maxItems`                       | list length constraints                     | `min_length`, `max_length`                                                                       |
+| `format` with validators                     | configured format validation                | see [Format Validators](https://danipulok.github.io/pydantic-jsonschema/0.0.10/formats/index.md) |
+| `title`, `model_name`, `default_model_name`  | generated class name                        | `User`, `CustomUser`, `Model`                                                                    |
+
+## Unsupported Keywords
+
+Unknown keywords are preserved on the `Schema` model (`extra="allow"`) but do not affect the generated model's validation:
+
+| Keyword group | Ignored keywords                                                                                                |
+| ------------- | --------------------------------------------------------------------------------------------------------------- |
+| composition   | `not`, `if` / `then` / `else`                                                                                   |
+| arrays        | `prefixItems`, `contains`, `uniqueItems`                                                                        |
+| objects       | `patternProperties`, `propertyNames`, `minProperties`, `maxProperties`, `dependentRequired`, `dependentSchemas` |
+
+## Known Limitations
+
+- `$defs` is only allowed in the root schema — nested `$defs` raises `SchemaConversionError`.
+- Only local references (`#/$defs/...`) and pre-built `refs` models are resolved — external `$ref` URLs are not fetched.
+- `pattern` is compiled by Pydantic's default Rust regex engine, which does not support ECMA-262 lookarounds — such patterns fail at model build time.
+- In a multi-type union (`{"type": ["object", "string"], "properties": {...}}`) the `object` branch is validated as a plain `dict[str, Any]` — sibling `properties` are not applied.
+- On objects that declare both `properties` and a schema-valued `additionalProperties`, extra fields are accepted (`extra="allow"`) but their values are not validated against the `additionalProperties` schema.
+- `format` is metadata unless a matching entry is passed in `format_validators` — see [Format Validators](https://danipulok.github.io/pydantic-jsonschema/0.0.10/formats/index.md). Built-in aliases cover all 19 spec-defined formats; `idn-*` formats use the stdlib IDNA 2003 codec and `regex` uses the Python `re` dialect (see the differences from the specification in [Format Validators](https://danipulok.github.io/pydantic-jsonschema/0.0.10/formats/index.md)).
+
+## Common Conversions
+
+The sections below show the most common conversions in runnable examples.
+
+### Object Schemas
+
+Object conversion depends on where the schema appears.
+
+| Schema position | Input                                               | Result                                |
+| --------------- | --------------------------------------------------- | ------------------------------------- |
+| root schema     | `{"type": "object"}`                                | generated model with no fields        |
+| root schema     | `{"type": "object", "properties": ...}`             | generated model with fields           |
+| root schema     | `{"type": "object", "additionalProperties": false}` | generated model with `extra="forbid"` |
+| root schema     | `{"type": "object", "additionalProperties": {...}}` | typed dictionary root model           |
+| property schema | `{"type": "object"}`                                | `dict[str, Any]` field                |
+| property schema | `{"type": "object", "properties": ...}`             | nested generated model                |
+| property schema | `{"type": "object", "additionalProperties": false}` | only an empty object is valid         |
+
+For a property schema, plain `{"type": "object"}` means the value must be a JSON object, so the field becomes `dict[str, Any]`. It is not `Any`, because non-object values like strings, numbers, arrays, and `null` are rejected.
+
+### Objects
+
+Object schemas with `properties` become Pydantic models:
+
+object_schema.py
+
+```python
+from pydantic_jsonschema import Schema, to_model
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string"},
+            "views": {"type": "integer", "minimum": 0},
+        },
+        "required": ["title"],
+    }
+)
+
+Post = to_model(schema, model_name="Post")
+
+post = Post(title="Hello World", views=100)
+print(post.title)
+#> Hello World
+```
+
+### Arrays
+
+Arrays become typed lists when `items` is present:
+
+array_schema.py
+
+```python
+from pydantic_jsonschema import Schema, to_model
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "tags": {
+                "type": "array",
+                "items": {"type": "string"},
+                "minItems": 1,
+            }
+        },
+    }
+)
+
+Model = to_model(schema)
+
+data = Model(tags=["python", "pydantic"])
+print(data.tags)
+#> ['python', 'pydantic']
+```
+
+### Enums
+
+Enums become `Literal` types:
+
+enum_schema.py
+
+```python
+from pydantic import ValidationError
+
+from pydantic_jsonschema import Schema, to_model
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "status": {
+                "type": "string",
+                "enum": ["draft", "published", "archived"],
+            }
+        },
+    }
+)
+
+Article = to_model(schema, model_name="Article")
+
+article = Article(status="published")
+print(article.status)
+#> published
+
+try:
+    Article(status="invalid")
+except ValidationError as er:
+    print(type(er).__name__)
+    #> ValidationError
+```
+
+### Unions
+
+`anyOf`, `oneOf`, and list-valued `type` become union annotations:
+
+union_schema.py
+
+```python
+from pydantic_jsonschema import Schema, to_model
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "value": {
+                "anyOf": [
+                    {"type": "string"},
+                    {"type": "integer"},
+                ]
+            }
+        },
+    }
+)
+
+Model = to_model(schema)
+
+text_data = Model(value="hello")
+number_data = Model(value=42)
+
+print(text_data.value)
+#> hello
+print(number_data.value)
+#> 42
+```
+
+`oneOf` requires exactly one matching branch
+
+`anyOf` maps to a plain `Union` and accepts a value when *any* branch matches. `oneOf` additionally enforces JSON Schema semantics: a value matching more than one branch (or none) is rejected. The generated model also dumps the union back as `oneOf` in `model_json_schema()`.
+
+one_of_schema.py
+
+```python
+from pydantic import ValidationError
+
+from pydantic_jsonschema import Schema, to_model
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "value": {
+                "oneOf": [
+                    {"type": "integer"},
+                    {"type": "number"},
+                ]
+            }
+        },
+    }
+)
+
+Model = to_model(schema)
+
+print(Model(value=1.5).value)
+#> 1.5
+
+try:
+    # `1` matches both `integer` and `number` -> not exactly one branch
+    Model(value=1)
+except ValidationError as er:
+    print(type(er).__name__)
+    #> ValidationError
+
+print(Model.model_json_schema()["properties"]["value"]["oneOf"])
+#> [{'type': 'integer'}, {'type': 'number'}]
+```
+
+## Nested Objects
+
+Nested schemas automatically create nested models:
+
+nested_objects.py
+
+```python
+from pydantic_jsonschema import Schema, to_model
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "author": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "email": {"type": "string"},
+                },
+                "required": ["name"],
+            }
+        },
+    }
+)
+
+BlogPost = to_model(schema, model_name="BlogPost")
+
+post = BlogPost(author={"name": "Alice", "email": "alice@example.com"})
+print(post.author.name)
+#> Alice
+```
+
+## Schema References
+
+Use `$ref` to reuse schema definitions:
+
+schema_references.py
+
+```python
+from pydantic_jsonschema import Schema, to_model
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "author": {"$ref": "#/$defs/Person"},
+            "editor": {"$ref": "#/$defs/Person"},
+        },
+        "$defs": {
+            "Person": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "email": {"type": "string"},
+                },
+                "required": ["name"],
+            }
+        },
+    }
+)
+
+Document = to_model(schema, model_name="Document")
+
+document = Document(
+    author={"name": "Alice", "email": "alice@example.com"},
+    editor={"name": "Bob", "email": "bob@example.com"},
+)
+
+print(document.author.name)
+#> Alice
+```
+
+Both `author` and `editor` reference the same `Person` model definition.
+
+## Pre-built References
+
+Pass existing Pydantic models through `refs` when a `$ref` should resolve to a model you already have:
+
+prebuilt_references.py
+
+```python
+from pydantic import BaseModel
+
+from pydantic_jsonschema import Schema, to_model
+
+
+class Address(BaseModel):
+    street: str
+    city: str
+    country: str
+
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "address": {"$ref": "#/$defs/Address"},
+        },
+    }
+)
+
+Person = to_model(schema, refs={"#/$defs/Address": Address})
+
+person = Person(
+    name="Alice",
+    address=Address(street="123 Main St", city="NYC", country="USA"),
+)
+print(type(person.address) is Address)
+#> True
+```
+
+## Validation Constraints
+
+Schema constraints map to Pydantic field validation:
+
+validation_constraints.py
+
+```python
+from pydantic import ValidationError
+
+from pydantic_jsonschema import Schema, to_model
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "username": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 20,
+            },
+            "age": {
+                "type": "integer",
+                "minimum": 18,
+                "maximum": 120,
+            },
+            "score": {
+                "type": "number",
+                "multipleOf": 0.5,
+            },
+        },
+    }
+)
+
+User = to_model(schema, model_name="User")
+
+user = User(username="alice", age=25, score=4.5)
+print(user.score)
+#> 4.5
+
+try:
+    User(username="ab")
+except ValidationError as er:
+    print(type(er).__name__)
+    #> ValidationError
+```
+
+## Additional Properties
+
+Control whether extra fields are allowed:
+
+additional_properties.py
+
+```python
+from pydantic import ValidationError
+
+from pydantic_jsonschema import Schema, to_model
+
+strict_schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+        },
+        "additionalProperties": False,
+    }
+)
+
+Strict = to_model(strict_schema)
+
+try:
+    Strict(name="Alice", age=30)
+except ValidationError as er:
+    print(type(er).__name__)
+    #> ValidationError
+
+flexible_schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+        },
+        "additionalProperties": True,
+    }
+)
+
+Flexible = to_model(flexible_schema)
+data = Flexible(name="Alice", age=30)
+print(data.age)
+#> 30
+```
+
+## Model Names
+
+Every generated model needs a class name. The name is resolved in this order:
+
+| Priority | Source                | Used when                                     | Example                                       |
+| -------- | --------------------- | --------------------------------------------- | --------------------------------------------- |
+| 1        | `model_name` argument | passed to `to_model()` or `convert_schema()`  | `to_model(schema, model_name="User")`         |
+| 2        | schema `title`        | no `model_name` is provided                   | `{"title": "User"}`                           |
+| 3        | `default_model_name`  | neither `model_name` nor `title` is available | `SchemaConverter(default_model_name="Model")` |
+
+This matters because the model name appears in validation errors, `repr()`, and debugging output.
+
+model_names.py
+
+```python
+from pydantic_jsonschema import Schema, to_model
+
+schema = Schema.model_validate(
+    {
+        "title": "User",
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+        },
+    }
+)
+
+UserModel = to_model(schema)
+print(UserModel.__name__)
+#> User
+
+CustomModel = to_model(schema, model_name="CustomUser")
+print(CustomModel.__name__)
+#> CustomUser
+```
+
+## Using `SchemaConverter`
+
+For more control, use the `SchemaConverter` class directly:
+
+schema_converter.py
+
+```python
+from pydantic_jsonschema import Schema, SchemaConverter
+
+converter = SchemaConverter(
+    default_model_name="MyModel",
+    refs={},
+    format_validators={},
+)
+schema = Schema.model_validate({})
+
+Model = converter.convert_schema(schema, model_name="SpecificName")
+print(Model.__name__)
+#> SpecificName
+```
+
+Caching Behavior
+
+Be careful using `SchemaConverter` directly. The converter maintains state for caching and reference resolution across multiple schema conversions.
+
+## Common Patterns
+
+| Need                                      | Use                                  | Why                                                          |
+| ----------------------------------------- | ------------------------------------ | ------------------------------------------------------------ |
+| One generated model                       | `to_model(schema, model_name="...")` | Shortest path and clear class name                           |
+| Existing model for a `$ref`               | `refs={"#/$defs/Name": Model}`       | Keeps generated models connected to your own classes         |
+| Repeated conversions with shared settings | `SchemaConverter(...)`               | Reuses `refs`, `format_validators`, and `default_model_name` |
+| Clear validation errors                   | `model_name` or schema `title`       | Avoids generic `Model` in error output                       |
+| Custom `format` handling                  | `format_validators`                  | Adds validation for strings or domain-specific values        |
+
+## Next Steps
+
+- [Format Validators](https://danipulok.github.io/pydantic-jsonschema/0.0.10/formats/index.md) - Add custom validation for special formats
+- [Examples](https://danipulok.github.io/pydantic-jsonschema/0.0.10/examples/index.md) - See real-world applications
+
+# Format Validators
+
+JSON Schema `format` values describe semantic constraints such as email addresses, UUIDs, URIs, or domain-specific identifiers. Pydantic JSON Schema only enforces those constraints when you pass a matching entry in `format_validators`.
+
+Without a matching validator, `format` is treated as metadata and the normal JSON Schema type still applies.
+
+## Third-Party Validator Libraries
+
+All built-in format validators work with zero extra dependencies. For domain-specific types, install [`pydantic-extra-types`](https://github.com/pydantic/pydantic-extra-types) or other packages directly.
+
+See [Installation](https://danipulok.github.io/pydantic-jsonschema/0.0.10/install/#third-party-validator-libraries) for the install commands.
+
+## Basic Usage
+
+The key in `format_validators` must match the schema's `format` value.
+
+format_validators.py
+
+```python
+from pydantic import ValidationError
+
+from pydantic_jsonschema import Schema, to_model
+from pydantic_jsonschema.formats import UUID, Email
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "email": {"type": "string", "format": "email"},
+            "id": {"type": "string", "format": "uuid"},
+        },
+    }
+)
+
+LooseUser = to_model(schema)
+loose_user = LooseUser(email="not-an-email", id="not-a-uuid")
+print(loose_user.email)
+#> not-an-email
+
+StrictUser = to_model(
+    schema,
+    format_validators={
+        "email": Email,
+        "uuid": UUID,
+    },
+)
+
+strict_user = StrictUser(
+    email="alice@example.com",
+    id="550e8400-e29b-41d4-a716-446655440000",
+)
+print(type(strict_user.id).__name__)
+#> UUID
+
+try:
+    StrictUser(email="invalid", id="550e8400-e29b-41d4-a716-446655440000")
+except ValidationError as er:
+    print(type(er).__name__)
+    #> ValidationError
+```
+
+## Provided Format Aliases
+
+The `pydantic_jsonschema.formats` module exports aliases that can be passed to `format_validators`.
+
+| JSON Schema `format`    | Alias                 | Validates                                                    |
+| ----------------------- | --------------------- | ------------------------------------------------------------ |
+| `email`                 | `Email`               | Email addresses                                              |
+| `idn-email`             | `IdnEmail`            | Internationalized email addresses (RFC 6531)                 |
+| `hostname`              | `Hostname`            | RFC 1123 hostnames, including single labels like `localhost` |
+| `idn-hostname`          | `IdnHostname`         | Internationalized hostnames (RFC 5890)                       |
+| `uri`                   | `Uri`                 | Absolute URIs with a scheme                                  |
+| `uri-reference`         | `UriReference`        | Absolute or relative URI references                          |
+| `iri`                   | `Iri`                 | Absolute internationalized URIs                              |
+| `iri-reference`         | `IriReference`        | Absolute or relative internationalized URI references        |
+| `uri-template`          | `UriTemplate`         | URI Templates (RFC 6570)                                     |
+| `date`                  | `Date`                | Dates                                                        |
+| `time`                  | `Time`                | Times                                                        |
+| `date-time`             | `DateTime`            | Date-time values                                             |
+| `duration`              | `Duration`            | Durations                                                    |
+| `uuid`                  | `UUID`                | UUID values                                                  |
+| `ipv4`                  | `IPv4`                | IPv4 addresses                                               |
+| `ipv6`                  | `IPv6`                | IPv6 addresses                                               |
+| `json-pointer`          | `JsonPointer`         | JSON Pointers (RFC 6901)                                     |
+| `relative-json-pointer` | `RelativeJsonPointer` | Relative JSON Pointers                                       |
+| `regex`                 | `Regex`               | Regular expressions                                          |
+
+Differences from the specification
+
+`idn-hostname` / `idn-email` convert domains via the stdlib IDNA 2003 codec, which is slightly more permissive than the IDNA 2008 tables referenced by the spec. `regex` compiles with Python `re`, a close superset of the ECMA-262 dialect the spec requires.
+
+provided_formats.py
+
+```python
+from pydantic_jsonschema import Schema, to_model
+from pydantic_jsonschema.formats import DateTime, Email, IPv4, Uri
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "email": {"type": "string", "format": "email"},
+            "website": {"type": "string", "format": "uri"},
+            "created_at": {"type": "string", "format": "date-time"},
+            "ip": {"type": "string", "format": "ipv4"},
+        },
+    }
+)
+
+User = to_model(
+    schema,
+    format_validators={
+        "email": Email,
+        "uri": Uri,
+        "date-time": DateTime,
+        "ipv4": IPv4,
+    },
+)
+
+user = User(
+    email="alice@example.com",
+    website="https://example.com/profile",
+    created_at="2024-01-15T10:30:00Z",
+    ip="192.168.1.1",
+)
+
+print(type(user.created_at).__name__)
+#> datetime
+```
+
+## Third-Party Pydantic Types
+
+If you want to use third-party or custom format validators, you can pass them via `format_validators`. Here's an example involving `pydantic-extra-types` package.
+
+extra_types.py
+
+```python
+from pydantic_extra_types.color import Color
+from pydantic_extra_types.payment import PaymentCardNumber
+
+from pydantic_jsonschema import Schema, to_model
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "card": {"type": "string", "format": "payment-card"},
+            "color": {"type": "string", "format": "color"},
+        },
+    }
+)
+
+Checkout = to_model(
+    schema,
+    format_validators={
+        "payment-card": PaymentCardNumber,
+        "color": Color,
+    },
+)
+
+checkout = Checkout(card="4111111111111111", color="#ff5733")
+print(type(checkout.color).__name__)
+#> Color
+```
+
+Common `pydantic-extra-types` validators include payment cards, colors, countries, coordinates, MAC addresses, and phone numbers. See the [pydantic-extra-types documentation](https://github.com/pydantic/pydantic-extra-types) for the full list.
+
+## Custom Validators
+
+Use a callable when you want to validate or normalize a project-specific format.
+
+Callable validators receive the raw input before Pydantic type coercion. They should return the validated value and raise `ValueError` when validation fails.
+
+custom_sku_validator.py
+
+```python
+from pydantic import ValidationError
+
+from pydantic_jsonschema import Schema, to_model
+
+
+def validate_sku(value: str) -> str:
+    parts = value.split("-")
+
+    if len(parts) != 3:
+        msg = "SKU must have 3 parts"
+        raise ValueError(msg)
+
+    if not parts[0].isalpha() or len(parts[0]) != 3:
+        msg = "First part must be 3 letters"
+        raise ValueError(msg)
+
+    if not parts[1].isdigit() or len(parts[1]) != 4:
+        msg = "Second part must be 4 digits"
+        raise ValueError(msg)
+
+    if not parts[2].isalpha() or len(parts[2]) != 3:
+        msg = "Third part must be 3 letters"
+        raise ValueError(msg)
+
+    return value.upper()
+
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "sku": {"type": "string", "format": "sku"},
+        },
+    }
+)
+
+Product = to_model(schema, format_validators={"sku": validate_sku})
+
+product = Product(sku="abc-1234-xyz")
+print(product.sku)
+#> ABC-1234-XYZ
+
+try:
+    Product(sku="abc-12")
+except ValidationError as er:
+    print(type(er).__name__)
+    #> ValidationError
+```
+
+## Validator Types
+
+`format_validators` accepts these validator forms:
+
+| Validator form   | Example                    | Behavior                                                       |
+| ---------------- | -------------------------- | -------------------------------------------------------------- |
+| Callable         | `{"sku": validate_sku}`    | Called before Pydantic type validation                         |
+| Pydantic type    | `{"url": HttpUrl}`         | Replaces the generated annotation                              |
+| `Annotated` type | `{"price": PositivePrice}` | Replaces the generated annotation and preserves its validators |
+
+### Callable Validators
+
+callable_validator.py
+
+```python
+from pydantic import JsonValue
+
+
+def normalize_phone(value: JsonValue) -> str:
+    digits = "".join(character for character in str(value) if character.isdigit())
+
+    if len(digits) != 10:
+        msg = "Phone number must contain 10 digits"
+        raise ValueError(msg)
+
+    return f"({digits[:3]}) {digits[3:6]}-{digits[6:]}"
+
+
+format_validators = {"phone": normalize_phone}
+```
+
+### Pydantic Types
+
+pydantic_type_validator.py
+
+```python
+from pydantic import HttpUrl
+from pydantic_extra_types.color import Color
+
+format_validators = {
+    "color": Color,
+    "url": HttpUrl,
+}
+```
+
+### Annotated Types
+
+annotated_validator.py
+
+```python
+from typing import Annotated
+
+from pydantic import AfterValidator, Field
+
+
+def round_price(value: float) -> float:
+    return round(value, 2)
+
+
+PositivePrice = Annotated[
+    float,
+    Field(gt=0),
+    AfterValidator(round_price),
+]
+
+format_validators = {"price": PositivePrice}
+```
+
+## Execution Order
+
+Execution order depends on the validator form:
+
+| Validator form   | Order                                           |
+| ---------------- | ----------------------------------------------- |
+| Callable         | format callable, then generated type validation |
+| Pydantic type    | Pydantic type validation                        |
+| `Annotated` type | validators defined inside the `Annotated` type  |
+
+For callable validators, the value passed to the function is the raw input value. For Pydantic types and `Annotated` types, the validator replaces the generated annotation, so Pydantic runs that type's own validation pipeline.
+
+## Error Handling
+
+Raise `ValueError` with a clear message when a value is invalid:
+
+error_handling.py
+
+```python
+def validate_age(value: int) -> int:
+    if value < 0:
+        msg = "Age cannot be negative"
+        raise ValueError(msg)
+
+    if value > 150:
+        msg = "Age seems unrealistic"
+        raise ValueError(msg)
+
+    return value
+```
+
+Pydantic converts the error into a `ValidationError` with field location information.
+
+## Best Practices
+
+- Keep validators focused on one format.
+- Return the original or normalized value.
+- Raise `ValueError` for invalid values.
+- Include valid and invalid cases in tests.
+- Document the expected input format in examples and error messages.
+
+## Next Steps
+
+- [Installation](https://danipulok.github.io/pydantic-jsonschema/0.0.10/install/index.md) - Install optional format validator dependencies
+- [Converters](https://danipulok.github.io/pydantic-jsonschema/0.0.10/converters/index.md) - Learn how schema conversion works
+- [Examples](https://danipulok.github.io/pydantic-jsonschema/0.0.10/examples/index.md) - Run complete examples
+
+# Examples
+
+Real-world examples showing how to use Pydantic JSON Schema in practice.
+
+Runnable Examples
+
+Files in `examples/` are complete scripts. They are also executed by the test suite, so the commands and output below stay in sync with the project.
+
+## Overview
+
+| Example                         | Shows                                                     | Run command                                   |
+| ------------------------------- | --------------------------------------------------------- | --------------------------------------------- |
+| `examples/nested_schemas.py`    | Nested objects, arrays, `$defs`, and `$ref` reuse         | `uv run python examples/nested_schemas.py`    |
+| `examples/custom_validators.py` | Custom `format_validators`, normalization, and validation | `uv run python examples/custom_validators.py` |
+
+## Complex Nested Schemas
+
+Use this example when your schema contains reusable definitions and multiple nesting levels.
+
+It demonstrates:
+
+- Defining reusable schemas in `$defs`.
+- Referencing shared schemas with `$ref`.
+- Creating nested generated models from object properties.
+- Validating arrays of referenced objects.
+
+Run it with:
+
+```bash
+uv run python examples/nested_schemas.py
+```
+
+Expected output:
+
+```text
+Getting Started with Pydantic JSON Schema
+1
+Great article!
+```
+
+```python
+"""Handle complex schemas with multiple levels of nesting and references."""
+
+from pydantic_jsonschema import Schema, to_model
+
+blog_schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string"},
+            "author": {"$ref": "#/$defs/Person"},
+            "comments": {"type": "array", "items": {"$ref": "#/$defs/Comment"}},
+            "tags": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["title", "author"],
+        "$defs": {
+            "Person": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "email": {"type": "string", "format": "email"},
+                },
+                "required": ["name"],
+            },
+            "Comment": {
+                "type": "object",
+                "properties": {
+                    "author": {"$ref": "#/$defs/Person"},
+                    "text": {"type": "string"},
+                    "timestamp": {"type": "string"},
+                },
+                "required": ["author", "text"],
+            },
+        },
+    },
+)
+
+BlogPost = to_model(blog_schema, model_name="BlogPost")
+
+# Create a blog post with nested data
+post = BlogPost(
+    title="Getting Started with Pydantic JSON Schema",
+    author={"name": "Alice", "email": "alice@example.com"},
+    comments=[
+        {
+            "author": {"name": "Bob"},
+            "text": "Great article!",
+            "timestamp": "2024-01-15T10:30:00Z",
+        },
+    ],
+    tags=["python", "pydantic", "json-schema"],
+)
+
+# NOTE: `ruff format` rewrites `#>` to `# >`, breaking `pytest-examples` output markers.
+# fmt: off
+print(post.title)  # type: ignore[attr-defined]
+#> Getting Started with Pydantic JSON Schema
+print(len(post.comments))  # type: ignore[attr-defined]
+#> 1
+print(post.comments[0].text)  # type: ignore[attr-defined]
+#> Great article!
+# fmt: on
+```
+
+## Custom Format Validators
+
+Use this example when JSON Schema `format` values need project-specific validation.
+
+It demonstrates:
+
+- Registering `format_validators` with `to_model()`.
+- Normalizing input values before storing them.
+- Raising `ValueError` from custom validators.
+- Combining built-in schema types with domain-specific checks.
+
+Run it with:
+
+```bash
+uv run python examples/custom_validators.py
+```
+
+Expected output:
+
+```text
+WDG-1234-PRO
+19.99
+```
+
+```python
+"""Add domain-specific validation with custom format validators."""
+
+import re
+
+from pydantic_jsonschema import Schema, to_model
+
+
+def validate_sku(value: str) -> str:
+    """Validate product SKU format: ABC-1234-XYZ."""
+    value = value.upper()
+    pattern = r"^[A-Z]{3}-\d{4}-[A-Z]{3}$"
+
+    if not re.match(pattern, value):
+        msg = "SKU must be in format ABC-1234-XYZ"
+        raise ValueError(msg)
+
+    return value
+
+
+def validate_price(value: float) -> float:
+    """Validate price is positive with max 2 decimals."""
+    if value <= 0:
+        msg = "Price must be positive"
+        raise ValueError(msg)
+
+    if round(value, 2) != value:
+        msg = "Price can have at most 2 decimal places"
+        raise ValueError(msg)
+
+    return value
+
+
+product_schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "sku": {"type": "string", "format": "sku"},
+            "name": {"type": "string"},
+            "price": {"type": "number", "format": "price"},
+        },
+        "required": ["sku", "name", "price"],
+    },
+)
+
+Product = to_model(
+    product_schema,
+    format_validators={
+        "sku": validate_sku,
+        "price": validate_price,
+    },
+)
+
+product = Product(
+    sku="wdg-1234-pro",  # Normalized to uppercase
+    name="Widget Pro",
+    price=19.99,
+)
+
+# NOTE: `ruff format` rewrites `#>` to `# >`, breaking `pytest-examples` output markers.
+# fmt: off
+print(product.sku)  # type: ignore[attr-defined]
+#> WDG-1234-PRO
+print(product.price)  # type: ignore[attr-defined]
+#> 19.99
+# fmt: on
+```
+
+## Next Steps
+
+- [Converters](https://danipulok.github.io/pydantic-jsonschema/0.0.10/converters/index.md) - Learn about creating models
+- [Format Validators](https://danipulok.github.io/pydantic-jsonschema/0.0.10/formats/index.md) - Add custom validation
+- [Contributing](https://danipulok.github.io/pydantic-jsonschema/0.0.10/contributing/index.md) - Help improve the library
+# API reference
+
+JSON Schema to Pydantic model converter.
+
+Classes:
+
+| Name              | Description                                             |
+| ----------------- | ------------------------------------------------------- |
+| `SchemaConverter` | Stateful converter from JSON Schema to Pydantic models. |
+
+Functions:
+
+| Name       | Description                       |
+| ---------- | --------------------------------- |
+| `to_model` | Convert schema to Pydantic model. |
+
+## FormatValidator
+
+Bases: `Protocol`
+
+Protocol for format validator callables.
+
+Can be:
+
+- Callable: validation function
+- type: Pydantic type class (e.g., from pydantic-extra-types)
+- Annotated type with validators (e.g., Annotated[int, AfterValidator(...)])
+
+Accepts any JSON Schema type: string, number, integer, boolean, null, array, object. Callables receive the raw input and run before Pydantic's standard validation.
+
+See: https://json-schema.org/draft/2020-12/json-schema-validation#section-7.1
+
+For Pydantic validation details, see: https://docs.pydantic.dev/latest/concepts/validators/#annotated-validators https://docs.pydantic.dev/latest/concepts/validators/#after-validators
+
+Methods:
+
+| Name       | Description                                                  |
+| ---------- | ------------------------------------------------------------ |
+| `__call__` | Process the raw value before Pydantic's standard validation. |
+
+### __call__
+
+```python
+__call__(value: PythonType) -> PythonType
+```
+
+Process the raw value before Pydantic's standard validation.
+
+## SchemaConverter
+
+```python
+SchemaConverter(
+    *,
+    default_model_name: str = _DEFAULT_MODEL_NAME,
+    refs: dict[Ref, type[BaseModel]] | None = None,
+    format_validators: dict[FormatName, FormatValidatorType] | None = None
+)
+```
+
+Stateful converter from JSON Schema to Pydantic models.
+
+Initialize converter with optional pre-built refs and format validators.
+
+Parameters:
+
+| Name                 | Type                                    | Description                             | Default                                        |
+| -------------------- | --------------------------------------- | --------------------------------------- | ---------------------------------------------- |
+| `default_model_name` | `str`                                   | Fallback name for models without title. | `_DEFAULT_MODEL_NAME`                          |
+| `refs`               | \`dict\[Ref, type[BaseModel]\]          | None\`                                  | Pre-built Pydantic models for $ref resolution. |
+| `format_validators`  | \`dict[FormatName, FormatValidatorType] | None\`                                  | Validators keyed by JSON Schema format value.  |
+
+Methods:
+
+| Name             | Description                                          |
+| ---------------- | ---------------------------------------------------- |
+| `convert_schema` | Convert JSON Schema (root schema) to Pydantic model. |
+
+### convert_schema
+
+```python
+convert_schema(
+    schema: Schema, /, *, model_name: str | None = None
+) -> type[BaseModel]
+```
+
+Convert JSON Schema (root schema) to Pydantic model.
+
+Parameters:
+
+| Name         | Type     | Description        | Default                       |
+| ------------ | -------- | ------------------ | ----------------------------- |
+| `schema`     | `Schema` | Schema to convert. | *required*                    |
+| `model_name` | \`str    | None\`             | Name for the generated model. |
+
+Returns:
+
+| Type              | Description           |
+| ----------------- | --------------------- |
+| `type[BaseModel]` | Pydantic model class. |
+
+Raises:
+
+| Type                    | Description                    |
+| ----------------------- | ------------------------------ |
+| `SchemaConversionError` | If schema cannot be converted. |
+
+## to_model
+
+```python
+to_model(
+    schema: Schema,
+    /,
+    *,
+    model_name: str | None = None,
+    refs: dict[Ref, type[BaseModel]] | None = None,
+    format_validators: dict[FormatName, FormatValidatorType] | None = None,
+) -> type[BaseModel]
+```
+
+Convert schema to Pydantic model.
+
+Parameters:
+
+| Name                | Type                                    | Description        | Default                                                    |
+| ------------------- | --------------------------------------- | ------------------ | ---------------------------------------------------------- |
+| `schema`            | `Schema`                                | Schema to convert. | *required*                                                 |
+| `refs`              | \`dict\[Ref, type[BaseModel]\]          | None\`             | Pre-built reference models.                                |
+| `format_validators` | \`dict[FormatName, FormatValidatorType] | None\`             | Custom format validators (callables, types, or Annotated). |
+| `model_name`        | \`str                                   | None\`             | Name for the generated model.                              |
+
+Returns:
+
+| Type              | Description           |
+| ----------------- | --------------------- |
+| `type[BaseModel]` | Pydantic model class. |
+
+Custom exceptions for schema conversion, reference resolution, and format validation.
+
+Classes:
+
+| Name                          | Description                  |
+| ----------------------------- | ---------------------------- |
+| `BasePydanticJsonSchemaError` | Base schema exception.       |
+| `SchemaConversionError`       | Schema conversion failed.    |
+| `SchemaReferenceError`        | Reference resolution failed. |
+| `FormatValidationError`       | Format validation failed.    |
+
+## BasePydanticJsonSchemaError
+
+```python
+BasePydanticJsonSchemaError(message: str)
+```
+
+Bases: `Exception`
+
+Base schema exception.
+
+Methods:
+
+| Name            | Description                                                     |
+| --------------- | --------------------------------------------------------------- |
+| `__post_init__` | Pass all dataclass field values to Exception.__init__ for args. |
+| `__str__`       | Delegate to repr for consistent error display.                  |
+
+### __post_init__
+
+```python
+__post_init__() -> None
+```
+
+Pass all dataclass field values to `Exception.__init__` for `args`.
+
+### __str__
+
+```python
+__str__() -> str
+```
+
+Delegate to `repr` for consistent error display.
+
+## SchemaConversionError
+
+```python
+SchemaConversionError(message: str)
+```
+
+Bases: `BasePydanticJsonSchemaError`
+
+Schema conversion failed.
+
+## SchemaReferenceError
+
+```python
+SchemaReferenceError(message: str, path: list[str])
+```
+
+Bases: `BasePydanticJsonSchemaError`
+
+Reference resolution failed.
+
+## FormatValidationError
+
+```python
+FormatValidationError(message: str, value: Any = None)
+```
+
+Bases: `BasePydanticJsonSchemaError`, `ValueError`
+
+Format validation failed.
+
+Built-in format types for JSON Schema validation.
+
+See: https://json-schema.org/draft/2020-12/json-schema-validation#section-7.3
+
+This module exports Pydantic-compatible types for all formats defined by the JSON Schema spec. Use them directly in Pydantic models or pass them as `format_validators` to `SchemaConverter`.
+
+Public type exports.
+
+Classes:
+
+| Name        | Description                  |
+| ----------- | ---------------------------- |
+| `DataType`  | JSON Schema primitive types. |
+| `Reference` | JSON Schema $ref reference.  |
+| `Schema`    | JSON Schema object.          |
+
+## DataType
+
+Bases: `StrEnum`
+
+JSON Schema primitive types.
+
+See: https://json-schema.org/draft/2020-12/json-schema-core#section-4.2.1
+
+## Reference
+
+Bases: `BaseModel`
+
+JSON Schema `$ref` reference.
+
+See: https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.3.1
+
+## Schema
+
+Bases: `BaseModel`
+
+JSON Schema object.
+
+Only fields consumed by the converter are declared explicitly. Unknown keywords are preserved via `extra="allow"` per spec §4.3.1 / §6.5.
+
+See: https://json-schema.org/draft/2020-12/json-schema-core#section-4.3.1 See: https://json-schema.org/draft/2020-12/json-schema-core#section-6.5 See: https://json-schema.org/draft/2020-12/json-schema-validation
+# Development
+
+# Contributing
+
+Thank you for helping improve Pydantic JSON Schema.
+
+## Prerequisites
+
+| Tool            | Required | Purpose                                                 |
+| --------------- | -------- | ------------------------------------------------------- |
+| Python 3.12+    | yes      | Supported runtime for development and tests             |
+| `uv`            | yes      | Dependency management and Python command runner         |
+| `just`          | yes      | Project command runner used by local and CI workflows   |
+| Node.js / `npx` | yes      | Runs `markdownlint-cli2` through the `just lint` recipe |
+
+## Setup
+
+1. Fork the repository on GitHub.
+
+1. Clone your fork:
+
+   ```bash
+   git clone <your-fork-url>
+   cd pydantic-jsonschema
+   ```
+
+1. Install dependencies and hooks:
+
+   ```bash
+   just install
+   ```
+
+The `just install` recipe runs `uv sync --frozen --all-extras --all-packages` and installs pre-commit hooks.
+
+## Development Workflow
+
+Run `just` to list all available commands.
+
+| Need                              | Command                | What it runs                                         |
+| --------------------------------- | ---------------------- | ---------------------------------------------------- |
+| Format code                       | `just format`          | `ruff format` and autofix-only `ruff check`          |
+| Lint everything                   | `just lint`            | `ruff`, `mypy`, `codespell`, and `markdownlint-cli2` |
+| Run tests                         | `just test`            | `pytest` with coverage reporting                     |
+| Run all supported Python versions | `just test-all-python` | Python 3.12, 3.13, and 3.14 test runs                |
+| Generate HTML coverage            | `just testcov`         | `just test` plus `coverage html`                     |
+| Run pre-commit hooks              | `just precommit`       | `pre-commit run --all-files`                         |
+| Run the full local gate           | `just all`             | format, lint, tests, and docs build                  |
+
+Before opening a PR, run:
+
+```bash
+just all
+```
+
+## Documentation Workflow
+
+| Need                                      | Command            |
+| ----------------------------------------- | ------------------ |
+| Build the documentation                   | `just docs-build`  |
+| Serve documentation locally               | `just docs-serve`  |
+| Format and refresh documentation examples | `just docs-format` |
+
+After `just docs-serve`, open <http://127.0.0.1:8000>.
+
+Documentation examples are verified in two ways:
+
+- Python code blocks in documentation files are linted and executed by `tests/test_docs.py`.
+- Python files in `examples/` are linted and executed by `tests/test_docs.py`.
+
+The `docs/examples.md` page uses `--8<--` includes, so the page itself is not used as the source of those code examples. The included `examples/*.py` files are still tested directly.
+
+## Code Style
+
+- Use Ruff for formatting and linting.
+- Add type hints to public APIs and internal code where type inference is not obvious.
+- Use Sphinx-style docstrings for public APIs (`:param:`, `:returns:`, `:raises:`).
+- Keep `mypy` strict mode passing.
+- Keep tests explicit about generated model behavior, validation errors, references, and formats.
+
+## Testing Requirements
+
+- Add tests for every new feature or behavior change.
+- Maintain 100% coverage.
+- Prefer direct behavior assertions over implementation-detail assertions.
+- Include validation failure cases when schema constraints should reject input.
+- Add documentation examples when a behavior needs user-facing explanation.
+
+## Pull Request Process
+
+1. Create a new branch:
+
+   ```bash
+   git switch -c feat/your-feature-name
+   ```
+
+1. Make your changes.
+
+1. Run the full local gate:
+
+   ```bash
+   just all
+   ```
+
+1. Commit your changes:
+
+   ```bash
+   git commit -m "feat(scope): brief description"
+   ```
+
+1. Push your branch:
+
+   ```bash
+   git push origin feat/your-feature-name
+   ```
+
+1. Open a pull request.
+
+In the PR description, include what changed, why it changed, how it was tested, and any breaking behavior changes.
+
+## Commit Messages
+
+Use one-line [Conventional Commits](https://www.conventionalcommits.org/) messages:
+
+```text
+<type>(<scope>): <description>
+```
+
+Common types:
+
+| Type       | Use for                                     |
+| ---------- | ------------------------------------------- |
+| `feat`     | New features                                |
+| `fix`      | Bug fixes                                   |
+| `docs`     | Documentation changes                       |
+| `chore`    | Maintenance tasks                           |
+| `refactor` | Code restructuring without behavior changes |
+| `test`     | Test additions or updates                   |
+| `perf`     | Performance improvements                    |
+| `build`    | Build system or packaging changes           |
+| `ci`       | CI workflow changes                         |
+
+Examples:
+
+- `feat(converters): add custom format validators`
+- `fix(converters): resolve nested schema references`
+- `docs(examples): add nested schema conversion example`
+- `chore(deps): update pydantic dependency`
+
+## Documentation Guidelines
+
+Documentation should show how to use a feature and why it matters.
+
+When adding or changing behavior:
+
+- Add examples showing realistic input and output.
+- Keep examples concise and self-contained.
+- Prefer code-first explanations.
+- Start with common use cases before edge cases.
+- Update API documentation when public functions, classes, or parameters change.
+- Update user guides when observable behavior changes.
+- Add or update `examples/*.py` when a complete runnable scenario is useful.
+
+## Where to Add Documentation
+
+| Change                      | Where to document it                   |
+| --------------------------- | -------------------------------------- |
+| Converter behavior          | `docs/converters.md`                   |
+| Format validators           | `docs/formats.md`                      |
+| Complete runnable scenarios | `examples/*.py` and `docs/examples.md` |
+| Public API changes          | API docs and public docstrings         |
+| Breaking changes            | Relevant guide and migration notes     |
+
+## Questions
+
+If you need help, review the documentation and existing issues before opening a new issue.
+
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [0.0.10](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.9...v0.0.10) — 2026-06-17
+
+### Added
+
+- add remaining spec-defined format types (#3)
+
+### Build
+
+- bump the python-dependencies group across 1 directory with 2 updates (#2)
+- bump the github-actions group across 1 directory with 2 updates (#1)
+
+## [0.0.9](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.8...v0.0.9) — 2026-06-12
+
+### Changed
+
+- extract `_rebuild_def_models` from `_build_defs_cache`
+- replace tri-state `is_required` with explicit `field_kind`
+- route defs bookkeeping through `_get_model`
+- hoist `required` lookup out of the fields loop
+
+### Documentation
+
+- add `0.0.9` release section
+- add `llms.txt` export and copy-page-as-Markdown button
+- note unvalidated extras with `properties` + schema `additionalProperties`
+
+### Other
+
+- build docs on every commit
+
+## [0.0.8](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.7...v0.0.8) — 2026-06-12
+
+### Added
+
+- add `pattern` field and map it to Pydantic `pattern` constraint
+
+### Build
+
+- add weekly grouped updates for `uv` and `github-actions`
+- route all workflow steps through `just ci-*` recipes
+
+### Changed
+
+- drop duplicated `_get_model` caching and fix stale docstrings
+- decompose `_build_model` into model-flavor builders
+- split `_schema_to_annotation` into focused handlers
+- reorganize `test_converters.py` into feature-based classes
+- merge `test_types.py` into `test_schema.py` and split into logical classes
+
+### Documentation
+
+- add `0.0.8` release section
+- document unsupported keywords and known limitations
+- link format spec section in module docstring
+
+### Fixed
+
+- map multi-type `object` to `dict[str, Any]` instead of `Any`
+- default optional fields to `MISSING` sentinel instead of `None`
+
+### Other
+
+- group recipes into logical sections
+- clean `dist/` before CI build
+
+### Testing
+
+- add explicit `id` to multi-argument parameter sets
+
+## [0.0.7](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.6...v0.0.7) — 2026-06-12
+
+### Added
+
+- enforce `oneOf` exactly-one-branch semantics via `OneOf` validator
+
+### Build
+
+- raise `pydantic-extra-types` floor to `2.3.0`
+- raise `pydantic` floor to `2.13.0`
+
+### Documentation
+
+- add `0.0.7` release section
+
+### Fixed
+
+- validate root `additionalProperties` values via `RootModel`
+- resolve `Reference` aliases in `$defs`
+
+### Testing
+
+- cover `const: null` conversion to `Literal[None]`
+- replace partial assertions with full `snapshot` comparisons
+- wrap literal assertions with `inline_snapshot`
+
+## [0.0.6](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.5...v0.0.6) — 2026-06-12
+
+### Changed
+
+- remove `JsonType` alias in favor of `pydantic.JsonValue`
+- replace `BeforeValidator` with `AfterValidator` in format aliases
+
+### Documentation
+
+- add `0.0.6` release section
+
+### Other
+
+- remove `Ref` from public `__all__`
+
+## [0.0.5](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.4...v0.0.5) — 2026-06-12
+
+### Changed
+
+- drop `formats-extra` extra in favor of direct `pydantic-extra-types` install
+
+### Documentation
+
+- add `0.0.5` release section
+
+### Other
+
+- forbid \`pragma: no cover
+
+## [0.0.4](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.3...v0.0.4) — 2026-06-12
+
+### Build
+
+- add `just release-auto` command
+
+### Changed
+
+- replace `email-validator` dep with built-in `validate_email`
+
+### Documentation
+
+- add `0.0.4` release section
+
+## [0.0.3](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.2...v0.0.3) — 2026-06-12
+
+### Changed
+
+- replace `fqdn` and `rfc3986` deps with built-in validators
+
+### Documentation
+
+- add `0.0.3` release section
+- add comments explaining template workarounds for markdownlint
+- add manual GitHub Release and docs deploy steps
+- add `just changelog` step to release flow
+
+### Fixed
+
+- fix `cliff.toml` template for valid markdown output
+- update `setup-just` SHA to v4
+
+## [0.0.2](https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.1...v0.0.2) — 2026-06-11
+
+### Added
+
+- replace `openapi-pydantic` with our own `Schema`, `Reference` and `DataType`
+
+### Build
+
+- add `docs-alias` recipe and deploy `latest` alias on release
+- route all CI commands through `justfile` recipes
+- add `test` hook to enforce 100% coverage on commit
+
+### Documentation
+
+- add `0.0.2` release section
+- add `inline_snapshot` item to roadmap
+- add `Ruff`, `uv`, `mypy`, and `pre-commit` badges
+- add acknowledgments section
+- add roadmap section
+
+### Fixed
+
+- add `ignore_missing_imports` override for `fqdn`/`rfc3986`
+- add `latest` prefix to installation guide link
+- allow missing AWS credentials config
+- validate URI/IRI component validity, rename `exc` to `er`
+- update copyright year to `2026`
+- deploy `docs` and route `v0.*` to `TestPyPI`
+
+### Other
+
+- remove `TestPyPI` publishing
+
+### Testing
+
+- add tests for invalid URI/IRI reference validation
+
+## [0.0.1](https://github.com/Danipulok/pydantic-jsonschema/releases/tag/v0.0.1) — 2026-06-11
+
+### Added
+
+- export `Reference` in public API
+- add custom `Schema`/`Reference` with `None`-stripping serialization
+- add model validators support in lax mode
+- implement user-provided coerce functions in lax mode
+- implement centralized version management and docs versioning
+- add `__version__` and allow direct references
+- add PyPI metadata to `pyproject.toml`
+- add IRI validators
+- add format validators, public API, lax mode, and schema dumping
+- initial library with converter, formats, and types
+
+### Build
+
+- add PR title validation for Conventional Commits format
+- switch from exclude to include whitelist
+- add tag-based release workflow, `git-cliff` changelog, `just release`
+- switch to `hatch-vcs` for version from git tags
+- configure `hatchling` build targets and exclusions
+- add GitHub Actions workflows for CI and PyPI publishing
+
+### Changed
+
+- simplify `sanitize_identifier` with `re.sub`
+- remove `SchemaFormat` class and `_base.py` module
+- remove all lax model functionality
+- add `TYPE_CHECKING` guard for `JsonType` import
+- add `__all__` to `_version.py`
+- convert builtin formats to Pydantic types
+- remove `extra.py` and related tests
+- move `markdownlint-cli2` to `justfile` lint
+- integrate `codespell` and `markdownlint` into `just lint`
+- remove dead `lax.py` per-file ignores
+- remove `UP007` ignore from `converters.py`
+- remove `FURB162` ignore (timezone)
+- remove complexity ignores (`C901`, `PLR0911`, `PLR0912`)
+- remove `PLR2004` ignore (magic values)
+- remove `A001`/`A004` ignores (shadowing builtins)
+- remove `TRY` ignores (`TRY003`/`004`/`300`/`301`)
+- remove `EM102` ignore (f-string in exceptions)
+- remove `FBT001` ignore (boolean positional args)
+- remove `PLW2901` ignore (loop variable overwrite)
+- remove `RET504` ignore (unnecessary assignment)
+- remove `RUF022` ignore and sort `__all__`
+- remove `ERA001` ignore (commented code)
+- restructure into package, improve tests
+- remove `schema.py` module
+- restructure modules, merge lax into `SchemaConverter`
+- remove `before_validators` support
+- clean up converter logic
+- simplify README and `__init__.py`
+
+### Documentation
+
+- set initial release to `0.0.1`
+- replace placeholder URLs with actual repository URL
+- fix data in license
+- simplify `README.md`, add docs and license badges
+- clarify `format_validators` behavior
+- refresh documentation homepage
+- use tabbed installation guide
+- align workflow and examples docs
+- clarify `object` schema conversion
+- explain `model_name` resolution
+- improve contribution guidelines
+- fix command to use `uv`
+- improve contribution workflow documentation
+- add `CONTRIBUTING.md` symlink to repo root
+- fix `types.md` to reference own module instead of `openapi_pydantic`
+- remove stale lax mode references, fix version path and twine command
+- simplify PR template, fix docstring style to Sphinx
+- apply review feedback across all documentation pages
+- fix install command in `README.md` and update `install.md`
+- add module docstrings
+- fix remaining CSV format examples
+- update examples to use JSON format instead of CSV
+- enhance theme with auto-switch and darker colors
+- resolve TODO items and improve documentation
+- add publishing guide for PyPI releases
+- add `CHANGELOG.md` for version tracking
+- improve documentation and fix examples
+- add complete README documentation
+
+### Fixed
+
+- validate `release` version argument
+- generate changelog for target tag
+- restore fork placeholder in `contributing.md`
+- set `ruff` `target-version` to `py312` to match `requires-python`
+- rename `SchemaConvertionError` to `SchemaConversionError`
+- fix broken optional dependency check in `_validators.py`
+- enforce `additionalProperties` for `object` fields
+- use correct `#>` print output format
+- resolve lint errors and update `uv.lock`
+- move `fqdn`/`rfc3986` back to `formats-base` optional extra
+- add `fqdn` and `rfc3986` to core dependencies
+- configure `codespell` and adjust `markdownlint` integration
+- add necessary ignores for existing lint issues
+
+### Other
+
+- run `lint` hook for non-python changes
+- run `pre-commit` through `uv` in `install`
+- ignore `coverage.xml` artifact
+- add `exclude-newer` supply-chain guard, upgrade all dependencies
+- add `.python-version` with `3.12`
+- ignore `COM812` to fix `ruff format` conflict warning
+- wrap `$defs` and `$ref` in backticks in comments and docstrings
+- merge `.markdownlint.yaml` into `.markdownlint-cli2.yaml`
+- use `# fmt: off` for `#>` markers, remove `ruff.format.exclude`
+- add docstrings to package `__init__.py`, remove `D104` ignore
+- add missing docstrings, remove `D100`/`D104`/`D105`/`D107` ignores
+- reorder `pyproject.toml` sections, `[project]` first
+- replace `pytest-examples` git dep with PyPI release
+- add `just` CI recipes, use `just ci-*` in all workflow jobs
+- pin all actions by SHA, update to latest versions, clean up params
+- improve workflow description
+- fix errors, restore 100% coverage, exclude scratch files
+- update author email, switch `pydantic-extra-types` to PyPI
+- add build artifacts to `.gitignore`
+- remove override for `tests.*`
+- remove override for `pydantic_jsonschema.formats.extra`
+- remove override for `fqdn` and `rfc3986`
+- remove override for `examples.*`
+- add infrastructure (docs site, examples, templates, license)
+- resolve remaining `ruff` lint issues
+- update `.gitignore`
+- enable strict typing for tests
+- add `ruff` linting, `justfile`, and `pre-commit`
+- add `.gitignore`
+
+### Testing
+
+- remove duplicate tests and WHAT-comments
+- add tests for `Schema` `None`-stripping and `Reference` `$ref` key serialization
+- add coverage tests for `LaxSchemaConverter` edge cases
+- add coverage tests and set `cov-fail-under`
+- add comprehensive test suite

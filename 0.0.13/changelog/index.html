@@ -1,0 +1,3321 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+<meta name="mkdocs-site-name" content="Pydantic JSON Schema">
+<meta name="mkdocs-copy-to-llm-analytics" content="false">
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Convert JSON Schema to Pydantic models with type-safe validation">
+      
+      
+      
+        <link rel="canonical" href="https://danipulok.github.io/pydantic-jsonschema/0.0.13/changelog/">
+      
+      
+        <link rel="prev" href="../contributing/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Changelog - Pydantic JSON Schema</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+  
+  
+  
+  
+  <style>:root{--md-annotation-icon:url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M22%2012a10%2010%200%200%201-10%2010A10%2010%200%200%201%202%2012%2010%2010%200%200%201%2012%202a10%2010%200%200%201%2010%2010M6%2013h8l-3.5%203.5%201.42%201.42L17.84%2012l-5.92-5.92L10.5%207.5%2014%2011H6z%22/%3E%3C/svg%3E');}</style>
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+      <link rel="stylesheet" href="../assets/copy-to-llm/copy-to-llm.css">
+    
+      <link rel="stylesheet" href="../assets/copy-to-llm/copy-to-llm-custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <link href="../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#changelog" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden="">
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Pydantic JSON Schema" class="md-header__button md-logo" aria-label="Pydantic JSON Schema" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Pydantic JSON Schema
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Changelog
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to light mode" type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden="">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple" aria-label="Switch to dark mode" type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden="">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="deep-purple" aria-label="Switch to system preference" type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden="">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required="">
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard="" data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"></path></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix="">
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/danipulok/pydantic-jsonschema" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    danipulok/pydantic-jsonschema
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Pydantic JSON Schema" class="md-nav__button md-logo" aria-label="Pydantic JSON Schema" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    Pydantic JSON Schema
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/danipulok/pydantic-jsonschema" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    danipulok/pydantic-jsonschema
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix="">
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../converters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Converters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../applicators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Applicators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Formats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8">
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix="">
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schema model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/converters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Converters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/applicators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Applicators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Formats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/exceptions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exceptions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked="">
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Development
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix="">
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+      
+        <li class="md-nav__item">
+  <a href="#0013-2026-06-25" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.13 — 2026-06-25
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.13 — 2026-06-25">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0012-2026-06-23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.12 — 2026-06-23
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.12 — 2026-06-23">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0011-2026-06-18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.11 — 2026-06-18
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.11 — 2026-06-18">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0010-2026-06-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.10 — 2026-06-17
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.10 — 2026-06-17">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#009-2026-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.9 — 2026-06-12
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.9 — 2026-06-12">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#008-2026-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.8 — 2026-06-12
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.8 — 2026-06-12">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#007-2026-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.7 — 2026-06-12
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.7 — 2026-06-12">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#006-2026-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.6 — 2026-06-12
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.6 — 2026-06-12">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#005-2026-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.5 — 2026-06-12
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.5 — 2026-06-12">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#004-2026-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.4 — 2026-06-12
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.4 — 2026-06-12">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#build_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#003-2026-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.3 — 2026-06-12
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.3 — 2026-06-12">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#002-2026-06-11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.2 — 2026-06-11
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.2 — 2026-06-11">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#001-2026-06-11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.1 — 2026-06-11
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.1 — 2026-06-11">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+      
+        <li class="md-nav__item">
+  <a href="#0013-2026-06-25" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.13 — 2026-06-25
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.13 — 2026-06-25">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0012-2026-06-23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.12 — 2026-06-23
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.12 — 2026-06-23">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0011-2026-06-18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.11 — 2026-06-18
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.11 — 2026-06-18">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0010-2026-06-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.10 — 2026-06-17
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.10 — 2026-06-17">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#009-2026-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.9 — 2026-06-12
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.9 — 2026-06-12">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#008-2026-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.8 — 2026-06-12
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.8 — 2026-06-12">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#007-2026-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.7 — 2026-06-12
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.7 — 2026-06-12">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#006-2026-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.6 — 2026-06-12
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.6 — 2026-06-12">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#005-2026-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.5 — 2026-06-12
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.5 — 2026-06-12">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#004-2026-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.4 — 2026-06-12
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.4 — 2026-06-12">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#build_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#003-2026-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.3 — 2026-06-12
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.3 — 2026-06-12">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#002-2026-06-11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.2 — 2026-06-11
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.2 — 2026-06-11">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#001-2026-06-11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.0.1 — 2026-06-11
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.0.1 — 2026-06-11">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation">
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href=".." class="md-path__link">
+        
+  <span class="md-ellipsis">
+    Home
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../contributing/" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Development
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/danipulok/pydantic-jsonschema/edit/main/docs/changelog.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75z"></path></svg>
+    </a>
+  
+  
+
+
+<h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Anchor link to this section">¶</a></h1>
+<p>All notable changes to this project will be documented in this file.</p>
+<p>The format is based on <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>.</p>
+<h2 id="0013-2026-06-25"><a href="https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.12...v0.0.13">0.0.13</a> — 2026-06-25<a class="headerlink" href="#0013-2026-06-25" title="Anchor link to this section">¶</a></h2>
+<h3 id="added">Added<a class="headerlink" href="#added" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>re-export exception classes from the package root (#55)</li>
+</ul>
+<h3 id="build">Build<a class="headerlink" href="#build" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>bump the python-dependencies group across 1 directory with 2 updates (#81)</li>
+<li>add continuous benchmarking via <code>pytest-codspeed</code> (#82)</li>
+<li>add 7-day <code>cooldown</code> mirroring <code>tool.uv.exclude-newer</code> (#80)</li>
+<li>upload to <code>Codecov</code> via <code>workflow_run</code> so fork PRs report coverage (#79)</li>
+<li>add <code>pyright</code> as a second type checker alongside <code>mypy</code> (#78)</li>
+<li>add on-demand cross-OS test matrix (<code>workflow_dispatch</code>) (#75)</li>
+<li>smoke-test the published package after <code>PyPI</code> publish (#74)</li>
+<li>add per-job <code>timeout-minutes</code> to all workflows (#73)</li>
+<li>extract a composite <code>setup</code> action (single source for <code>uv</code> + <code>just</code> SHAs) (#71)</li>
+<li>add <code>actionlint</code> + workflow/dependabot schema validation (#70)</li>
+<li>test dependency floor and ceiling (<code>lowest-direct</code> / <code>--upgrade</code>) (#66)</li>
+<li>pin PEP 740 build attestations explicitly on <code>PyPI</code> publish (#65)</li>
+<li>add <code>alls-green</code> gate job (single required status check) (#64)</li>
+<li>supply-chain security — audit (<code>uv audit</code> + <code>zizmor</code>) and install-time malware check (#63)</li>
+<li>bump the github-actions group with 2 updates (#59)</li>
+<li>retry transient source-build install on <code>3.15</code> (#54)</li>
+</ul>
+<h3 id="changed">Changed<a class="headerlink" href="#changed" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>dedup <code>lint</code>/<code>test</code>, centralize Python versions, clean <code>--list</code> (#84)</li>
+<li>rename <code>build_property_count</code> to <code>build_property_count_bounds</code> (#58)</li>
+<li>accept only types/<code>Annotated</code> in <code>formats</code>, drop <code>FormatValidator</code> (#53)</li>
+<li>replace <code>_schema</code>/<code>types</code> with a <code>schema</code> package (facade + private <code>_models</code>) (#52)</li>
+<li>make <code>test_one_of</code> schema-first like other applicator tests (#51)</li>
+<li>promote <code>_applicators</code> to public <code>applicators</code> package (#50)</li>
+</ul>
+<h3 id="documentation">Documentation<a class="headerlink" href="#documentation" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>dedupe format-spec caveat and Python-version list (#62)</li>
+<li>add <code>Applicators</code> to the Next Steps list (#57)</li>
+<li>drop stale "not yet consumed" caveat (#56)</li>
+</ul>
+<h3 id="other">Other<a class="headerlink" href="#other" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add on-demand <code>just sbom</code> recipe (<code>CycloneDX</code> via <code>cyclonedx-py</code>) (#83)</li>
+<li>add <code>.editorconfig</code> (#72)</li>
+<li>add <code>SECURITY.md</code> and <code>codecov.yml</code> (#69)</li>
+<li>enable stricter error codes and add <code>@override</code> across applicators (#68)</li>
+<li>post-refactor audit cleanup (#60)</li>
+</ul>
+<h3 id="testing">Testing<a class="headerlink" href="#testing" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>read example-linting config from <code>pyproject.toml</code> (#77)</li>
+<li>enable <code>xfail_strict</code> + warnings-as-errors (fix <code>parametrize</code> deprecation) (#67)</li>
+<li>add <code>test_metadata</code> / <code>test_utils</code> to complete the mirror (#61)</li>
+</ul>
+<h2 id="0012-2026-06-23"><a href="https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.11...v0.0.12">0.0.12</a> — 2026-06-23<a class="headerlink" href="#0012-2026-06-23" title="Anchor link to this section">¶</a></h2>
+<h3 id="added_1">Added<a class="headerlink" href="#added_1" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>round-trip <code>not</code>/<code>contains</code>/<code>prefixItems</code>/<code>if</code>-<code>then</code>-<code>else</code> JSON Schema (#45)</li>
+<li>enforce <code>propertyNames</code> on object conversion (#21)</li>
+<li>enforce <code>patternProperties</code> on object conversion (#20)</li>
+<li>enforce <code>if</code>/<code>then</code>/<code>else</code> on conversion (#19)</li>
+<li>enforce <code>dependentSchemas</code> on object conversion (#18)</li>
+<li>enforce <code>not</code> on conversion (#17)</li>
+<li>enforce <code>prefixItems</code> positional validation (#16)</li>
+<li>enforce <code>dependentRequired</code> on object conversion (#15)</li>
+<li>enforce <code>contains</code>/<code>minContains</code>/<code>maxContains</code> on array conversion (#14)</li>
+<li>enforce <code>minProperties</code>/<code>maxProperties</code> on object conversion (#13)</li>
+<li>enforce <code>uniqueItems</code> on array conversion (#12)</li>
+<li>declare remaining JSON Schema 2020-12 keywords (#11)</li>
+</ul>
+<h3 id="build_1">Build<a class="headerlink" href="#build_1" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>cancel superseded runs via a <code>concurrency</code> group (#31)</li>
+<li>deploy to a single-commit <code>gh-pages</code> to stop repo bloat (#22)</li>
+<li>drop generated <code>_version.py</code>, read <code>__version__</code> from package metadata (#9)</li>
+</ul>
+<h3 id="changed_1">Changed<a class="headerlink" href="#changed_1" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>rename <code>format_validators</code> parameter to <code>formats</code> (#49)</li>
+<li><code>AnnotationApplicator</code> / <code>ObjectApplicator</code> ABC roles (#47)</li>
+<li>one format — unified model-wrapper + JSON Schema round-trip (#46)</li>
+<li>mirror source package structure in <code>tests/</code> (#39)</li>
+<li>drop root <code>OneOf</code> re-export (#37)</li>
+<li>rename <code>_markers</code> package to <code>_applicators</code> (#34)</li>
+<li>readability cleanup — helpers + <code>$defs</code> alias extraction (#32)</li>
+<li>split <code>converters.py</code> into a package (#29)</li>
+<li>unify <code>not</code>/<code>if</code>-<code>then</code>-<code>else</code> whole-value hooks (#28)</li>
+<li>unify object-keyword validators into one aggregator (#27)</li>
+<li>collect markers in one registry via <code>_register</code> (#26)</li>
+<li>add shared <code>SubschemaMarker</code> base for marker validators (#25)</li>
+<li>move marker validators into <code>_markers</code> subpackage (#23)</li>
+</ul>
+<h3 id="documentation_1">Documentation<a class="headerlink" href="#documentation_1" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>remove completed section (#48)</li>
+<li>add Python 3.15 to <code>test-all-python</code> row (#43)</li>
+<li>rename "Format Validators" section to "Formats" (#38)</li>
+<li>add applicators guide and API page (#36)</li>
+<li>drop restating <code>what</code> comments and docstring noise (#30)</li>
+<li>fix duplicated copy buttons, refactor <code>README.md</code> (#7)</li>
+<li>refactor <code>api</code> reference (#6)</li>
+<li>refactor all docs (#5)</li>
+<li>clarify contributor roles in acknowledgments</li>
+</ul>
+<h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>enforce field constraints on <code>anyOf</code>/<code>oneOf</code> branches (#44)</li>
+<li>enforce sibling <code>type</code> with <code>anyOf</code>/<code>oneOf</code>/<code>allOf</code> (#41)</li>
+<li>support recursive and mutual <code>$ref</code> (no more <code>RecursionError</code>) (#40)</li>
+<li>clean error on empty <code>enum</code> (#42)</li>
+</ul>
+<h3 id="other_1">Other<a class="headerlink" href="#other_1" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>update to <code>0.0.12</code></li>
+<li>scope <code>ruff</code>/<code>mypy</code> via <code>pyproject.toml</code>, drop dead <code>exclude</code> (#10)</li>
+<li>add <code>__all__</code> to <code>tests/conftest.py</code></li>
+<li>add explicit <code>__all__</code> to every module and test</li>
+</ul>
+<h3 id="testing_1">Testing<a class="headerlink" href="#testing_1" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>full <code>ValidationError</code> snapshots + required schema fields (#8)</li>
+</ul>
+<h2 id="0011-2026-06-18"><a href="https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.10...v0.0.11">0.0.11</a> — 2026-06-18<a class="headerlink" href="#0011-2026-06-18" title="Anchor link to this section">¶</a></h2>
+<h3 id="added_2">Added<a class="headerlink" href="#added_2" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>map discriminated <code>oneOf</code> to Pydantic tagged unions (#4)</li>
+</ul>
+<h3 id="build_2">Build<a class="headerlink" href="#build_2" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add <code>OS Independent</code>, <code>Python 3 :: Only</code>, and code-generator classifiers</li>
+<li>test against <code>Python 3.15</code> beta</li>
+</ul>
+<h3 id="other_2">Other<a class="headerlink" href="#other_2" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>update to <code>0.0.11</code></li>
+<li>rework with a summary and absolute contributing link</li>
+<li>use <code>chore(version)</code> message for changelog commit</li>
+<li>scope <code>Protocol</code> exclude pattern to class declarations</li>
+</ul>
+<h3 id="testing_2">Testing<a class="headerlink" href="#testing_2" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>make <code>$ref</code> cache identity check version-stable</li>
+</ul>
+<h2 id="0010-2026-06-17"><a href="https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.9...v0.0.10">0.0.10</a> — 2026-06-17<a class="headerlink" href="#0010-2026-06-17" title="Anchor link to this section">¶</a></h2>
+<h3 id="added_3">Added<a class="headerlink" href="#added_3" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add remaining spec-defined format types (#3)</li>
+</ul>
+<h3 id="build_3">Build<a class="headerlink" href="#build_3" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>bump the python-dependencies group across 1 directory with 2 updates (#2)</li>
+<li>bump the github-actions group across 1 directory with 2 updates (#1)</li>
+</ul>
+<h3 id="documentation_2">Documentation<a class="headerlink" href="#documentation_2" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add <code>0.0.10</code> release section</li>
+</ul>
+<h2 id="009-2026-06-12"><a href="https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.8...v0.0.9">0.0.9</a> — 2026-06-12<a class="headerlink" href="#009-2026-06-12" title="Anchor link to this section">¶</a></h2>
+<h3 id="changed_2">Changed<a class="headerlink" href="#changed_2" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>extract <code>_rebuild_def_models</code> from <code>_build_defs_cache</code></li>
+<li>replace tri-state <code>is_required</code> with explicit <code>field_kind</code></li>
+<li>route defs bookkeeping through <code>_get_model</code></li>
+<li>hoist <code>required</code> lookup out of the fields loop</li>
+</ul>
+<h3 id="documentation_3">Documentation<a class="headerlink" href="#documentation_3" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add <code>0.0.9</code> release section</li>
+<li>add <code>llms.txt</code> export and copy-page-as-Markdown button</li>
+<li>note unvalidated extras with <code>properties</code> + schema <code>additionalProperties</code></li>
+</ul>
+<h3 id="other_3">Other<a class="headerlink" href="#other_3" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>build docs on every commit</li>
+</ul>
+<h2 id="008-2026-06-12"><a href="https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.7...v0.0.8">0.0.8</a> — 2026-06-12<a class="headerlink" href="#008-2026-06-12" title="Anchor link to this section">¶</a></h2>
+<h3 id="added_4">Added<a class="headerlink" href="#added_4" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add <code>pattern</code> field and map it to Pydantic <code>pattern</code> constraint</li>
+</ul>
+<h3 id="build_4">Build<a class="headerlink" href="#build_4" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add weekly grouped updates for <code>uv</code> and <code>github-actions</code></li>
+<li>route all workflow steps through <code>just ci-*</code> recipes</li>
+</ul>
+<h3 id="changed_3">Changed<a class="headerlink" href="#changed_3" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>drop duplicated <code>_get_model</code> caching and fix stale docstrings</li>
+<li>decompose <code>_build_model</code> into model-flavor builders</li>
+<li>split <code>_schema_to_annotation</code> into focused handlers</li>
+<li>reorganize <code>test_converters.py</code> into feature-based classes</li>
+<li>merge <code>test_types.py</code> into <code>test_schema.py</code> and split into logical classes</li>
+</ul>
+<h3 id="documentation_4">Documentation<a class="headerlink" href="#documentation_4" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add <code>0.0.8</code> release section</li>
+<li>document unsupported keywords and known limitations</li>
+<li>link format spec section in module docstring</li>
+</ul>
+<h3 id="fixed_1">Fixed<a class="headerlink" href="#fixed_1" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>map multi-type <code>object</code> to <code>dict[str, Any]</code> instead of <code>Any</code></li>
+<li>default optional fields to <code>MISSING</code> sentinel instead of <code>None</code></li>
+</ul>
+<h3 id="other_4">Other<a class="headerlink" href="#other_4" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>group recipes into logical sections</li>
+<li>clean <code>dist/</code> before CI build</li>
+</ul>
+<h3 id="testing_3">Testing<a class="headerlink" href="#testing_3" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add explicit <code>id</code> to multi-argument parameter sets</li>
+</ul>
+<h2 id="007-2026-06-12"><a href="https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.6...v0.0.7">0.0.7</a> — 2026-06-12<a class="headerlink" href="#007-2026-06-12" title="Anchor link to this section">¶</a></h2>
+<h3 id="added_5">Added<a class="headerlink" href="#added_5" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>enforce <code>oneOf</code> exactly-one-branch semantics via <code>OneOf</code> validator</li>
+</ul>
+<h3 id="build_5">Build<a class="headerlink" href="#build_5" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>raise <code>pydantic-extra-types</code> floor to <code>2.3.0</code></li>
+<li>raise <code>pydantic</code> floor to <code>2.13.0</code></li>
+</ul>
+<h3 id="documentation_5">Documentation<a class="headerlink" href="#documentation_5" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add <code>0.0.7</code> release section</li>
+</ul>
+<h3 id="fixed_2">Fixed<a class="headerlink" href="#fixed_2" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>validate root <code>additionalProperties</code> values via <code>RootModel</code></li>
+<li>resolve <code>Reference</code> aliases in <code>$defs</code></li>
+</ul>
+<h3 id="testing_4">Testing<a class="headerlink" href="#testing_4" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>cover <code>const: null</code> conversion to <code>Literal[None]</code></li>
+<li>replace partial assertions with full <code>snapshot</code> comparisons</li>
+<li>wrap literal assertions with <code>inline_snapshot</code></li>
+</ul>
+<h2 id="006-2026-06-12"><a href="https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.5...v0.0.6">0.0.6</a> — 2026-06-12<a class="headerlink" href="#006-2026-06-12" title="Anchor link to this section">¶</a></h2>
+<h3 id="changed_4">Changed<a class="headerlink" href="#changed_4" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>remove <code>JsonType</code> alias in favor of <code>pydantic.JsonValue</code></li>
+<li>replace <code>BeforeValidator</code> with <code>AfterValidator</code> in format aliases</li>
+</ul>
+<h3 id="documentation_6">Documentation<a class="headerlink" href="#documentation_6" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add <code>0.0.6</code> release section</li>
+</ul>
+<h3 id="other_5">Other<a class="headerlink" href="#other_5" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>remove <code>Ref</code> from public <code>__all__</code></li>
+</ul>
+<h2 id="005-2026-06-12"><a href="https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.4...v0.0.5">0.0.5</a> — 2026-06-12<a class="headerlink" href="#005-2026-06-12" title="Anchor link to this section">¶</a></h2>
+<h3 id="changed_5">Changed<a class="headerlink" href="#changed_5" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>drop <code>formats-extra</code> extra in favor of direct <code>pydantic-extra-types</code> install</li>
+</ul>
+<h3 id="documentation_7">Documentation<a class="headerlink" href="#documentation_7" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add <code>0.0.5</code> release section</li>
+</ul>
+<h3 id="other_6">Other<a class="headerlink" href="#other_6" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>forbid `pragma: no cover</li>
+</ul>
+<h2 id="004-2026-06-12"><a href="https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.3...v0.0.4">0.0.4</a> — 2026-06-12<a class="headerlink" href="#004-2026-06-12" title="Anchor link to this section">¶</a></h2>
+<h3 id="build_6">Build<a class="headerlink" href="#build_6" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add <code>just release-auto</code> command</li>
+</ul>
+<h3 id="changed_6">Changed<a class="headerlink" href="#changed_6" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>replace <code>email-validator</code> dep with built-in <code>validate_email</code></li>
+</ul>
+<h3 id="documentation_8">Documentation<a class="headerlink" href="#documentation_8" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add <code>0.0.4</code> release section</li>
+</ul>
+<h2 id="003-2026-06-12"><a href="https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.2...v0.0.3">0.0.3</a> — 2026-06-12<a class="headerlink" href="#003-2026-06-12" title="Anchor link to this section">¶</a></h2>
+<h3 id="changed_7">Changed<a class="headerlink" href="#changed_7" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>replace <code>fqdn</code> and <code>rfc3986</code> deps with built-in validators</li>
+</ul>
+<h3 id="documentation_9">Documentation<a class="headerlink" href="#documentation_9" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add <code>0.0.3</code> release section</li>
+<li>add comments explaining template workarounds for markdownlint</li>
+<li>add manual GitHub Release and docs deploy steps</li>
+<li>add <code>just changelog</code> step to release flow</li>
+</ul>
+<h3 id="fixed_3">Fixed<a class="headerlink" href="#fixed_3" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>fix <code>cliff.toml</code> template for valid markdown output</li>
+<li>update <code>setup-just</code> SHA to v4</li>
+</ul>
+<h2 id="002-2026-06-11"><a href="https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.1...v0.0.2">0.0.2</a> — 2026-06-11<a class="headerlink" href="#002-2026-06-11" title="Anchor link to this section">¶</a></h2>
+<h3 id="added_6">Added<a class="headerlink" href="#added_6" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>replace <code>openapi-pydantic</code> with our own <code>Schema</code>, <code>Reference</code> and <code>DataType</code></li>
+</ul>
+<h3 id="build_7">Build<a class="headerlink" href="#build_7" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add <code>docs-alias</code> recipe and deploy <code>latest</code> alias on release</li>
+<li>route all CI commands through <code>justfile</code> recipes</li>
+<li>add <code>test</code> hook to enforce 100% coverage on commit</li>
+</ul>
+<h3 id="documentation_10">Documentation<a class="headerlink" href="#documentation_10" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add <code>0.0.2</code> release section</li>
+<li>add <code>inline_snapshot</code> item to roadmap</li>
+<li>add <code>Ruff</code>, <code>uv</code>, <code>mypy</code>, and <code>pre-commit</code> badges</li>
+<li>add acknowledgments section</li>
+<li>add roadmap section</li>
+</ul>
+<h3 id="fixed_4">Fixed<a class="headerlink" href="#fixed_4" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add <code>ignore_missing_imports</code> override for <code>fqdn</code>/<code>rfc3986</code></li>
+<li>add <code>latest</code> prefix to installation guide link</li>
+<li>allow missing AWS credentials config</li>
+<li>validate URI/IRI component validity, rename <code>exc</code> to <code>er</code></li>
+<li>update copyright year to <code>2026</code></li>
+<li>deploy <code>docs</code> and route <code>v0.*</code> to <code>TestPyPI</code></li>
+</ul>
+<h3 id="other_7">Other<a class="headerlink" href="#other_7" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>remove <code>TestPyPI</code> publishing</li>
+</ul>
+<h3 id="testing_5">Testing<a class="headerlink" href="#testing_5" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add tests for invalid URI/IRI reference validation</li>
+</ul>
+<h2 id="001-2026-06-11"><a href="https://github.com/Danipulok/pydantic-jsonschema/releases/tag/v0.0.1">0.0.1</a> — 2026-06-11<a class="headerlink" href="#001-2026-06-11" title="Anchor link to this section">¶</a></h2>
+<h3 id="added_7">Added<a class="headerlink" href="#added_7" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>export <code>Reference</code> in public API</li>
+<li>add custom <code>Schema</code>/<code>Reference</code> with <code>None</code>-stripping serialization</li>
+<li>add model validators support in lax mode</li>
+<li>implement user-provided coerce functions in lax mode</li>
+<li>implement centralized version management and docs versioning</li>
+<li>add <code>__version__</code> and allow direct references</li>
+<li>add PyPI metadata to <code>pyproject.toml</code></li>
+<li>add IRI validators</li>
+<li>add format validators, public API, lax mode, and schema dumping</li>
+<li>initial library with converter, formats, and types</li>
+</ul>
+<h3 id="build_8">Build<a class="headerlink" href="#build_8" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>add PR title validation for Conventional Commits format</li>
+<li>switch from exclude to include whitelist</li>
+<li>add tag-based release workflow, <code>git-cliff</code> changelog, <code>just release</code></li>
+<li>switch to <code>hatch-vcs</code> for version from git tags</li>
+<li>configure <code>hatchling</code> build targets and exclusions</li>
+<li>add GitHub Actions workflows for CI and PyPI publishing</li>
+</ul>
+<h3 id="changed_8">Changed<a class="headerlink" href="#changed_8" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>simplify <code>sanitize_identifier</code> with <code>re.sub</code></li>
+<li>remove <code>SchemaFormat</code> class and <code>_base.py</code> module</li>
+<li>remove all lax model functionality</li>
+<li>add <code>TYPE_CHECKING</code> guard for <code>JsonType</code> import</li>
+<li>add <code>__all__</code> to <code>_version.py</code></li>
+<li>convert builtin formats to Pydantic types</li>
+<li>remove <code>extra.py</code> and related tests</li>
+<li>move <code>markdownlint-cli2</code> to <code>justfile</code> lint</li>
+<li>integrate <code>codespell</code> and <code>markdownlint</code> into <code>just lint</code></li>
+<li>remove dead <code>lax.py</code> per-file ignores</li>
+<li>remove <code>UP007</code> ignore from <code>converters.py</code></li>
+<li>remove <code>FURB162</code> ignore (timezone)</li>
+<li>remove complexity ignores (<code>C901</code>, <code>PLR0911</code>, <code>PLR0912</code>)</li>
+<li>remove <code>PLR2004</code> ignore (magic values)</li>
+<li>remove <code>A001</code>/<code>A004</code> ignores (shadowing builtins)</li>
+<li>remove <code>TRY</code> ignores (<code>TRY003</code>/<code>004</code>/<code>300</code>/<code>301</code>)</li>
+<li>remove <code>EM102</code> ignore (f-string in exceptions)</li>
+<li>remove <code>FBT001</code> ignore (boolean positional args)</li>
+<li>remove <code>PLW2901</code> ignore (loop variable overwrite)</li>
+<li>remove <code>RET504</code> ignore (unnecessary assignment)</li>
+<li>remove <code>RUF022</code> ignore and sort <code>__all__</code></li>
+<li>remove <code>ERA001</code> ignore (commented code)</li>
+<li>restructure into package, improve tests</li>
+<li>remove <code>schema.py</code> module</li>
+<li>restructure modules, merge lax into <code>SchemaConverter</code></li>
+<li>remove <code>before_validators</code> support</li>
+<li>clean up converter logic</li>
+<li>simplify README and <code>__init__.py</code></li>
+</ul>
+<h3 id="documentation_11">Documentation<a class="headerlink" href="#documentation_11" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>set initial release to <code>0.0.1</code></li>
+<li>replace placeholder URLs with actual repository URL</li>
+<li>fix data in license</li>
+<li>simplify <code>README.md</code>, add docs and license badges</li>
+<li>clarify <code>format_validators</code> behavior</li>
+<li>refresh documentation homepage</li>
+<li>use tabbed installation guide</li>
+<li>align workflow and examples docs</li>
+<li>clarify <code>object</code> schema conversion</li>
+<li>explain <code>model_name</code> resolution</li>
+<li>improve contribution guidelines</li>
+<li>fix command to use <code>uv</code></li>
+<li>improve contribution workflow documentation</li>
+<li>add <code>CONTRIBUTING.md</code> symlink to repo root</li>
+<li>fix <code>types.md</code> to reference own module instead of <code>openapi_pydantic</code></li>
+<li>remove stale lax mode references, fix version path and twine command</li>
+<li>simplify PR template, fix docstring style to Sphinx</li>
+<li>apply review feedback across all documentation pages</li>
+<li>fix install command in <code>README.md</code> and update <code>install.md</code></li>
+<li>add module docstrings</li>
+<li>fix remaining CSV format examples</li>
+<li>update examples to use JSON format instead of CSV</li>
+<li>enhance theme with auto-switch and darker colors</li>
+<li>resolve TODO items and improve documentation</li>
+<li>add publishing guide for PyPI releases</li>
+<li>add <code>CHANGELOG.md</code> for version tracking</li>
+<li>improve documentation and fix examples</li>
+<li>add complete README documentation</li>
+</ul>
+<h3 id="fixed_5">Fixed<a class="headerlink" href="#fixed_5" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>validate <code>release</code> version argument</li>
+<li>generate changelog for target tag</li>
+<li>restore fork placeholder in <code>contributing.md</code></li>
+<li>set <code>ruff</code> <code>target-version</code> to <code>py312</code> to match <code>requires-python</code></li>
+<li>rename <code>SchemaConvertionError</code> to <code>SchemaConversionError</code></li>
+<li>fix broken optional dependency check in <code>_validators.py</code></li>
+<li>enforce <code>additionalProperties</code> for <code>object</code> fields</li>
+<li>use correct <code>#&gt;</code> print output format</li>
+<li>resolve lint errors and update <code>uv.lock</code></li>
+<li>move <code>fqdn</code>/<code>rfc3986</code> back to <code>formats-base</code> optional extra</li>
+<li>add <code>fqdn</code> and <code>rfc3986</code> to core dependencies</li>
+<li>configure <code>codespell</code> and adjust <code>markdownlint</code> integration</li>
+<li>add necessary ignores for existing lint issues</li>
+</ul>
+<h3 id="other_8">Other<a class="headerlink" href="#other_8" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>run <code>lint</code> hook for non-python changes</li>
+<li>run <code>pre-commit</code> through <code>uv</code> in <code>install</code></li>
+<li>ignore <code>coverage.xml</code> artifact</li>
+<li>add <code>exclude-newer</code> supply-chain guard, upgrade all dependencies</li>
+<li>add <code>.python-version</code> with <code>3.12</code></li>
+<li>ignore <code>COM812</code> to fix <code>ruff format</code> conflict warning</li>
+<li>wrap <code>$defs</code> and <code>$ref</code> in backticks in comments and docstrings</li>
+<li>merge <code>.markdownlint.yaml</code> into <code>.markdownlint-cli2.yaml</code></li>
+<li>use <code># fmt: off</code> for <code>#&gt;</code> markers, remove <code>ruff.format.exclude</code></li>
+<li>add docstrings to package <code>__init__.py</code>, remove <code>D104</code> ignore</li>
+<li>add missing docstrings, remove <code>D100</code>/<code>D104</code>/<code>D105</code>/<code>D107</code> ignores</li>
+<li>reorder <code>pyproject.toml</code> sections, <code>[project]</code> first</li>
+<li>replace <code>pytest-examples</code> git dep with PyPI release</li>
+<li>add <code>just</code> CI recipes, use <code>just ci-*</code> in all workflow jobs</li>
+<li>pin all actions by SHA, update to latest versions, clean up params</li>
+<li>improve workflow description</li>
+<li>fix errors, restore 100% coverage, exclude scratch files</li>
+<li>update author email, switch <code>pydantic-extra-types</code> to PyPI</li>
+<li>add build artifacts to <code>.gitignore</code></li>
+<li>remove override for <code>tests.*</code></li>
+<li>remove override for <code>pydantic_jsonschema.formats.extra</code></li>
+<li>remove override for <code>fqdn</code> and <code>rfc3986</code></li>
+<li>remove override for <code>examples.*</code></li>
+<li>add infrastructure (docs site, examples, templates, license)</li>
+<li>resolve remaining <code>ruff</code> lint issues</li>
+<li>update <code>.gitignore</code></li>
+<li>enable strict typing for tests</li>
+<li>add <code>ruff</code> linting, <code>justfile</code>, and <code>pre-commit</code></li>
+<li>add <code>.gitignore</code></li>
+</ul>
+<h3 id="testing_6">Testing<a class="headerlink" href="#testing_6" title="Anchor link to this section">¶</a></h3>
+<ul>
+<li>remove duplicate tests and WHAT-comments</li>
+<li>add tests for <code>Schema</code> <code>None</code>-stripping and <code>Reference</code> <code>$ref</code> key serialization</li>
+<li>add coverage tests for <code>LaxSchemaConverter</code> edge cases</li>
+<li>add coverage tests and set <code>cov-fail-under</code></li>
+<li>add comprehensive test suite</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden="">
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer">
+        
+          
+          <a href="../contributing/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Contributing">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Contributing
+              </div>
+            </div>
+          </a>
+        
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright © 2026 - Present
+    </div>
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/danipulok/pydantic-jsonschema" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://pypi.org/project/pydantic-jsonschema/" target="_blank" rel="noopener" title="pypi.org" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"></path></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["announce.dismiss", "content.action.edit", "content.code.annotate", "content.code.copy", "content.tooltips", "navigation.expand", "navigation.footer", "navigation.indexes", "navigation.instant", "navigation.instant.prefetch", "navigation.path", "navigation.sections", "navigation.top", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../assets/copy-to-llm/copy-to-llm.js"></script>
+      
+    
+  
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>

@@ -1,0 +1,28 @@
+# Pydantic JSON Schema
+
+> Convert JSON Schema to Pydantic models with type-safe validation
+
+Convert JSON Schema definitions into Pydantic models with runtime validation.
+
+## Usage documentation
+
+- [Home](https://danipulok.github.io/pydantic-jsonschema/0.0.12/index.md)
+- [Installation](https://danipulok.github.io/pydantic-jsonschema/0.0.12/install/index.md)
+- [Schema](https://danipulok.github.io/pydantic-jsonschema/0.0.12/schema/index.md)
+- [Converters](https://danipulok.github.io/pydantic-jsonschema/0.0.12/converters/index.md)
+- [Formats](https://danipulok.github.io/pydantic-jsonschema/0.0.12/formats/index.md)
+- [Examples](https://danipulok.github.io/pydantic-jsonschema/0.0.12/examples/index.md)
+
+## API reference
+
+- [Applicators](https://danipulok.github.io/pydantic-jsonschema/0.0.12/api/applicators/index.md)
+- [Converters](https://danipulok.github.io/pydantic-jsonschema/0.0.12/api/converters/index.md)
+- [Exceptions](https://danipulok.github.io/pydantic-jsonschema/0.0.12/api/exceptions/index.md)
+- [Formats](https://danipulok.github.io/pydantic-jsonschema/0.0.12/api/formats/index.md)
+- [Schema model](https://danipulok.github.io/pydantic-jsonschema/0.0.12/api/types/index.md)
+
+## Development
+
+- [Contributing](https://danipulok.github.io/pydantic-jsonschema/0.0.12/contributing/index.md)
+- [Changelog](https://danipulok.github.io/pydantic-jsonschema/0.0.12/changelog/index.md)
+

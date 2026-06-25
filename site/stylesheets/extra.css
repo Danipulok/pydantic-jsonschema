@@ -1,0 +1,107 @@
+/* Custom styling for Pydantic JSON Schema documentation */
+
+/* Custom color overrides for darker theme */
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #512da8;
+  --md-primary-fg-color--light: #673ab7;
+  --md-primary-fg-color--dark: #311b92;
+  --md-accent-fg-color: #7c4dff;
+  --md-default-bg-color: #1a1a1a;
+  --md-default-bg-color--light: #212121;
+  --md-default-bg-color--lighter: #242424;
+  --md-default-bg-color--lightest: #2a2a2a;
+  --md-code-bg-color: #1e1e1e;
+  --md-code-fg-color: #e0e0e0;
+}
+
+/* Light theme adjustments */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #5e35b1;
+  --md-primary-fg-color--light: #7e57c2;
+  --md-primary-fg-color--dark: #4527a0;
+  --md-accent-fg-color: #651fff;
+}
+
+/* Adjust code block styling */
+.md-typeset code {
+  font-size: 0.85em;
+}
+
+/* Make inline code stand out slightly */
+.md-typeset :not(pre) > code {
+  padding: 0.1em 0.4em;
+  border-radius: 0.2em;
+  background-color: var(--md-code-bg-color);
+}
+
+/* Improve table readability */
+.md-typeset table:not([class]) {
+  font-size: 0.9em;
+  border-collapse: collapse;
+}
+
+.md-typeset table:not([class]) th {
+  font-weight: 600;
+  background-color: var(--md-default-fg-color--lightest);
+}
+
+/* Adjust admonition styling */
+.md-typeset .admonition,
+.md-typeset details {
+  font-size: 0.9em;
+}
+
+/* Make navigation sections more visible */
+.md-nav__title {
+  font-weight: 700;
+}
+
+/* Improve code annotation spacing */
+.md-annotation {
+  margin-top: 0.5em;
+}
+
+/* Better spacing for definition lists */
+.md-typeset dd {
+  margin-left: 1.5em;
+  margin-top: 0.5em;
+}
+
+/* Adjust footer spacing */
+.md-footer {
+  margin-top: 2em;
+}
+
+/* Make headers in content slightly smaller for better hierarchy */
+.md-typeset h1 {
+  font-weight: 600;
+  font-size: 2em;
+}
+
+.md-typeset h2 {
+  font-weight: 600;
+  font-size: 1.5em;
+  margin-top: 1.6em;
+}
+
+.md-typeset h3 {
+  font-weight: 600;
+  font-size: 1.25em;
+}
+
+/* Improve readability of parameter lists in API docs */
+.md-typeset .doc-parameters {
+  font-size: 0.9em;
+}
+
+/* Add some breathing room to content */
+.md-content__inner {
+  padding-bottom: 3em;
+}
+
+/* De-duplicate code-block copy buttons: `mkdocs-copy-to-llm` adds its own per-block
+   button next to Material's built-in code-copy. Keep Material's (plain copy) and hide
+   the copy-to-llm one; its page-level "copy / open in LLM" buttons stay. */
+.copy-to-llm-code {
+  display: none;
+}
