@@ -4,6 +4,60 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.0.13] — 2026-06-25
+
+### Added
+
+- re-export exception classes from the package root (#55)
+
+### Build
+
+- bump the python-dependencies group across 1 directory with 2 updates (#81)
+- add continuous benchmarking via `pytest-codspeed` (#82)
+- add 7-day `cooldown` mirroring `tool.uv.exclude-newer` (#80)
+- upload to `Codecov` via `workflow_run` so fork PRs report coverage (#79)
+- add `pyright` as a second type checker alongside `mypy` (#78)
+- add on-demand cross-OS test matrix (`workflow_dispatch`) (#75)
+- smoke-test the published package after `PyPI` publish (#74)
+- add per-job `timeout-minutes` to all workflows (#73)
+- extract a composite `setup` action (single source for `uv` + `just` SHAs) (#71)
+- add `actionlint` + workflow/dependabot schema validation (#70)
+- test dependency floor and ceiling (`lowest-direct` / `--upgrade`) (#66)
+- pin PEP 740 build attestations explicitly on `PyPI` publish (#65)
+- add `alls-green` gate job (single required status check) (#64)
+- supply-chain security — audit (`uv audit` + `zizmor`) and install-time malware check (#63)
+- bump the github-actions group with 2 updates (#59)
+- retry transient source-build install on `3.15` (#54)
+
+### Changed
+
+- dedup `lint`/`test`, centralize Python versions, clean `--list` (#84)
+- rename `build_property_count` to `build_property_count_bounds` (#58)
+- accept only types/`Annotated` in `formats`, drop `FormatValidator` (#53)
+- replace `_schema`/`types` with a `schema` package (facade + private `_models`) (#52)
+- make `test_one_of` schema-first like other applicator tests (#51)
+- promote `_applicators` to public `applicators` package (#50)
+
+### Documentation
+
+- dedupe format-spec caveat and Python-version list (#62)
+- add `Applicators` to the Next Steps list (#57)
+- drop stale "not yet consumed" caveat (#56)
+
+### Other
+
+- add on-demand `just sbom` recipe (`CycloneDX` via `cyclonedx-py`) (#83)
+- add `.editorconfig` (#72)
+- add `SECURITY.md` and `codecov.yml` (#69)
+- enable stricter error codes and add `@override` across applicators (#68)
+- post-refactor audit cleanup (#60)
+
+### Testing
+
+- read example-linting config from `pyproject.toml` (#77)
+- enable `xfail_strict` + warnings-as-errors (fix `parametrize` deprecation) (#67)
+- add `test_metadata` / `test_utils` to complete the mirror (#61)
+
 ## [0.0.12] — 2026-06-23
 
 ### Added
@@ -64,6 +118,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Other
 
+- update to `0.0.12`
 - scope `ruff`/`mypy` via `pyproject.toml`, drop dead `exclude` (#10)
 - add `__all__` to `tests/conftest.py`
 - add explicit `__all__` to every module and test
@@ -433,6 +488,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - add coverage tests and set `cov-fail-under`
 - add comprehensive test suite
 
+[0.0.13]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.12...v0.0.13>
 [0.0.12]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.11...v0.0.12>
 [0.0.11]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.10...v0.0.11>
 [0.0.10]: <https://github.com/Danipulok/pydantic-jsonschema/compare/v0.0.9...v0.0.10>
