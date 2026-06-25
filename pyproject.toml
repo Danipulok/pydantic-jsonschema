@@ -54,8 +54,15 @@ Changelog = "https://github.com/Danipulok/pydantic-jsonschema/blob/main/docs/cha
 dev = [
     {include-group = "lint"},
     {include-group = "test"},
+    {include-group = "benchmark"},
     {include-group = "docs"},
     {include-group = "release"},
+]
+# `pytest-codspeed` provides the `benchmark` fixture and powers the `CodSpeed` CI job. Kept out of
+# the `test` group so the coverage-gated suite never pulls it (and the floor/ceiling runs stay lean).
+benchmark = [
+    {include-group = "test"},
+    "pytest-codspeed>=5.0.0",
 ]
 release = [
     "git-cliff>=2.0.0",
@@ -238,6 +245,13 @@ testpaths = ["tests"]
 addopts = [
     "--strict-markers",     # Raise error for unregistered markers
     "--strict-config",      # Raise error for unknown config options
+    # Benchmarks (`tests/benchmarks/`) need `pytest-codspeed` and run only in the `CodSpeed` job,
+    # which overrides this with `-m benchmark`. Excluding them here keeps the normal suite plugin-free
+    # and out of the 100% coverage gate.
+    "-m", "not benchmark",
+]
+markers = [
+    "benchmark: performance benchmark executed under `CodSpeed`; excluded from the normal suite",
 ]
 xfail_strict = true         # An `xfail` test that unexpectedly passes is a failure
 filterwarnings = ["error"]  # Any warning is an error — catches deprecations early (e.g. in the
