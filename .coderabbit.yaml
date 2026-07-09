@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+
+reviews:
+  # NOTE: `assertive` is the verbose profile — we start with maximum feedback
+  #       to evaluate the tool; downgrade to `chill` if the noise outweighs
+  #       the signal.
+  profile: assertive
+  high_level_summary: true
+  poem: false
+  auto_review:
+    enabled: true
+  path_filters:
+    - "!dist/**"
+    - "!site/**"
+    - "!sbom/**"
+
+chat:
+  auto_reply: true
