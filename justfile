@@ -19,9 +19,12 @@ export UV_FROZEN := if env_var_or_default("CI", "") != "" { "true" } else { "fal
 # Python versions under test. Mirrors the canonical matrix — `python-version` in `ci.yml`'s `test`
 # job (which `coverage.yml` also mirrors and `os-matrix.yml` subsets, sans `3.15`). Keep in sync.
 python_versions := "3.12 3.13 3.14 3.15"
-# Floor = oldest supported (dependency-floor run); ceiling = newest stable (dependency-ceiling run).
+# Floor = oldest supported (dependency-floor run); ceiling = newest supported (dependency-ceiling
+# run) — currently the `3.15` beta, so breakage surfaces before the October stable release. `uv`
+# resolves `3.15` to the beta because no stable `3.15` exists yet; once one ships it takes over
+# automatically.
 python_floor := "3.12"
-python_ceil := "3.14"
+python_ceil := "3.15"
 
 # --- General ---
 
@@ -179,12 +182,12 @@ test-fix-snapshots:
 test-floor:
     UV_NO_SYNC=false UV_FROZEN=false UV_PROJECT_ENVIRONMENT=.venv-floor uv run --python {{python_floor}} --resolution lowest-direct --no-default-groups --group test pytest
 
-# Test the dependency CEILING: latest stable Python + highest resolvable deps.
+# Test the dependency CEILING: newest supported Python + highest resolvable deps.
 # `--upgrade` ignores the lockfile pins and re-resolves to the latest allowed versions (within
 # `tool.uv.exclude-newer` in `pyproject.toml`), catching breakage from a new dependency release
 # before it reaches the lockfile.
 # Isolated env; no coverage gate. See `test-floor` for why the CI-wide flags are cleared.
-[doc("Test the dependency ceiling (newest stable Python, highest deps)")]
+[doc("Test the dependency ceiling (newest supported Python, highest deps)")]
 test-ceil:
     UV_NO_SYNC=false UV_FROZEN=false UV_PROJECT_ENVIRONMENT=.venv-ceil uv run --python {{python_ceil}} --upgrade --no-default-groups --group test pytest
 
