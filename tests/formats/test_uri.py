@@ -235,6 +235,15 @@ class TestInvalidUri:
         with pytest.raises(ValueError, match=r"Invalid URI"):
             validate_uri("http://host#frag\nmore")
 
+    def test_pathological_backtracking_input(self) -> None:
+        """ReDoS regression: a crafted non-matching value must fail fast, not hang.
+
+        With greedy quantifiers in `_URI_RE` this input took ~8.6s (quadratic backtracking);
+        possessive quantifiers keep it under a millisecond. See the `_URI_RE` note.
+        """
+        with pytest.raises(ValueError, match=r"Invalid URI"):
+            validate_uri("//" + "a" * 16_000 + "#\nx")
+
 
 class TestValidUriReference:
     """Valid URI references per RFC 3986 (scheme optional)."""
