@@ -1,6 +1,9 @@
+<!-- Thank you for contributing to Pydantic JSON Schema! 👺 -->
+<!-- For non-trivial changes, please open an issue to discuss them before creating a PR. -->
+
 Closes #<!-- issue number, or remove this line -->
 
-# Summary
+## Summary
 
 <!-- One or two sentences, written for a human: what does this PR do, and why? -->
 
@@ -19,3 +22,6 @@ Closes #<!-- issue number, or remove this line -->
 ---
 
 - [ ] I followed the [contribution guide](https://danipulok.github.io/pydantic-jsonschema/contributing/)
+- [ ] The PR title follows [Conventional Commits](https://www.conventionalcommits.org/) (`type(scope): description`) — it becomes the squash commit and the changelog entry
+- [ ] Documentation reflects the changes where applicable
+- [ ] Any AI-generated code has been reviewed line-by-line by the human PR author, who stands by it
