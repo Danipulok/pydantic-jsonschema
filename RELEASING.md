@@ -33,26 +33,29 @@ Before the first public release:
 
 ## Creating a release
 
-1. Generate the changelog for the target version:
+The changelog lands on `main` through a regular PR; the tag is pushed as a separate ref, so
+`main` is never pushed directly. Pass the version without the leading `v` in all commands.
+
+1. Open the release PR:
 
    ```bash
-   just changelog X.Y.Z
+   just release-pr X.Y.Z
    ```
 
-2. Commit the updated changelog:
+   This creates branch `release/X.Y.Z` from up-to-date `main`, generates `docs/changelog.md`,
+   commits it as `chore(version): update to X.Y.Z`, and opens the PR via `gh`.
+
+2. Review and squash-merge the release PR (keep the PR title as the commit message).
+
+3. Tag the merged commit:
 
    ```bash
-   git add docs/changelog.md
-   git commit -m 'docs(changelog): add `X.Y.Z` release section'
-   ```
-
-3. Run the release recipe:
-
-   ```bash
+   git switch main && git pull
    just release X.Y.Z
    ```
 
-   Pass the version without the leading `v`. This validates `docs/changelog.md`, creates tag `vX.Y.Z`, and pushes `main` plus the tag.
+   This verifies you are on `main` matching `origin/main`, validates `docs/changelog.md`,
+   creates tag `vX.Y.Z`, and pushes only the tag.
 
 4. The `release.yml` workflow will automatically:
     - Build sdist and wheel (version derived from git tag via `hatch-vcs`).
