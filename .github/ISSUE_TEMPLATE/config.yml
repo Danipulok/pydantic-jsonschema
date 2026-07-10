@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Read the Documentation
+    url: 'https://danipulok.github.io/pydantic-jsonschema/'
+    about: Usage guides and API reference — check here before opening an issue
