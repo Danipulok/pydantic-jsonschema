@@ -302,11 +302,44 @@ build:
 smoke-test version:
     UV_NO_SYNC=false uv run --isolated --no-project --exclude-newer-package "pydantic-jsonschema=2999-12-31" --with "pydantic-jsonschema=={{ version }}" python -c "from pydantic_jsonschema import Schema, to_model; print(to_model(Schema.model_validate({'type': 'object', 'properties': {'x': {'type': 'integer'}}, 'required': ['x']}))(x=1).model_dump())"
 
-# Tag a release and push (triggers `release.yml` workflow)
+# Generate the changelog on a `release/X.Y.Z` branch and open the release PR
+release-pr version: (_check-release-version version)
+    #!/usr/bin/env bash
+    set -euo pipefail
+    version="{{version}}"
+    if [[ -n "$(git status --porcelain)" ]]; then
+        printf 'Working tree must be clean before preparing a release PR.\n' >&2
+        exit 2
+    fi
+    git switch main
+    git pull --ff-only
+    git switch -c "release/$version"
+    just changelog "v$version"
+    if [[ -z "$(git status --porcelain docs/changelog.md)" ]]; then
+        printf 'docs/changelog.md is unchanged — nothing to release.\n' >&2
+        exit 2
+    fi
+    git add docs/changelog.md
+    git commit -m "chore(version): update to \`$version\`"
+    git push -u origin "release/$version"
+    gh pr create --title "chore(version): update to \`$version\`" --body "Changelog for \`v$version\`. After merge, run \`just release $version\` to tag and publish."
+
+# Tag the merged release from up-to-date `main` and push only the tag (triggers `release.yml`)
 release version: (_check-release-version version)
     #!/usr/bin/env bash
     set -euo pipefail
     version="{{version}}"
+    # The changelog lands on `main` via the release PR (`just release-pr`); the tag is a
+    # separate ref, so pushing it never pushes `main` itself.
+    if [[ "$(git rev-parse --abbrev-ref HEAD)" != "main" ]]; then
+        printf 'Releases are tagged from `main`; current branch is `%s`.\n' "$(git rev-parse --abbrev-ref HEAD)" >&2
+        exit 2
+    fi
+    git fetch origin main
+    if [[ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]]; then
+        printf 'Local `main` must match `origin/main` — merge the release PR and `git pull` first.\n' >&2
+        exit 2
+    fi
     if ! grep -q "^## \[$version\]" docs/changelog.md; then
         printf 'docs/changelog.md must contain release section `## [%s]`.\n' "$version" >&2
         exit 2
@@ -316,23 +349,7 @@ release version: (_check-release-version version)
         exit 2
     fi
     git tag "v$version"
-    git push origin main "v$version"
-
-# Generate changelog, commit it, and run `just release`
-release-auto version: (_check-release-version version)
-    #!/usr/bin/env bash
-    set -euo pipefail
-    version="{{version}}"
-    if [[ -n "$(git status --porcelain)" ]]; then
-        printf 'Working tree must be clean before release.\n' >&2
-        exit 2
-    fi
-    just changelog "v$version"
-    if [[ -n "$(git status --porcelain docs/changelog.md)" ]]; then
-        git add docs/changelog.md
-        git commit -m "chore(version): update to \`$version\`"
-    fi
-    just release "$version"
+    git push origin "v$version"
 
 # Validate release version format
 _check-release-version version:
