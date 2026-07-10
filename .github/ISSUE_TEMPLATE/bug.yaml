@@ -44,6 +44,7 @@ body:
       label: Actual Result
       description: |
         Please provide a result of the MRE above.
+        If an exception was raised, include the full traceback as text, not a screenshot.
     validations:
       required: true
 
