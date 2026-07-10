@@ -8,6 +8,8 @@ https://github.com/python-hyper/rfc3986/blob/7fc9af07b14f98c5270908c86a4cfe6715a
 https://github.com/python-hyper/rfc3986/blob/0dc64f8de4327709e34e4a3039df01c46fa94a87/tests/conftest.py
 """
 
+import time
+
 import pytest
 
 from pydantic_jsonschema.formats._uri import (
@@ -234,6 +236,21 @@ class TestInvalidUri:
         """Fragment containing a newline fails the Appendix B regex entirely."""
         with pytest.raises(ValueError, match=r"Invalid URI"):
             validate_uri("http://host#frag\nmore")
+
+    def test_pathological_backtracking_input(self) -> None:
+        """ReDoS regression: a crafted non-matching value must fail fast, not hang.
+
+        With greedy quantifiers in `_URI_RE` this input took ~8.6s (quadratic backtracking);
+        possessive quantifiers keep it under a millisecond. See the `_URI_RE` note.
+        """
+        started_at = time.perf_counter()
+        with pytest.raises(ValueError, match=r"Invalid URI"):
+            validate_uri("//" + "a" * 16_000 + "#\nx")
+        elapsed = time.perf_counter() - started_at
+
+        # The possessive regex finishes in ~0.1ms even on slow runners; the quadratic
+        # regression takes ~8.6s on this payload, so 1s separates them by orders of magnitude.
+        assert elapsed < 1.0
 
 
 class TestValidUriReference:

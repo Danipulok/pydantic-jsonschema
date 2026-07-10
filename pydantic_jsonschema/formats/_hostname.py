@@ -20,7 +20,7 @@ __all__ = [
 # Trailing dot allowed (absolute FQDN).
 # Case-insensitive.
 _HOSTNAME_RE: Final[re.Pattern[str]] = re.compile(
-    r"^(?![-])[-A-Z\d]{1,63}(?<!-)(?:\.(?![-])[-A-Z\d]{1,63}(?<!-))*\.?$",
+    r"^(?!-)[-A-Z\d]{1,63}(?<!-)(?:\.(?!-)[-A-Z\d]{1,63}(?<!-))*\.?$",
     re.IGNORECASE,
 )
 
