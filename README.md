@@ -100,10 +100,32 @@ print(User(email="alice@example.com").email)
 #> alice@example.com
 ```
 
-### Planned: configurable loading by type
+### 4. Rules
 
-Per-object control over how each type is loaded, inspired by
-[adaptix](https://github.com/reagento/adaptix).
+Per-node input coercion and output serialization, matched by type or path — inspired by
+[adaptix](https://github.com/reagento/adaptix). A `Rule` pairs a matcher (`ByType`, `ByPath`,
+`ByFunc`) with one action (`Before`, `After`, `Override`, `Dump`), so a field declared as
+array-of-string can accept a comma-separated string.
+
+```python
+from pydantic_jsonschema import Before, ByType, Rule, Schema, to_model
+
+
+def csv_to_list(value: str | list[str]) -> list[str]:
+    return value.split(",") if isinstance(value, str) else value
+
+
+schema = Schema.model_validate({
+    "type": "object",
+    "properties": {"tags": {"type": "array", "items": {"type": "string"}}},
+    "required": ["tags"],
+})
+
+User = to_model(schema, rules=[Rule(ByType(list[str]), Before(csv_to_list))])
+
+print(User(tags="a,b,c").tags)
+#> ['a', 'b', 'c']
+```
 
 ## Documentation
 

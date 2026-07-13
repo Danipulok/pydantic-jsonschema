@@ -49,6 +49,7 @@ from pydantic_jsonschema.applicators import (
     PropertyNames,
 )
 from pydantic_jsonschema.exceptions import SchemaConversionError, SchemaReferenceError
+from pydantic_jsonschema.rules import MatchContext, Rule
 from pydantic_jsonschema.schema import DataType, Reference, Schema
 
 from ._discriminator import discriminator_property
@@ -102,17 +103,21 @@ class SchemaConverter:
         default_model_name: str = _DEFAULT_MODEL_NAME,
         refs: dict[Ref, type[BaseModel]] | None = None,
         formats: dict[FormatName, FormatType] | None = None,
+        rules: list[Rule] | None = None,
     ) -> None:
-        """Initialize converter with optional pre-built refs and format types.
+        """Initialize converter with optional pre-built refs, format types, and loading rules.
 
         :param default_model_name: Fallback name for models without `title` (default: `Model`).
         :param refs: Pre-built Pydantic models for `$ref` resolution.
         :param formats: Format types (a `type` or `Annotated` type) keyed by JSON Schema
             `format` value.
+        :param rules: Loading rules matched by type / path, wrapping the field annotation with
+            per-node input coercion or output serialization.
         """
         self._default_model_name: str = default_model_name
         self._refs: dict[Ref, type[BaseModel]] = refs or {}
         self._formats: dict[FormatName, FormatType] = formats or {}
+        self._rules: list[Rule] = rules or []
 
         self._defs_cache: dict[Ref, Schema] = {}
         self._models_cache: dict[SchemaHash, type[BaseModel]] = {}
@@ -735,6 +740,49 @@ class SchemaConverter:
         )
         raise SchemaConversionError(msg)
 
+    def _current_pointer(self) -> str:
+        """Build the current node's canonical JSON Pointer from the resolution path.
+
+        Segments are dotted (`properties.created`) or bracketed (`anyOf[0]`); splitting each on
+        `.` yields the pointer components. The root schema (empty path) is `/`.
+
+        :returns: Canonical pointer like `/properties/created`, or `/` at the root.
+        """
+        parts: list[str] = [
+            component for segment in self._resolution_path for component in segment.split(".")
+        ]
+        return "/" + "/".join(parts) if parts else "/"
+
+    def _apply_rules(
+        self,
+        annotation: AnnotationType,
+        schema: Schema,
+        /,
+    ) -> AnnotationType:
+        """Wrap the annotation with every matching rule's Pydantic metadata.
+
+        Each matcher is tested against the core `annotation` (the same value for all rules), and
+        matching actions are layered as nested `Annotated` metadata in rule order — Pydantic
+        flattens `Annotated[Annotated[T, a], b]` to `Annotated[T, a, b]`.
+
+        :param annotation: The node's core annotation (after format substitution).
+        :param schema: The node's schema.
+        :returns: The annotation, wrapped when any rule matches, else unchanged.
+        """
+        if not self._rules:
+            return annotation
+
+        context = MatchContext(
+            schema=schema,
+            annotation=annotation,
+            path=self._current_pointer(),
+        )
+        result: AnnotationType = annotation
+        for rule in self._rules:
+            if rule.matcher.matches(context):
+                result = Annotated[result, rule.action.metadata()]
+        return result
+
     @staticmethod
     def _build_model_config(
         schema: Schema,
@@ -771,6 +819,7 @@ class SchemaConverter:
             valid_annotation = annotation
 
         valid_annotation = self._apply_format(valid_annotation, schema)
+        valid_annotation = self._apply_rules(valid_annotation, schema)
 
         default = get_field_default(schema, field_kind=field_kind)
 
@@ -916,6 +965,7 @@ class SchemaConverter:
             return annotation
 
         annotation = self._apply_format(annotation, schema)
+        annotation = self._apply_rules(annotation, schema)
         kwargs = build_field_kwargs(schema, include_metadata=not union_branch)
 
         if kwargs and not (union_branch and annotation is Any):
@@ -1230,6 +1280,7 @@ def to_model(
     model_name: str | None = None,
     refs: dict[Ref, type[BaseModel]] | None = None,
     formats: dict[FormatName, FormatType] | None = None,
+    rules: list[Rule] | None = None,
 ) -> type[BaseModel]:
     """Convert schema to Pydantic model.
 
@@ -1237,11 +1288,14 @@ def to_model(
     :param refs: Pre-built reference models.
     :param formats: Format types (a `type` or `Annotated` type) keyed by JSON Schema
         `format` value.
+    :param rules: Loading rules matched by type / path, wrapping the field annotation with
+        per-node input coercion or output serialization.
     :param model_name: Name for the generated model.
     :returns: Pydantic model class.
     """
     converter = SchemaConverter(
         refs=refs,
         formats=formats,
+        rules=rules,
     )
     return converter.convert_schema(schema, model_name=model_name)
