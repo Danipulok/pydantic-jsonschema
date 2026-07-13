@@ -9,13 +9,33 @@ from pydantic_jsonschema.exceptions import (
     SchemaConversionError,
     SchemaReferenceError,
 )
+from pydantic_jsonschema.rules import (
+    After,
+    Before,
+    ByFunc,
+    ByPath,
+    ByType,
+    Dump,
+    MatchContext,
+    Override,
+    Rule,
+)
 from pydantic_jsonschema.schema import DataType, Reference, Schema
 
 __all__ = [
+    "After",
     "BasePydanticJsonSchemaError",
+    "Before",
+    "ByFunc",
+    "ByPath",
+    "ByType",
     "DataType",
+    "Dump",
     "FormatValidationError",
+    "MatchContext",
+    "Override",
     "Reference",
+    "Rule",
     "Schema",
     "SchemaConversionError",
     "SchemaConverter",
