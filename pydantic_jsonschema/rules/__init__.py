@@ -5,7 +5,11 @@ the model. Each rule has three parts, one object each:
 
 1. **when** — a matcher (`ByType`, `ByPath`, `ByFunc`);
 2. **what** — a callable, held by the action;
-3. **how** — the action kind (`Before`, `After`, `Override`, `Dump`).
+3. **how** — the action kind.
+
+Actions come in two families. *Annotation actions* (`Before`, `After`, `Override`, `Dump`) wrap
+the matched field's annotation. *Model actions* (`ModelBefore`, `ModelAfter`, `ModelWrap`) attach a
+whole-object `model_validator` to the matched object model — the only way to reach the root model.
 
 One rule performs exactly one action. A load-and-dump round-trip is two rules sharing a matcher.
 
@@ -19,9 +23,15 @@ See `.ai/configurable-loading.md` for the design and the action -> Pydantic slot
 from pydantic_jsonschema.rules._actions import (
     Action,
     After,
+    AnnotationAction,
     Before,
     Dump,
     Loader,
+    ModelAction,
+    ModelAfter,
+    ModelBefore,
+    ModelWrap,
+    ModelWrapper,
     Override,
     Serializer,
 )
@@ -38,6 +48,7 @@ from pydantic_jsonschema.rules._rule import Rule
 __all__ = [
     "Action",
     "After",
+    "AnnotationAction",
     "Before",
     "ByFunc",
     "ByPath",
@@ -46,6 +57,11 @@ __all__ = [
     "Loader",
     "MatchContext",
     "Matcher",
+    "ModelAction",
+    "ModelAfter",
+    "ModelBefore",
+    "ModelWrap",
+    "ModelWrapper",
     "Override",
     "Rule",
     "SchemaPredicate",

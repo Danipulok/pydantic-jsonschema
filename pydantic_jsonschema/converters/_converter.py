@@ -49,7 +49,7 @@ from pydantic_jsonschema.applicators import (
     PropertyNames,
 )
 from pydantic_jsonschema.exceptions import SchemaConversionError, SchemaReferenceError
-from pydantic_jsonschema.rules import MatchContext, Rule
+from pydantic_jsonschema.rules import AnnotationAction, MatchContext, ModelAction, Rule
 from pydantic_jsonschema.schema import DataType, Reference, Schema
 
 from ._discriminator import discriminator_property
@@ -421,7 +421,7 @@ class SchemaConverter:
         """
         fields = self._build_fields(schema)
         model_config = self._build_model_config(schema)
-        validators = self._build_object_validators(schema)
+        validators = self._build_object_validators(schema) | self._build_rule_validators(schema)
         applicators = self._build_object_applicators(schema)
 
         # For some reason, `create_model` "accepts" `fields` values as `tuple[str, Any]`,
@@ -850,15 +850,16 @@ class SchemaConverter:
         schema: Schema,
         /,
     ) -> AnnotationType:
-        """Wrap the annotation with every matching rule's Pydantic metadata.
+        """Wrap the annotation with every matching annotation-action rule's Pydantic metadata.
 
         Each matcher is tested against the core `annotation` (the same value for all rules), and
-        matching actions are layered as nested `Annotated` metadata in rule order — Pydantic
-        flattens `Annotated[Annotated[T, a], b]` to `Annotated[T, a, b]`.
+        matching annotation actions are layered as nested `Annotated` metadata in rule order —
+        Pydantic flattens `Annotated[Annotated[T, a], b]` to `Annotated[T, a, b]`. Model actions
+        are skipped here; they attach to the object model's class (see `_build_rule_validators`).
 
         :param annotation: The node's core annotation (after format substitution).
         :param schema: The node's schema.
-        :returns: The annotation, wrapped when any rule matches, else unchanged.
+        :returns: The annotation, wrapped when any annotation-action rule matches, else unchanged.
         """
         if not self._rules:
             return annotation
@@ -870,7 +871,7 @@ class SchemaConverter:
         )
         result: AnnotationType = annotation
         for rule in self._rules:
-            if rule.matcher.matches(context):
+            if isinstance(rule.action, AnnotationAction) and rule.matcher.matches(context):
                 result = Annotated[result, rule.action.metadata()]
         return result
 
@@ -898,6 +899,35 @@ class SchemaConverter:
 
         annotation = self._apply_format(annotation, schema)
         return self._apply_rules(annotation, schema)
+
+    def _build_rule_validators(
+        self,
+        schema: Schema,
+        /,
+    ) -> dict[str, PythonType]:
+        """Collect the `model_validator`s from model-action rules matching this object model.
+
+        Model actions attach a whole-object validator to the model's class, so they are applied
+        here (at object-model construction), not at the annotation sites `_apply_rules` handles.
+        The match context carries no resolved annotation — the class does not exist yet — so model
+        actions pair with `ByPath` / `ByFunc`, not `ByType`.
+
+        :param schema: The object schema being turned into a model.
+        :returns: A `create_model(__validators__=...)` mapping (empty when no model rule matches).
+        """
+        if not self._rules:
+            return {}
+
+        context = MatchContext(
+            schema=schema,
+            annotation=None,
+            path=self._current_pointer(),
+        )
+        validators: dict[str, PythonType] = {}
+        for index, rule in enumerate(self._rules):
+            if isinstance(rule.action, ModelAction) and rule.matcher.matches(context):
+                validators[f"_rule_validator_{index}"] = rule.action.validator()
+        return validators
 
     @staticmethod
     def _build_model_config(

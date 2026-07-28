@@ -1,6 +1,6 @@
 """Tests for the `rules` parameter: per-node loading via matchers and actions."""
 
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, Protocol
 
 import pytest
 from inline_snapshot import snapshot
@@ -15,6 +15,9 @@ from pydantic_jsonschema.rules import (
     ByType,
     Dump,
     MatchContext,
+    ModelAfter,
+    ModelBefore,
+    ModelWrap,
     Override,
     Rule,
 )
@@ -62,6 +65,58 @@ def exclaim(value: str) -> str:
 def annotation_is_str(context: MatchContext, /) -> bool:
     """Predicate: match when the resolved annotation is exactly `str`."""
     return context.annotation is str
+
+
+_USER_SCHEMA: "SchemaRaw" = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "address": {
+            "type": "object",
+            "properties": {
+                "city": {"type": "string"},
+                "zip": {"type": "string"},
+            },
+            "required": ["city", "zip"],
+        },
+    },
+    "required": ["name", "address"],
+}
+
+
+class _WrapHandler(Protocol):
+    """The `handler` a wrap-mode model validator calls to build the model from raw input."""
+
+    def __call__(self, data: object, /) -> object: ...
+
+
+def prepend_tag(data: dict[str, object]) -> dict[str, object]:
+    """Model-before: prepend a fixed tag to the raw `tags` list before field parsing."""
+    tags = data.get("tags")
+    return {**data, "tags": ["all", *tags]} if isinstance(tags, list) else data
+
+
+def forbid_empty_tags(model: object) -> object:
+    """Model-after: reject a built model whose `tags` list is empty."""
+    if not getattr(model, "tags"):  # noqa: B009
+        msg = "tags must not be empty"
+        raise ValueError(msg)
+    return model
+
+
+def forbid_empty_city(model: object) -> object:
+    """Model-after: reject a nested `address` model whose `city` is empty."""
+    if not getattr(model, "city"):  # noqa: B009
+        msg = "city must not be empty"
+        raise ValueError(msg)
+    return model
+
+
+def wrap_default_created(data: dict[str, object], handler: _WrapHandler) -> object:
+    """Model-wrap: default a missing `created` before construction, then build the model."""
+    if not data.get("created"):
+        data = {**data, "created": "n/a"}
+    return handler(data)
 
 
 class TestBefore:
@@ -576,3 +631,86 @@ class TestRuleObjects:
         assert repr(rule).startswith(
             "Rule(matcher=ByPath(pointer='#/properties/created'), action=After(func=<function "
         )
+
+
+class TestModelBefore:
+    """`ModelBefore` -> `model_validator(mode="before")`: transform the raw mapping."""
+
+    def test_transforms_root_mapping(self) -> None:
+        """The raw mapping is transformed before field parsing on the root model."""
+        schema = Schema.model_validate(_TAGS_SCHEMA)
+        model = to_model(schema, rules=[Rule(ByPath("/"), ModelBefore(prepend_tag))])
+
+        instance = model(tags=["a"], created="x")
+        assert instance.model_dump() == snapshot({"tags": ["all", "a"], "created": "x"})
+
+
+class TestModelAfter:
+    """`ModelAfter` -> `model_validator(mode="after")`: validate the built model."""
+
+    def test_validates_root_model(self) -> None:
+        """A root model action reaches the root model, which no annotation rule can wrap."""
+        schema = Schema.model_validate(_TAGS_SCHEMA)
+        model = to_model(schema, rules=[Rule(ByPath("/"), ModelAfter(forbid_empty_tags))])
+
+        with pytest.raises(ValidationError) as exc_info:
+            model(tags=[], created="x")
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": (),
+                    "msg": "Value error, tags must not be empty",
+                    "input": {"tags": [], "created": "x"},
+                }
+            ]
+        )
+
+    def test_validates_nested_model(self) -> None:
+        """A nested object node is matched by its pointer and validated as a whole model."""
+        schema = Schema.model_validate(_USER_SCHEMA)
+        model = to_model(
+            schema,
+            rules=[Rule(ByPath("/properties/address"), ModelAfter(forbid_empty_city))],
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            model(name="x", address={"city": "", "zip": "1"})
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("address",),
+                    "msg": "Value error, city must not be empty",
+                    "input": {"city": "", "zip": "1"},
+                }
+            ]
+        )
+
+
+class TestModelWrap:
+    """`ModelWrap` -> `model_validator(mode="wrap")`: wrap construction end to end."""
+
+    def test_defaults_before_construction(self) -> None:
+        """A wrap action injects a missing required field before the model is built."""
+        schema = Schema.model_validate(_TAGS_SCHEMA)
+        model = to_model(schema, rules=[Rule(ByPath("/"), ModelWrap(wrap_default_created))])
+
+        instance = model(tags=["a"])
+        assert instance.model_dump() == snapshot({"tags": ["a"], "created": "n/a"})
+
+
+class TestModelMatching:
+    """Model actions pair with `ByPath` / `ByFunc`; `ByType` cannot match a model node."""
+
+    def test_by_type_never_matches_model_node(self) -> None:
+        """A model node carries no resolved annotation, so a `ByType` model rule never fires."""
+        schema = Schema.model_validate(_TAGS_SCHEMA)
+        # `ByType(dict)` would need a resolved annotation, which a model node lacks, so
+        # `forbid_empty_tags` never runs and the empty list is accepted.
+        model = to_model(schema, rules=[Rule(ByType(dict), ModelAfter(forbid_empty_tags))])
+
+        instance = model(tags=[], created="x")
+        assert instance.model_dump() == snapshot({"tags": [], "created": "x"})

@@ -104,8 +104,10 @@ print(User(email="alice@example.com").email)
 
 Per-node input coercion and output serialization, matched by type, by JSON Pointer path, or by an
 arbitrary predicate — inspired by [adaptix](https://github.com/reagento/adaptix). A `Rule` pairs a
-matcher (`ByType`, `ByPath`, `ByFunc`) with one action (`Before`, `After`, `Override`, `Dump`), so
-a field declared as array-of-string can accept a comma-separated string, and dump back as one.
+matcher (`ByType`, `ByPath`, `ByFunc`) with one action: an annotation action (`Before`, `After`,
+`Override`, `Dump`) that wraps the matched field, or a model action (`ModelBefore`, `ModelAfter`,
+`ModelWrap`) that validates a whole object. So a field declared as array-of-string can accept a
+comma-separated string, and dump back as one.
 
 ```python
 from pydantic_jsonschema import Schema, to_model
