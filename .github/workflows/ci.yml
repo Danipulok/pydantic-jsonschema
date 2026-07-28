@@ -152,14 +152,14 @@ jobs:
         with:
           persist-credentials: false
 
+      # No `just install-all` here: the CVE scan reads `uv.lock` directly through a
+      # pinned `trivy` docker image, and `just audit-workflows` runs `zizmor` via
+      # `uvx` — neither needs the project environment synced.
       - name: Set up `uv` + `just`
         uses: ./.github/actions/setup
 
-      - name: Install dependencies
-        run: just install-all
-
-      - name: Audit dependencies
-        run: just audit
+      - name: Scan dependencies for known CVEs
+        run: just scan-deps
 
       - name: Audit GitHub Actions workflows
         run: just audit-workflows
