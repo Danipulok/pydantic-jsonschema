@@ -4,10 +4,12 @@ from typing import TYPE_CHECKING, Annotated, Any, Final
 
 import pytest
 from inline_snapshot import snapshot
-from pydantic import AfterValidator, ValidationError
+from pydantic import AfterValidator, BaseModel, JsonValue, ValidationError
+from pydantic.functional_validators import ModelWrapValidatorHandler
 
 from pydantic_jsonschema import formats, to_model
 from pydantic_jsonschema.rules import (
+    Action,
     After,
     Before,
     ByFunc,
@@ -15,6 +17,9 @@ from pydantic_jsonschema.rules import (
     ByType,
     Dump,
     MatchContext,
+    ModelAfter,
+    ModelBefore,
+    ModelWrap,
     Override,
     Rule,
 )
@@ -71,6 +76,27 @@ _TAGS_SCHEMA: Final["SchemaRaw"] = {
 }
 
 
+_USER_SCHEMA: Final["SchemaRaw"] = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "address": {
+            "type": "object",
+            "properties": {
+                "city": {"type": "string"},
+                "zip": {"type": "string"},
+            },
+            "required": ["city", "zip"],
+        },
+    },
+    "required": ["name", "address"],
+}
+
+
+# An external `$ref` resolved through `refs` to a model built by an earlier `to_model` call.
+_BASE_REF: Final[str] = "https://example.com/base"
+
+
 def csv_to_list(value: str | list[str]) -> list[str]:
     """Split a comma-separated string into a list, passing lists through unchanged."""
     return value.split(",") if isinstance(value, str) else value
@@ -118,6 +144,53 @@ def reject_value(value: str) -> str:
 def annotation_is_str(context: MatchContext, /) -> bool:
     """Predicate: match when the resolved annotation is exactly `str`."""
     return context.annotation is str
+
+
+def prepend_tag(data: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    """Model-before: prepend a fixed tag to the raw `tags` list before field parsing."""
+    tags = data.get("tags")
+    return {**data, "tags": ["all", *tags]} if isinstance(tags, list) else data
+
+
+def drop_zz(data: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    """Model-before: drop the `zz` key of the input."""
+    return {key: value for key, value in data.items() if key != "zz"}
+
+
+def forbid_empty_tags(model: BaseModel) -> BaseModel:
+    """Model-after: reject a built model whose `tags` list is empty."""
+    if not getattr(model, "tags"):  # noqa: B009
+        msg: str = "tags must not be empty"
+        raise ValueError(msg)
+    return model
+
+
+def forbid_empty_city(model: BaseModel) -> BaseModel:
+    """Model-after: reject a nested `address` model whose `city` is empty."""
+    if not getattr(model, "city"):  # noqa: B009
+        msg: str = "city must not be empty"
+        raise ValueError(msg)
+    return model
+
+
+def wrap_drop_zz(
+    data: dict[str, JsonValue],
+    handler: ModelWrapValidatorHandler[BaseModel],
+    /,
+) -> BaseModel:
+    """Model-wrap: drop the `zz` key of the input, then build the model."""
+    return handler(drop_zz(data))
+
+
+def wrap_default_created(
+    data: dict[str, JsonValue],
+    handler: ModelWrapValidatorHandler[BaseModel],
+    /,
+) -> BaseModel:
+    """Model-wrap: default a missing `created` before construction, then build the model."""
+    if not data.get("created"):
+        data = {**data, "created": "n/a"}
+    return handler(data)
 
 
 class TestBefore:
@@ -1105,3 +1178,401 @@ class TestRuleObjects:
         assert repr(rule).startswith(
             "Rule(matcher=ByPath(pointer='/properties/created'), action=After(func=<function "
         )
+
+    def test_rejects_an_action_outside_both_families(self) -> None:
+        """A direct `Action` subclass would never fire, so building the rule fails instead."""
+
+        class BareAction(Action):
+            """An action that is neither an annotation action nor a model action."""
+
+        with pytest.raises(TypeError, match="must be an `AnnotationAction` or a `ModelAction`"):
+            Rule(ByPath("/"), BareAction())
+
+
+class TestModelBefore:
+    """`ModelBefore` -> `model_validator(mode="before")`: transform the raw mapping."""
+
+    def test_transforms_root_mapping(self) -> None:
+        """The raw mapping is transformed before field parsing on the root model."""
+        schema = Schema.model_validate(_TAGS_SCHEMA)
+        model = to_model(schema, rules=[Rule(ByPath("/"), ModelBefore(prepend_tag))])
+
+        instance = model(
+            tags=["a"],
+            created="x",
+        )
+        assert instance.model_dump() == snapshot({"tags": ["all", "a"], "created": "x"})
+
+    @pytest.mark.parametrize(
+        "keyword",
+        [
+            pytest.param({"propertyNames": {"maxLength": 1}}, id="property-names"),
+            pytest.param(
+                {"patternProperties": {"^z": {"type": "integer"}}},
+                id="pattern-properties",
+            ),
+            pytest.param(
+                {"dependentSchemas": {"zz": {"type": "object", "required": ["q"]}}},
+                id="dependent-schemas",
+            ),
+            pytest.param({"maxProperties": 1}, id="max-properties"),
+            pytest.param({"not": {"type": "object", "required": ["zz"]}}, id="not"),
+            pytest.param(
+                {
+                    "if": {"type": "object", "required": ["zz"]},
+                    "then": {"type": "object", "required": ["q"]},
+                },
+                id="if-then",
+            ),
+        ],
+    )
+    @pytest.mark.parametrize("shape", ["root", "root-all-of", "nested"])
+    @pytest.mark.parametrize(
+        "action",
+        [
+            pytest.param(ModelBefore(drop_zz), id="before"),
+            pytest.param(ModelWrap(wrap_drop_zz), id="wrap"),
+        ],
+    )
+    def test_object_keywords_check_the_output(
+        self,
+        *,
+        keyword: "SchemaRaw",
+        shape: str,
+        action: ModelBefore | ModelWrap,
+    ) -> None:
+        """Every object keyword checks the mapping a model action returns, not the raw input."""
+        node: SchemaRaw = {"type": "object", "properties": {"a": {}}, **keyword}
+        shapes: dict[str, tuple[str, SchemaRaw, dict[str, JsonValue]]] = {
+            "root": ("/", node, {"a": 1, "zz": "s"}),
+            "root-all-of": (
+                "/",
+                {
+                    "type": "object",
+                    "allOf": [{"type": "object", "properties": {"a": {}}}],
+                    **keyword,
+                },
+                {"a": 1, "zz": "s"},
+            ),
+            "nested": (
+                "/properties/inner",
+                {"type": "object", "properties": {"inner": node}, "required": ["inner"]},
+                {"inner": {"a": 1, "zz": "s"}},
+            ),
+        }
+
+        pointer, raw, data = shapes[shape]
+        schema = Schema.model_validate(raw)
+
+        with pytest.raises(ValidationError):
+            to_model(schema).model_validate(data)
+
+        model = to_model(schema, rules=[Rule(ByPath(pointer), action)])
+        model.model_validate(data)
+
+
+class TestModelAfter:
+    """`ModelAfter` -> `model_validator(mode="after")`: validate the built model."""
+
+    def test_keeps_the_description(self) -> None:
+        """The model a model action subclasses keeps the schema's `description`."""
+        schema = Schema.model_validate({**_TAGS_SCHEMA, "description": "Tagged."})
+        model = to_model(schema, rules=[Rule(ByPath("/"), ModelAfter(forbid_empty_tags))])
+
+        assert model.model_json_schema()["description"] == "Tagged."
+
+    def test_validates_root_model(self) -> None:
+        """A root model action reaches the root model, which no annotation rule can wrap."""
+        schema = Schema.model_validate(_TAGS_SCHEMA)
+        model = to_model(schema, rules=[Rule(ByPath("/"), ModelAfter(forbid_empty_tags))])
+
+        with pytest.raises(ValidationError) as exc_info:
+            model(
+                tags=[],
+                created="x",
+            )
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": (),
+                    "msg": "Value error, tags must not be empty",
+                    "input": {"tags": [], "created": "x"},
+                }
+            ]
+        )
+
+    def test_validates_nested_model(self) -> None:
+        """A nested object node is matched by its pointer and validated as a whole model."""
+        schema = Schema.model_validate(_USER_SCHEMA)
+        model = to_model(
+            schema,
+            rules=[Rule(ByPath("/properties/address"), ModelAfter(forbid_empty_city))],
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            model(
+                name="x",
+                address={"city": "", "zip": "1"},
+            )
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("address",),
+                    "msg": "Value error, city must not be empty",
+                    "input": {"city": "", "zip": "1"},
+                }
+            ]
+        )
+
+    @pytest.mark.parametrize(
+        "schema_raw",
+        [
+            pytest.param(
+                {"type": "object", "additionalProperties": {"type": "integer"}},
+                id="map-root",
+            ),
+            pytest.param(
+                {"type": "object", "allOf": [{"type": "object", "properties": {"x": {}}}]},
+                id="single-all-of-root",
+            ),
+            pytest.param(
+                {
+                    "type": "object",
+                    "allOf": [
+                        {"type": "object", "properties": {"x": {}}},
+                        {"type": "object", "properties": {"y": {}}},
+                    ],
+                },
+                id="combined-all-of-root",
+            ),
+            pytest.param(
+                {"allOf": [{"type": "object", "properties": {"x": {}}}]},
+                id="untyped-all-of-root",
+            ),
+            pytest.param(
+                {"allOf": [{"type": "object", "additionalProperties": {"type": "integer"}}]},
+                id="untyped-all-of-map-root",
+            ),
+        ],
+    )
+    def test_validates_every_object_root_shape(self, schema_raw: "SchemaRaw") -> None:
+        """An object root built as a map `RootModel` or an `allOf` model is reached too."""
+        fired: list[str] = []
+
+        def record[ModelType](model: ModelType) -> ModelType:
+            fired.append(type(model).__name__)
+            return model
+
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema, rules=[Rule(ByPath("/"), ModelAfter(record))])
+        model.model_validate({"x": 1})
+
+        assert fired == [model.__name__]
+
+    def test_validates_an_inline_all_of_branch_beside_a_ref(self) -> None:
+        """An inline `allOf` branch built into one model with its `$ref` bases keeps its rule."""
+        fired: list[str] = []
+
+        def record[ModelType](model: ModelType) -> ModelType:
+            fired.append("branch")
+            return model
+
+        schema = Schema.model_validate(
+            {
+                "$defs": {"Base": {"type": "object", "properties": {"a": {"type": "integer"}}}},
+                "type": "object",
+                "allOf": [
+                    {"$ref": "#/$defs/Base"},
+                    {"type": "object", "properties": {"b": {"type": "integer"}}},
+                ],
+            },
+        )
+        model = to_model(schema, rules=[Rule(ByPath("/allOf/1"), ModelAfter(record))])
+        model.model_validate({"a": 1, "b": 2})
+
+        assert fired == ["branch"]
+
+    def test_runs_every_matching_rule_in_order(self) -> None:
+        """Two model rules on one model both run in rule order; neither replaces the other."""
+        fired: list[str] = []
+
+        def first[ModelType](model: ModelType) -> ModelType:
+            fired.append("first")
+            return model
+
+        def second[ModelType](model: ModelType) -> ModelType:
+            fired.append("second")
+            return model
+
+        schema = Schema.model_validate(_TAGS_SCHEMA)
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByPath("/"), ModelAfter(first)),
+                Rule(ByPath("/"), ModelAfter(second)),
+            ],
+        )
+        model(
+            tags=["a"],
+            created="x",
+        )
+
+        assert fired == snapshot(["first", "second"])
+
+    def test_runs_once_on_a_model_deriving_from_a_matched_base(self) -> None:
+        """A rule matching an `allOf` base, its branch and the root runs once per instance."""
+        fired: list[str] = []
+
+        def record[ModelType](model: ModelType) -> ModelType:
+            fired.append("rule")
+            return model
+
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "allOf": [
+                    {"$ref": "#/$defs/Base"},
+                    {"type": "object", "properties": {"c": {"type": "integer"}}},
+                ],
+                "$defs": {"Base": {"type": "object", "properties": {"a": {"type": "integer"}}}},
+            },
+        )
+        model = to_model(
+            schema,
+            rules=[Rule(ByFunc(lambda context: context.is_model), ModelAfter(record))],
+        )
+        model.model_validate({"a": 1, "c": 2})
+
+        assert fired == ["rule"]
+
+    def test_keeps_a_rule_inherited_from_another_conversion(self) -> None:
+        """A `refs` base keeps its own model rule when a derived model adds one of its own."""
+        fired: list[str] = []
+
+        def base_rule[ModelType](model: ModelType) -> ModelType:
+            fired.append("base")
+            return model
+
+        def derived_rule[ModelType](model: ModelType) -> ModelType:
+            fired.append("derived")
+            return model
+
+        base_schema = Schema.model_validate(
+            {"type": "object", "properties": {"x": {"type": "integer"}}},
+        )
+        base = to_model(base_schema, rules=[Rule(ByPath("/"), ModelAfter(base_rule))])
+
+        derived_schema = Schema.model_validate(
+            {
+                "type": "object",
+                "allOf": [{"$ref": _BASE_REF}],
+                "properties": {"y": {"type": "integer"}},
+            },
+        )
+        derived = to_model(
+            derived_schema,
+            refs={_BASE_REF: base},
+            rules=[Rule(ByPath("/"), ModelAfter(derived_rule))],
+        )
+        derived(
+            x=1,
+            y=2,
+        )
+
+        assert fired == snapshot(["base", "derived"])
+
+    def test_without_model_rules_reuses_the_all_of_base(self) -> None:
+        """With no model rule to attach, a single-base `allOf` root is the base model itself."""
+        base_schema = Schema.model_validate(
+            {"type": "object", "properties": {"x": {"type": "integer"}}},
+        )
+        base = to_model(base_schema)
+        schema = Schema.model_validate({"type": "object", "allOf": [{"$ref": _BASE_REF}]})
+
+        assert to_model(schema, refs={_BASE_REF: base}) is base
+
+
+class TestModelWrap:
+    """`ModelWrap` -> `model_validator(mode="wrap")`: wrap construction end to end."""
+
+    def test_defaults_before_construction(self) -> None:
+        """A wrap action injects a missing required field before the model is built."""
+        schema = Schema.model_validate(_TAGS_SCHEMA)
+        model = to_model(schema, rules=[Rule(ByPath("/"), ModelWrap(wrap_default_created))])
+
+        instance = model(tags=["a"])
+        assert instance.model_dump() == snapshot({"tags": ["a"], "created": "n/a"})
+
+
+class TestModelMatching:
+    """Model actions pair with `ByPath` / `ByFunc`; `ByType` cannot match a model node."""
+
+    def test_scalar_all_of_root_takes_no_model_action(self) -> None:
+        """An `allOf` over a scalar base stays that base's `RootModel`, with no model rule on it."""
+        schema = Schema.model_validate({"allOf": [{"type": "string"}]})
+        # A fired rule would reject every value, so an accepted one proves it never ran.
+        model = to_model(schema, rules=[Rule(ByPath("/"), ModelAfter(forbid_empty_tags))])
+
+        assert model.model_validate("x").model_dump() == snapshot("x")
+
+    @pytest.mark.parametrize(
+        "target",
+        [
+            dict,
+            # The model node's placeholder annotation is `None`.
+            None,
+        ],
+    )
+    def test_by_type_never_matches_model_node(self, target: ByTypeTargetType) -> None:
+        """A model node carries no resolved annotation, so a `ByType` model rule never fires."""
+        schema = Schema.model_validate(_TAGS_SCHEMA)
+        # A fired rule would reject the empty list, so an accepted one proves it never ran.
+        model = to_model(schema, rules=[Rule(ByType(target), ModelAfter(forbid_empty_tags))])
+
+        instance = model(
+            tags=[],
+            created="x",
+        )
+        assert instance.model_dump() == snapshot({"tags": [], "created": "x"})
+
+    def test_object_models_report_their_pointers(self) -> None:
+        """Each object model is matched at its own pointer, so `ByPath("/")` hits the root alone."""
+        seen: list[str] = []
+        fired: list[str] = []
+
+        def collect(context: MatchContext) -> bool:
+            seen.append(context.path)
+            return False
+
+        def record[ModelType](model: ModelType) -> ModelType:
+            fired.append(type(model).__name__)
+            return model
+
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "$defs": {
+                    "User": {
+                        "type": "object",
+                        "properties": {"name": {"type": "string"}},
+                    }
+                },
+                "properties": {"user": {"$ref": "#/$defs/User"}},
+                "required": ["user"],
+            }
+        )
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByFunc(collect), ModelAfter(record)),
+                Rule(ByPath("/"), ModelAfter(record)),
+            ],
+        )
+        model(user={"name": "x"})
+
+        assert seen == snapshot(["/$defs/User", "/"])
+        assert fired == snapshot([model.__name__])

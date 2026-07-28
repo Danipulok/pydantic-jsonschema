@@ -49,7 +49,7 @@ from pydantic_jsonschema.applicators import (
     PropertyNames,
 )
 from pydantic_jsonschema.exceptions import SchemaConversionError, SchemaReferenceError
-from pydantic_jsonschema.rules import MatchContext, Rule
+from pydantic_jsonschema.rules import AnnotationAction, MatchContext, ModelAction, Rule
 from pydantic_jsonschema.schema import DataType, Reference, Schema
 
 from ._discriminator import discriminator_property
@@ -124,6 +124,8 @@ _ALL_OF_OWN_FIELDS: Final[frozenset[str]] = _ALL_OF_OBJECT_HOST_FIELDS | {
     "min_contains",
     "format",
 }
+# The one field a `RootModel` holds its value in.
+_ROOT_FIELD: Final = "root"
 
 # `ARRAY` / `OBJECT` entries are only reachable from multi-type unions
 #  (`{"type": ["object", "string"]}`): single `array` / `object` schemas are handled
@@ -166,8 +168,8 @@ class SchemaConverter:
         :param refs: Pre-built Pydantic models for `$ref` resolution.
         :param formats: Format types (a `type` or `Annotated` type) keyed by JSON Schema
             `format` value.
-        :param rules: Loading rules matched by type / path, wrapping the field annotation with
-            per-node input coercion or output serialization.
+        :param rules: Loading rules matched by type, path or predicate: annotation actions wrap
+            a field annotation, model actions attach a whole-object validator to an object model.
         """
         self._default_model_name: str = default_model_name
         self._refs: dict[Ref, type[BaseModel]] = refs or {}
@@ -181,6 +183,9 @@ class SchemaConverter:
         self._pointer_tokens: list[str] = []  # Raw JSON Pointer tokens for the same nodes
         self._applicators: list[Applicator] = []
         self._building: set[Ref] = set()  # Defs whose model is mid-construction
+        # Keys a rule's validator alike on every model of this conversion, so a model deriving
+        #  from another that the rule also matched overrides it and runs it once.
+        self._conversion_number: int = next(_VALIDATOR_NUMBERS)
 
     @staticmethod
     def _hash_schema(
@@ -386,7 +391,11 @@ class SchemaConverter:
         title: str = unwrap(schema.title, default="")
         name: str = model_name or sanitize_identifier(title) or self._default_model_name
 
-        model = self._create_model(schema, model_name=name)
+        model = self._attach_rule_validators(
+            self._create_model(schema, model_name=name),
+            schema=schema,
+            model_name=name,
+        )
         self._models_cache[cache_key] = model
         return model
 
@@ -423,6 +432,42 @@ class SchemaConverter:
             schema,
             model_name=model_name,
             base_classes=(BaseModel,),
+        )
+
+    def _attach_rule_validators(
+        self,
+        model: type[BaseModel],
+        /,
+        *,
+        schema: Schema,
+        model_name: str,
+    ) -> type[BaseModel]:
+        """Subclass an object model so it also runs the model actions matching its node.
+
+        Pydantic runs a subclass's `before` and `wrap` model validators ahead of its bases', so a
+        `ModelBefore` output is what every object keyword checks. A scalar `RootModel` holds no
+        object and takes no model action, while a map `RootModel` does.
+
+        :param model: The model built for the node.
+        :param schema: The node's schema.
+        :param model_name: Name for the subclass.
+        :returns: A subclass running the matching model actions, or the model unchanged.
+        """
+        if issubclass(model, RootModel) and (
+            get_origin(model.model_fields[_ROOT_FIELD].annotation) is not dict
+        ):
+            return model
+
+        validators = self._build_rule_validators(schema)
+        if not validators:
+            return model
+
+        return create_model(
+            model_name,
+            __doc__=model.__doc__,
+            __base__=model,
+            __module__=__name__,
+            __validators__=validators,
         )
 
     def _create_all_of_model(
@@ -542,10 +587,15 @@ class SchemaConverter:
             return None
 
         with self._track_path(f"allOf[{index}]", pointer=("allOf", str(index))):
-            model = self._create_object_model(
+            object_model = self._create_object_model(
                 inline,
                 model_name=model_name,
                 base_classes=_distinct_bases(bases.values()) or (BaseModel,),
+            )
+            model = self._attach_rule_validators(
+                object_model,
+                schema=inline,
+                model_name=model_name,
             )
 
         return self._wrap_all_of(
@@ -1006,8 +1056,8 @@ class SchemaConverter:
             model_name,
             (RootModel,),
             {
-                "root": field,
-                "__annotations__": {"root": field.annotation},
+                _ROOT_FIELD: field,
+                "__annotations__": {_ROOT_FIELD: field.annotation},
                 "__module__": __name__,
             },
         )
@@ -1119,15 +1169,16 @@ class SchemaConverter:
         *,
         schema: Schema,
     ) -> AnnotationType:
-        """Wrap the annotation with every matching rule's Pydantic metadata.
+        """Wrap the annotation with every matching annotation-action rule's Pydantic metadata.
 
         Each matcher is tested against the core `annotation` (the same value for all rules), and
-        matching actions are layered as nested `Annotated` metadata in rule order; Pydantic
-        flattens `Annotated[Annotated[T, a], b]` to `Annotated[T, a, b]`.
+        matching annotation actions are layered as nested `Annotated` metadata in rule order;
+        Pydantic flattens `Annotated[Annotated[T, a], b]` to `Annotated[T, a, b]`. Model actions
+        are skipped here; they attach to the object model's class (see `_build_rule_validators`).
 
         :param annotation: The node's core annotation (after format substitution).
         :param schema: The node's schema.
-        :returns: The annotation, wrapped when any rule matches, else unchanged.
+        :returns: The annotation, wrapped when any annotation-action rule matches, else unchanged.
         """
         if not self._rules:
             return annotation
@@ -1139,7 +1190,7 @@ class SchemaConverter:
         )
         result: AnnotationType = annotation
         for rule in self._rules:
-            if rule.matcher.matches(context):
+            if isinstance(rule.action, AnnotationAction) and rule.matcher.matches(context):
                 result = Annotated[result, rule.action.metadata()]
         return result
 
@@ -1167,6 +1218,37 @@ class SchemaConverter:
 
         annotation = self._apply_format(annotation, schema=schema)
         return self._apply_rules(annotation, schema=schema)
+
+    def _build_rule_validators(
+        self,
+        schema: Schema,
+        /,
+    ) -> dict[str, PythonType]:
+        """Collect the `model_validator`s from model-action rules matching this object node.
+
+        Model actions attach a whole-object validator to the model's class, so they are applied
+        here (at object-model construction), not at the annotation sites `_apply_rules` handles.
+        The match context is a model node with no resolved annotation (the class does not exist
+        yet), which `ByType` never matches, so model actions pair with `ByPath` / `ByFunc`.
+
+        :param schema: The object schema being turned into a model.
+        :returns: A `create_model(__validators__=...)` mapping (empty when no model rule matches).
+        """
+        if not self._rules:
+            return {}
+
+        context = MatchContext(
+            schema=schema,
+            annotation=None,
+            path=self._current_pointer(),
+            is_model=True,
+        )
+        validators: dict[str, PythonType] = {}
+        for index, rule in enumerate(self._rules):
+            if isinstance(rule.action, ModelAction) and rule.matcher.matches(context):
+                key = f"_rule_validator_{self._conversion_number}_{index}"
+                validators[key] = rule.action.validator()
+        return validators
 
     @staticmethod
     def _build_model_config(
@@ -1269,8 +1351,8 @@ class SchemaConverter:
 
         # `not` and `if` / `then` / `else` are checked against the raw value before the host type,
         #  attached as `Annotated` wrap-validator metadata. An object model built for this schema
-        #  carries them itself. A one-branch `anyOf` collapses to the branch's model, which
-        #  carries the branch's assertions only.
+        #  carries them itself, behind its model actions. A one-branch `anyOf` collapses to the
+        #  branch's model, which carries the branch's assertions only.
         own_model: bool = composition_annotation is None and _is_object_model(annotation)
         if produces_all_of_model(schema) or own_model:
             return annotation
@@ -1865,8 +1947,8 @@ def to_model(
     :param refs: Pre-built reference models.
     :param formats: Format types (a `type` or `Annotated` type) keyed by JSON Schema
         `format` value.
-    :param rules: Loading rules matched by type / path, wrapping the field annotation with
-        per-node input coercion or output serialization.
+    :param rules: Loading rules matched by type, path or predicate: annotation actions wrap a
+        field annotation, model actions attach a whole-object validator to an object model.
     :param model_name: Name for the generated model.
     :returns: Pydantic model class.
     """
