@@ -102,8 +102,8 @@ docs = [
 # 7 days ago so a compromised or typo-squatted release has time to be caught
 # and yanked before it lands in our lockfile.
 #
-# This is the canonical cutoff. It is mirrored as `cooldown.default-days` in
-# `.github/dependabot.yml` (Dependabot ignores `exclude-newer`) — keep both in sync.
+# This is the canonical cutoff. It is mirrored as `minimumReleaseAge` in
+# `.github/renovate.json` (Renovate ignores `exclude-newer`) — keep both in sync.
 [tool.uv]
 exclude-newer = "7 days"
 

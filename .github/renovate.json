@@ -1,0 +1,57 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "config:best-practices",
+        ":enablePreCommit",
+        ":semanticCommits"
+    ],
+    "timezone": "Etc/UTC",
+    "schedule": [
+        "before 06:00 on monday"
+    ],
+    "semanticCommitScope": "deps",
+    "labels": [
+        "dependencies"
+    ],
+    "description": [
+        "minimumReleaseAge mirrors `tool.uv.exclude-newer` (\"7 days\") in `pyproject.toml` — the canonical supply-chain quarantine. Keep the two in sync.",
+        "osvVulnerabilityAlerts fast-tracks OSV-listed CVE fixes past the quarantine window.",
+        "lockFileMaintenance replaces the standalone monthly `uv lock --upgrade` workflow."
+    ],
+    "minimumReleaseAge": "7 days",
+    "internalChecksFilter": "strict",
+    "osvVulnerabilityAlerts": true,
+    "lockFileMaintenance": {
+        "enabled": true,
+        "schedule": [
+            "before 06:00 on the first day of the month"
+        ]
+    },
+    "packageRules": [
+        {
+            "description": "One weekly PR for all GitHub Actions bumps (mirrors the old Dependabot github-actions group).",
+            "matchManagers": [
+                "github-actions"
+            ],
+            "groupName": "github-actions"
+        },
+        {
+            "description": "One weekly PR for all Python dependency bumps (mirrors the old Dependabot python-dependencies group).",
+            "matchManagers": [
+                "pep621"
+            ],
+            "groupName": "python-dependencies"
+        },
+        {
+            "description": "Auto-merge low-risk updates once required CI passes; major bumps always need review.",
+            "matchUpdateTypes": [
+                "minor",
+                "patch",
+                "digest",
+                "pin",
+                "pinDigest"
+            ],
+            "automerge": true
+        }
+    ]
+}
