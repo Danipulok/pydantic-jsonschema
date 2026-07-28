@@ -140,7 +140,9 @@ jobs:
 
   audit:
     name: Audit
-    needs: [lint, test]
+    # No `needs`: the security audit is independent of lint/test, so it starts immediately and in
+    # parallel instead of waiting for them. A CVE surfaces as its own signal even when a test fails,
+    # rather than being masked behind an unrelated failure. It is still gated by the `check` job.
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
