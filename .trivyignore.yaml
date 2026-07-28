@@ -1,17 +1,21 @@
 # Accepted-finding ledger for the frozen CVE gate (`scripts/trivy_scan.sh`).
 #
-# Empty by default: we fix advisories rather than hide them. Add an entry ONLY for
-# a finding that genuinely cannot be fixed yet — no upstream release, or provably
-# not exploitable here. Every entry MUST carry `expired_at`, so a suppression
-# cannot outlive its justification: trivy re-raises the finding past that date and
-# forces a review.
+# Empty by default: we fix advisories rather than suppress them. The scan runs with
+# `--ignore-unfixed`, so a finding only reaches this gate once a FIX exists upstream.
+# Add an entry ONLY when that fix cannot be adopted yet (e.g. it is a breaking major
+# bump we need time to absorb) or the finding is provably not exploitable here.
+#
+# Policy: every entry MUST carry a future `expired_at`. trivy re-raises a finding once
+# that date passes, so a dated suppression cannot outlive its justification. An entry
+# WITHOUT the field never expires — trivy does not require it, so this rule is enforced
+# by review, not tooling: do not approve an entry that omits `expired_at`.
 #
 # Schema (trivy structured YAML ignorefile):
 #   vulnerabilities:
 #     - id: CVE-2026-xxxxx             # or GHSA-xxxx-xxxx-xxxx
 #       purls: ["pkg:pypi/<package>"]  # scope the suppression to the package
 #       statement: why this is accepted (one line)
-#       expired_at: 2026-10-01         # revisit-by date (required)
+#       expired_at: 2026-10-01         # revisit-by date — always a future date
 #
 # Docs: https://trivy.dev/latest/docs/configuration/filtering/#trivyignoreyaml
 vulnerabilities: []

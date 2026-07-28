@@ -35,9 +35,10 @@ TRIVY_DB_REPOSITORY="${TRIVY_DB_REPOSITORY:-ghcr.io/aquasecurity/trivy-db:2@sha2
 # the same reproducibility reason as the DB.
 TRIVY_IMAGE="aquasec/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f"
 
-# MEDIUM included deliberately: `--ignore-unfixed` already bounds the gate to
-# findings we can act on, and the `.trivyignore.yaml` ledger absorbs any
-# wait-for-upstream tail.
+# MEDIUM included deliberately: the scan runs `--ignore-unfixed`, so the gate is
+# already bounded to findings that HAVE a fix (i.e. ones we can act on by bumping
+# the dependency), and the `.trivyignore.yaml` ledger absorbs the few whose fix
+# cannot be adopted immediately.
 TRIVY_SEVERITY="${TRIVY_SEVERITY:-MEDIUM,HIGH,CRITICAL}"
 
 # trivy auto-discovers only the legacy plain `.trivyignore`, never the structured
@@ -85,7 +86,14 @@ fi
 trivy_cache_dir="${TRIVY_CACHE_DIR:-${HOME:-/root}/.cache/trivy}"
 db_ref_marker="$trivy_cache_dir/.db-repository"
 if [ "$(cat "$db_ref_marker" 2>/dev/null || true)" != "$TRIVY_DB_REPOSITORY" ]; then
-    trivy clean --vuln-db >/dev/null 2>&1 || true
+    # Fail closed: the marker is written ONLY after a successful purge. If `trivy clean`
+    # is swallowed (e.g. `|| true`) and the marker is written anyway, the next run sees
+    # marker == requested repo, skips the purge, and serves the STALE DB under the new
+    # pin — silently defeating the reproducibility the pin exists to guarantee. `set -e`
+    # aborts the run on a nonzero `trivy clean`, leaving the marker unchanged so the
+    # purge is retried next time. `trivy clean --vuln-db` exits 0 on an empty cache, so
+    # the first run is unaffected.
+    trivy clean --vuln-db >/dev/null
     mkdir -p "$trivy_cache_dir"
     printf '%s\n' "$TRIVY_DB_REPOSITORY" >"$db_ref_marker"
 fi
