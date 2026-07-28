@@ -1,0 +1,45 @@
+name: Dependabot auto-merge
+
+# Flip on auto-merge for low-risk Dependabot PRs so patch/minor bumps land without manual clicks.
+# Major bumps and everything from a non-Dependabot author are left for a human to review.
+#
+# Prerequisites (repo settings, one-time):
+#   - Settings -> General -> "Allow auto-merge" must be enabled, or `gh pr merge --auto` errors.
+#   - Branch protection on `main` requiring the `CI ok` check, so auto-merge waits for green CI
+#     instead of merging as soon as the PR is mergeable.
+on: pull_request
+
+# Least privilege: only what `gh pr merge --auto` needs. Elevated here (not repo-wide) and applied
+# to Dependabot's otherwise read-only `pull_request` token.
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  automerge:
+    name: Enable auto-merge for low-risk updates
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Guard: only ever act on Dependabot's own PRs.
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+
+      # Only patch/minor auto-merge; `major` (and `lockFileMaintenance`-style) updates always need a
+      # human. `--auto` flips the PR's auto-merge flag, so the merge still waits for the required
+      # `CI ok` status. `--squash` matches the repo's squash-with-PR-title merge policy.
+      - name: Enable auto-merge
+        if: >-
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
