@@ -152,7 +152,6 @@ jobs:
         with:
           persist-credentials: false
 
-      # No `just install-all`: `trivy` reads `uv.lock` via docker, `zizmor` runs via `uvx`.
       - name: Set up `uv` + `just`
         uses: ./.github/actions/setup
 
