@@ -91,14 +91,10 @@ repos:
         always_run: true
         pass_filenames: false
 
-      - id: audit
-        name: Audit dependencies
-        entry: just
-        args: [audit]
-        language: system
-        always_run: true
-        pass_filenames: false
-
+      # NOTE: No dependency-CVE hook here on purpose. `just scan-deps` runs `trivy`
+      # via docker (image + DB pull), which is far too heavy for every commit; the
+      # frozen CVE gate lives in CI's `Audit` job and is available on demand as
+      # `just scan-deps`. The workflow audit below (`zizmor`) is cheap, so it stays.
       - id: audit-workflows
         name: Audit workflows
         entry: just

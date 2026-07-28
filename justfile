@@ -95,9 +95,12 @@ lint:
     uv run codespell
     npx --yes markdownlint-cli2
 
-# Audit dependencies for known vulnerabilities and abandoned packages (OSV-backed `uv audit`)
-audit:
-    uv audit --preview-features audit-command
+# Scan the locked dependency graph for known CVEs against a digest-pinned vulnerability DB
+# (frozen for reproducibility). All flags and the DB pin live in `scripts/trivy_scan.sh`,
+# shared verbatim with the CI `Audit` job. Runs `trivy` via docker — no local install needed.
+[doc("Scan uv.lock for known CVEs (frozen, digest-pinned DB)")]
+scan-deps:
+    scripts/trivy_scan.sh fs
 
 # Audit GitHub Actions workflows for security issues (`zizmor`)
 audit-workflows:
@@ -105,7 +108,7 @@ audit-workflows:
 
 # Generate a CycloneDX SBOM of the runtime dependency tree into `sbom/`. On-demand convenience only —
 # deliberately NOT wired into releases: the published wheel's `Requires-Dist` already declares deps,
-# and `uv audit` covers active CVE scanning, so this is just a standardized bill-of-materials for
+# and `just scan-deps` (Trivy) covers active CVE scanning, so this is just a standardized bill-of-materials for
 # anyone who explicitly needs one. `--no-default-groups` restricts it to runtime deps; `uv export`
 # carries hashes for component integrity. `cyclonedx-py` has no native `uv` lockfile support, hence
 # the `requirements` bridge. See https://github.com/CycloneDX/cyclonedx-python/issues/857
@@ -138,7 +141,7 @@ precommit:
     uv run pre-commit run --all-files
 
 # Run all checks
-all: format lint audit audit-workflows test docs-build
+all: format lint scan-deps audit-workflows test docs-build
 
 # --- Tests ---
 
