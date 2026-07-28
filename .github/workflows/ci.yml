@@ -39,6 +39,9 @@ jobs:
       - name: Run linting
         run: just lint
 
+      - name: Check source for PII
+        run: just check-pii
+
   test:
     name: Test Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest

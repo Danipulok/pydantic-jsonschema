@@ -103,6 +103,10 @@ audit:
 audit-workflows:
     uvx zizmor --offline .github/workflows/
 
+# Scan source and docs for hardcoded PII (emails / phone numbers) — see `scripts/check_no_pii_in_source.py`
+check-pii:
+    uv run --no-project python scripts/check_no_pii_in_source.py
+
 # Generate a CycloneDX SBOM of the runtime dependency tree into `sbom/`. On-demand convenience only —
 # deliberately NOT wired into releases: the published wheel's `Requires-Dist` already declares deps,
 # and `uv audit` covers active CVE scanning, so this is just a standardized bill-of-materials for

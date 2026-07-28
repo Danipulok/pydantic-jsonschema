@@ -106,3 +106,11 @@ repos:
         language: system
         always_run: true
         pass_filenames: false
+
+      - id: check-pii
+        name: Check for PII in source
+        entry: just
+        args: [check-pii]
+        language: system
+        always_run: true
+        pass_filenames: false
