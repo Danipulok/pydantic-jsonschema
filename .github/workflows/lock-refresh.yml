@@ -1,0 +1,56 @@
+name: Refresh dependency lock
+
+# Monthly full relock of the transitive dependency tree. Dependabot only bumps deps it has an
+# advisory or version signal for; this keeps the rest of the locked graph from drifting stale and
+# surfaces routine transitive updates (and any new CVE) as a single reviewable PR.
+on:
+  schedule:
+    # 05:00 UTC on the 1st of each month (mirrors the cadence of a Renovate `lockFileMaintenance`).
+    - cron: "0 5 1 * *"
+  workflow_dispatch:
+
+# Least privilege: what `create-pull-request` needs to push a branch and open the PR.
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Relock and open PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up `uv` + `just`
+        uses: ./.github/actions/setup
+
+      # `uv lock --upgrade` refreshes the whole transitive tree. `tool.uv.exclude-newer` ("7 days")
+      # still applies, so nothing inside the supply-chain quarantine window is pulled in.
+      - name: Upgrade lockfile
+        run: uv lock --upgrade
+
+      # No-op when the lock is unchanged; otherwise reuses the `chore/lock-refresh` branch and
+      # updates the existing PR in place.
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          add-paths: uv.lock
+          branch: chore/lock-refresh
+          delete-branch: true
+          commit-message: "chore(deps): refresh transitive dependency lock"
+          title: "chore(deps): refresh transitive dependency lock"
+          labels: dependencies
+          body: |
+            Automated monthly `uv lock --upgrade` — refreshes the transitive dependency tree.
+
+            `tool.uv.exclude-newer` ("7 days") still applies, so no release younger than the
+            supply-chain quarantine window is included. Review the diff and merge if CI is green.
