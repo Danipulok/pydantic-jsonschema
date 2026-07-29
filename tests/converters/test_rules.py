@@ -6,7 +6,8 @@ import pytest
 from inline_snapshot import snapshot
 from pydantic import ValidationError
 
-from pydantic_jsonschema import (
+from pydantic_jsonschema import to_model
+from pydantic_jsonschema.rules import (
     After,
     Before,
     ByFunc,
@@ -16,7 +17,6 @@ from pydantic_jsonschema import (
     MatchContext,
     Override,
     Rule,
-    to_model,
 )
 from pydantic_jsonschema.schema import Schema
 from tests.conftest import dump_errors

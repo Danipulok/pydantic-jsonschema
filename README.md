@@ -108,7 +108,8 @@ Per-node input coercion and output serialization, matched by type or path — in
 array-of-string can accept a comma-separated string.
 
 ```python
-from pydantic_jsonschema import Before, ByType, Rule, Schema, to_model
+from pydantic_jsonschema import Schema, to_model
+from pydantic_jsonschema.rules import Before, ByType, Rule
 
 
 def csv_to_list(value: str | list[str]) -> list[str]:
