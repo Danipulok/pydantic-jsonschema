@@ -15,7 +15,8 @@ A field declared as array-of-string can accept a comma-separated string by coerc
 with a `Before` action, matched on the field's Python type with `ByType`.
 
 ```python title="rules_basic.py"
-from pydantic_jsonschema import Before, ByType, Rule, Schema, to_model
+from pydantic_jsonschema import Schema, to_model
+from pydantic_jsonschema.rules import Before, ByType, Rule
 
 
 def csv_to_list(value: str | list[str]) -> list[str]:
@@ -63,7 +64,8 @@ Matches a single node by its JSON Pointer. Accepts `#/properties/code`, `/proper
 `properties/code` — all normalize identically.
 
 ```python title="rules_by_path.py"
-from pydantic_jsonschema import After, ByPath, Rule, Schema, to_model
+from pydantic_jsonschema import Schema, to_model
+from pydantic_jsonschema.rules import After, ByPath, Rule
 
 
 def strip_upper(value: str) -> str:
@@ -90,7 +92,8 @@ An escape hatch: match on any predicate over the node's `MatchContext` (its `sch
 `annotation`, and `path`).
 
 ```python title="rules_by_func.py"
-from pydantic_jsonschema import After, ByFunc, MatchContext, Rule, Schema, to_model
+from pydantic_jsonschema import Schema, to_model
+from pydantic_jsonschema.rules import After, ByFunc, MatchContext, Rule
 
 
 def is_string(context: MatchContext) -> bool:
@@ -121,7 +124,8 @@ print(Product(code=" ab ").code)
 matcher duplication is intentional.
 
 ```python title="rules_round_trip.py"
-from pydantic_jsonschema import Before, ByType, Dump, Rule, Schema, to_model
+from pydantic_jsonschema import Schema, to_model
+from pydantic_jsonschema.rules import Before, ByType, Dump, Rule
 
 
 def csv_to_list(value: str | list[str]) -> list[str]:
