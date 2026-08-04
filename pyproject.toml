@@ -198,6 +198,15 @@ ignore = [
     "FIX002",   # Line contains _TODO, consider resolving the issue
     "TD002",    # Missing author in _TODO
     "TD003",    # Missing issue link on the line following this _TODO
+
+    # Per-file copyright headers are not this project's convention — the root `LICENSE` covers
+    # everything. The rule was preview-only (so `ALL` skipped it) until `ruff` `0.16.0` stabilized
+    # it, at which point it flagged every single module.
+    #
+    # Reproduce on `ruff` `0.16.0` without this entry:
+    #   uv run ruff check
+    #   # -> CPY001 Missing copyright notice at top of file (x69)
+    "CPY001",   # Missing copyright notice at top of file
 ]
 
 [tool.ruff.lint.per-file-ignores]
