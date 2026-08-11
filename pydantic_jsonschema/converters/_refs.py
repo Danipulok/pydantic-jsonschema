@@ -20,6 +20,7 @@ from pydantic_jsonschema.schema import Reference, Schema
 
 __all__ = [
     "DEFS_KEY",
+    "escape_pointer_token",
     "get_inline_defs",
     "resolve_def_alias",
 ]
@@ -27,6 +28,19 @@ __all__ = [
 # JSON Schema 2020-12 definitions key
 # See: https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.4
 DEFS_KEY: Final[str] = "$defs"
+
+
+def escape_pointer_token(token: str, /) -> str:
+    """Escape a raw member name into a JSON Pointer reference token.
+
+    `~` and `/` are the two characters a pointer token cannot carry literally, since `/` separates
+    tokens. RFC 6901 section 3 escapes them as `~0` and `~1`; `~` must go first, or the `~` written
+    by the `/` -> `~1` step would be escaped again into `~01`.
+
+    :param token: Raw member name (a property name, a `$defs` name, an array index).
+    :returns: The escaped reference token.
+    """
+    return token.replace("~", "~0").replace("/", "~1")
 
 
 def get_inline_defs(schema: Schema, /) -> dict[str, Schema]:

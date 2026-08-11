@@ -56,7 +56,7 @@ from ._discriminator import discriminator_property
 from ._field_kwargs import FieldKindType, build_field_kwargs, get_field_default
 from ._metadata import annotate, array_metadata, object_dict_metadata
 from ._object_keywords import build_dependent_required, build_property_count_bounds
-from ._refs import DEFS_KEY, get_inline_defs
+from ._refs import DEFS_KEY, escape_pointer_token, get_inline_defs
 from ._utils import make_union, unwrap
 
 __all__ = [
@@ -122,6 +122,7 @@ class SchemaConverter:
         self._defs_cache: dict[Ref, Schema] = {}
         self._models_cache: dict[SchemaHash, type[BaseModel]] = {}
         self._resolution_path: list[str] = []  # Track path for error reporting
+        self._pointer_tokens: list[str] = []  # Raw JSON Pointer tokens for the same nodes
         self._applicators: list[Applicator] = []
         self._building: set[Ref] = set()  # Defs whose model is mid-construction
 
@@ -142,15 +143,25 @@ class SchemaConverter:
         self,
         segment: str,
         /,
+        *,
+        pointer: tuple[str, ...] | None = None,
     ) -> Generator[None]:
         """Context manager for tracking resolution path.
 
-        :param segment: Path segment to add.
+        :param segment: Path segment to add, in diagnostic form (`properties.name`, `anyOf[0]`).
+        :param pointer: Raw JSON Pointer tokens for the same step, one per pointer level. Required
+            wherever the diagnostic segment packs two levels into one string — `properties.name`
+            is two tokens, and a property literally named `a.b` is still one. Defaults to
+            `(segment,)`, which is right for the single-keyword steps (`items`, `not`, `if`).
         """
+        tokens: tuple[str, ...] = (segment,) if pointer is None else pointer
+
         self._resolution_path.append(segment)
+        self._pointer_tokens.extend(tokens)
         try:
             yield
         finally:
+            del self._pointer_tokens[len(self._pointer_tokens) - len(tokens) :]
             self._resolution_path.pop()
 
     def convert_schema(
@@ -481,7 +492,10 @@ class SchemaConverter:
 
         branches: dict[str, PythonType] = {}
         for trigger, sub_schema in schema.dependent_schemas.items():
-            with self._track_path(f"dependentSchemas.{trigger}"):
+            with self._track_path(
+                f"dependentSchemas.{trigger}",
+                pointer=("dependentSchemas", trigger),
+            ):
                 branches[trigger] = self._constrained_annotation(sub_schema)
 
         return self._register(DependentSchemas(branches=branches))
@@ -504,7 +518,10 @@ class SchemaConverter:
 
         branches: dict[str, PythonType] = {}
         for pattern, sub_schema in schema.pattern_properties.items():
-            with self._track_path(f"patternProperties.{pattern}"):
+            with self._track_path(
+                f"patternProperties.{pattern}",
+                pointer=("patternProperties", pattern),
+            ):
                 branches[pattern] = self._constrained_annotation(sub_schema)
 
         return self._register(PatternProperties(branches=branches))
@@ -547,8 +564,17 @@ class SchemaConverter:
         for ref, schema_def in defs.items():
             self._defs_cache[ref] = schema_def
             self._building.add(ref)
+            def_name: str = ref.removeprefix(f"#/{DEFS_KEY}/")
             try:
-                self._convert_nested_schema(schema_def)
+                # A def is converted here, at the top of the document, so its nodes must be
+                # tracked under `$defs/<name>` — otherwise they claim the root's pointers and a
+                # `ByPath` rule aimed at a root property also fires inside every same-named def
+                # property.
+                with self._track_path(
+                    f"{DEFS_KEY}.{def_name}",
+                    pointer=(DEFS_KEY, def_name),
+                ):
+                    self._convert_nested_schema(schema_def)
             finally:
                 self._building.discard(ref)
 
@@ -620,7 +646,7 @@ class SchemaConverter:
 
         base_models = []
         for index, sub_schema in enumerate(schema.all_of):
-            with self._track_path(f"allOf[{index}]"):
+            with self._track_path(f"allOf[{index}]", pointer=("allOf", str(index))):
                 if isinstance(sub_schema, Reference):
                     model = self._get_model(sub_schema.ref)
                 else:
@@ -667,7 +693,7 @@ class SchemaConverter:
         required_names: list[str] = unwrap(schema.required, default=[])
 
         for field_name, field_schema in properties.items():
-            with self._track_path(f"properties.{field_name}"):
+            with self._track_path(f"properties.{field_name}", pointer=("properties", field_name)):
                 annotation: AnnotationType | None = None
                 schema_for_field: Schema
 
@@ -741,17 +767,17 @@ class SchemaConverter:
         raise SchemaConversionError(msg)
 
     def _current_pointer(self) -> str:
-        """Build the current node's canonical JSON Pointer from the resolution path.
+        """Build the current node's canonical JSON Pointer from the tracked tokens.
 
-        Segments are dotted (`properties.created`) or bracketed (`anyOf[0]`); splitting each on
-        `.` yields the pointer components. The root schema (empty path) is `/`.
+        Each token is one pointer level, escaped per RFC 6901 on the way out. The root schema
+        (no tokens) is `/`.
 
         :returns: Canonical pointer like `/properties/created`, or `/` at the root.
         """
-        parts: list[str] = [
-            component for segment in self._resolution_path for component in segment.split(".")
-        ]
-        return "/" + "/".join(parts) if parts else "/"
+        if not self._pointer_tokens:
+            return "/"
+
+        return "/" + "/".join(escape_pointer_token(token) for token in self._pointer_tokens)
 
     def _apply_rules(
         self,
@@ -782,6 +808,28 @@ class SchemaConverter:
             if rule.matcher.matches(context):
                 result = Annotated[result, rule.action.metadata()]
         return result
+
+    def _child_annotation(
+        self,
+        schema: Schema | Reference,
+        /,
+    ) -> AnnotationType:
+        """Convert an inline child schema, applying rules at the child's own path.
+
+        For the two child nodes that never become a field or a validated branch of their own — a
+        homogeneous `items` element and a schema-valued `additionalProperties` value — plain
+        `_schema_to_annotation` is the whole conversion, so rules have nowhere else to attach. A
+        `Reference` child carries no schema of its own to match against, so it is returned as is
+        (same rule as `_constrained_annotation`).
+
+        :param schema: The child schema (or reference).
+        :returns: The child's annotation, wrapped by every matching rule.
+        """
+        annotation = self._schema_to_annotation(schema)
+        if isinstance(schema, Reference):
+            return annotation
+
+        return self._apply_rules(annotation, schema)
 
     @staticmethod
     def _build_model_config(
@@ -852,7 +900,7 @@ class SchemaConverter:
         """
         union_args: list[type | ForwardRef] = []
         for index, sub_schema in enumerate(union_schemas):
-            with self._track_path(f"{kind}[{index}]"):
+            with self._track_path(f"{kind}[{index}]", pointer=(kind, str(index))):
                 union_args.append(self._constrained_annotation(sub_schema, union_branch=True))
         return union_args
 
@@ -1180,7 +1228,7 @@ class SchemaConverter:
         item_type: type | ForwardRef = Any  # pyright: ignore[reportAssignmentType]
         if prefix_items is None and schema.items is not MISSING:
             with self._track_path("items"):
-                item_type = self._schema_to_annotation(schema.items)
+                item_type = self._child_annotation(schema.items)
         list_annotation = list[item_type]  # type: ignore[valid-type]
 
         # `uniqueItems` is stateless; `contains` / `prefixItems` need the converter.
@@ -1211,7 +1259,7 @@ class SchemaConverter:
 
         prefixes: list[PythonType] = []
         for index, sub_schema in enumerate(schema.prefix_items):
-            with self._track_path(f"prefixItems[{index}]"):
+            with self._track_path(f"prefixItems[{index}]", pointer=("prefixItems", str(index))):
                 prefixes.append(self._constrained_annotation(sub_schema))
 
         tail: PythonType | None = None
@@ -1266,7 +1314,7 @@ class SchemaConverter:
 
         if isinstance(schema.additional_properties, (Schema, Reference)):
             with self._track_path("additionalProperties"):
-                value_annotation = self._schema_to_annotation(schema.additional_properties)
+                value_annotation = self._child_annotation(schema.additional_properties)
                 dict_annotation = dict[str, value_annotation]  # type: ignore[valid-type]
                 return annotate(dict_annotation, object_dict_metadata(schema))
 
