@@ -818,17 +818,20 @@ class SchemaConverter:
 
         For the two child nodes that never become a field or a validated branch of their own — a
         homogeneous `items` element and a schema-valued `additionalProperties` value — plain
-        `_schema_to_annotation` is the whole conversion, so rules have nowhere else to attach. A
-        `Reference` child carries no schema of its own to match against, so it is returned as is
-        (same rule as `_constrained_annotation`).
+        `_schema_to_annotation` is the whole conversion, so `format` substitution and rules have
+        nowhere else to attach. Both run here in the same order as everywhere else (format first,
+        so a rule matches the substituted annotation). A `Reference` child carries no schema of
+        its own to match against, so it is returned as is (same rule as `_constrained_annotation`).
 
         :param schema: The child schema (or reference).
-        :returns: The child's annotation, wrapped by every matching rule.
+        :returns: The child's annotation, with its format substituted and every matching rule
+            wrapped around it.
         """
         annotation = self._schema_to_annotation(schema)
         if isinstance(schema, Reference):
             return annotation
 
+        annotation = self._apply_format(annotation, schema)
         return self._apply_rules(annotation, schema)
 
     @staticmethod

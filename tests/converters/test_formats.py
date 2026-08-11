@@ -447,6 +447,56 @@ class TestFormats:
         )
 
 
+class TestFormatOnChildNodes:
+    """A `format` on an inline child schema is substituted like one on a field."""
+
+    @pytest.mark.parametrize(
+        ("raw_schema", "payload", "expected"),
+        [
+            pytest.param(
+                {
+                    "type": "object",
+                    "properties": {
+                        "tags": {"type": "array", "items": {"type": "string", "format": "custom"}}
+                    },
+                    "required": ["tags"],
+                },
+                {"tags": ["ab"]},
+                {"tags": ["AB"]},
+                id="array-items",
+            ),
+            pytest.param(
+                {
+                    "type": "object",
+                    "properties": {
+                        "meta": {
+                            "type": "object",
+                            "additionalProperties": {"type": "string", "format": "custom"},
+                        }
+                    },
+                    "required": ["meta"],
+                },
+                {"meta": {"key": "ab"}},
+                {"meta": {"key": "AB"}},
+                id="map-values",
+            ),
+        ],
+    )
+    def test_child_format_is_applied(
+        self,
+        raw_schema: "SchemaRaw",
+        payload: dict[str, Any],
+        expected: dict[str, Any],
+    ) -> None:
+        """The element / value type carries the format entry, not the bare JSON type."""
+        type Uppercased = Annotated[str, AfterValidator(str.upper)]
+
+        schema = Schema.model_validate(raw_schema)
+        model = to_model(schema, formats={"custom": Uppercased})
+
+        assert model(**payload).model_dump() == expected
+
+
 class TestFormatAcceptedForms:
     """A `formats` entry must be a type or `Annotated` type; any other form is rejected."""
 
