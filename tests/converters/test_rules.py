@@ -1,10 +1,10 @@
 """Tests for the `rules` parameter: per-node loading via matchers and actions."""
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import pytest
 from inline_snapshot import snapshot
-from pydantic import ValidationError
+from pydantic import AfterValidator, ValidationError
 
 from pydantic_jsonschema import to_model
 from pydantic_jsonschema.rules import (
@@ -52,6 +52,11 @@ def reject_empty(value: list[str]) -> list[str]:
         msg = "must not be empty"
         raise ValueError(msg)
     return value
+
+
+def exclaim(value: str) -> str:
+    """Append an exclamation mark, marking that a rule ran after the format substitution."""
+    return f"{value}!"
 
 
 def annotation_is_str(context: MatchContext, /) -> bool:
@@ -327,6 +332,32 @@ class TestChildNodes:
         model = to_model(schema, rules=[Rule(ByPath(pointer), After(strip_upper))])
 
         assert model(**payload).model_dump() == expected
+
+    def test_format_substitution_runs_before_rules(self) -> None:
+        """A formatted child is matched on the substituted annotation, and rules wrap it after."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {
+                    "tags": {"type": "array", "items": {"type": "string", "format": "custom"}}
+                },
+                "required": ["tags"],
+            }
+        )
+        formats: dict[str, Any] = {"custom": Annotated[str, AfterValidator(str.upper)]}
+
+        # `ByType(str)` sees the substituted `Annotated[...]`, so it no longer matches — only the
+        # format runs. Same rule as for a formatted field.
+        by_type = to_model(schema, formats=formats, rules=[Rule(ByType(str), After(exclaim))])
+        assert by_type(tags=["ab"]).model_dump() == snapshot({"tags": ["AB"]})
+
+        # `ByPath` is annotation-independent, so it still matches and layers on top of the format.
+        by_path = to_model(
+            schema,
+            formats=formats,
+            rules=[Rule(ByPath("#/properties/tags/items"), After(exclaim))],
+        )
+        assert by_path(tags=["ab"]).model_dump() == snapshot({"tags": ["AB!"]})
 
     def test_dump_on_items(self) -> None:
         """`Dump` on the element type serializes each item."""
