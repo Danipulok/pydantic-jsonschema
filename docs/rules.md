@@ -1,13 +1,17 @@
 # Rules
 
-Rules attach custom loading behavior to the model `to_model` generates, matched **by type or by
-path** — without hand-writing the model. Each rule has three parts, one object each:
+Rules attach custom loading and dumping behavior to the model `to_model` generates — matched **by
+type, by path, or by an arbitrary predicate** — without hand-writing the model. Each rule has three
+parts, one object each:
 
 1. **when** — a matcher (`ByType`, `ByPath`, `ByFunc`);
 2. **what** — a callable, held by the action;
 3. **how** — the action kind (`Before`, `After`, `Override`, `Dump`).
 
 One rule performs exactly one action. A load-and-dump round-trip is two rules sharing a matcher.
+
+Pass rules to `to_model(schema, rules=[...])`, or to `SchemaConverter(rules=[...])` when you drive
+conversion yourself — the two take the same list.
 
 ## Basic Usage
 
@@ -60,8 +64,24 @@ Matches when the resolved annotation equals the given type. Parameterized generi
 
 ### `ByPath`
 
-Matches a single node by its JSON Pointer. Accepts `#/properties/code`, `/properties/code`, or
-`properties/code` — all normalize identically.
+Matches a single node by its [JSON Pointer](https://www.rfc-editor.org/rfc/rfc6901). Accepts
+`#/properties/code`, `/properties/code`, or `properties/code` — all normalize identically.
+
+Every node the converter walks has a pointer, not just top-level properties:
+
+| Node                            | Pointer                                  |
+|---------------------------------|------------------------------------------|
+| root value                      | `/`                                      |
+| property `code`                 | `#/properties/code`                      |
+| element of an array property    | `#/properties/tags/items`                |
+| value of a typed map            | `#/properties/meta/additionalProperties` |
+| second `anyOf` branch           | `#/properties/value/anyOf/1`             |
+| property inside a `$defs` entry | `#/$defs/User/properties/name`           |
+
+A definition is addressed where it is *declared* (`#/$defs/User/...`), not through the `$ref`s that
+point at it, so one rule covers every use of that definition. Property names keep their literal
+characters and are escaped per RFC 6901 — `~` becomes `~0` and `/` becomes `~1`, so a property
+named `a/b` is `#/properties/a~1b`.
 
 ```python title="rules_by_path.py"
 from pydantic_jsonschema import Schema, to_model

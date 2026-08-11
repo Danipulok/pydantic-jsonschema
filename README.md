@@ -51,7 +51,7 @@ print(user.model_dump())
 
 ## What's inside
 
-Three building blocks — and a fourth on the way.
+Four building blocks.
 
 ### 1. The schema model — `Schema` & `Reference`
 
@@ -102,10 +102,10 @@ print(User(email="alice@example.com").email)
 
 ### 4. Rules
 
-Per-node input coercion and output serialization, matched by type or path — inspired by
-[adaptix](https://github.com/reagento/adaptix). A `Rule` pairs a matcher (`ByType`, `ByPath`,
-`ByFunc`) with one action (`Before`, `After`, `Override`, `Dump`), so a field declared as
-array-of-string can accept a comma-separated string.
+Per-node input coercion and output serialization, matched by type, by JSON Pointer path, or by an
+arbitrary predicate — inspired by [adaptix](https://github.com/reagento/adaptix). A `Rule` pairs a
+matcher (`ByType`, `ByPath`, `ByFunc`) with one action (`Before`, `After`, `Override`, `Dump`), so
+a field declared as array-of-string can accept a comma-separated string, and dump back as one.
 
 ```python
 from pydantic_jsonschema import Schema, to_model
