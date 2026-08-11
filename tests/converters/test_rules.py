@@ -1,6 +1,6 @@
 """Tests for the `rules` parameter: per-node loading via matchers and actions."""
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from inline_snapshot import snapshot
@@ -171,6 +171,175 @@ class TestMatchers:
 
         instance = model(tags=[], created="  hi ")
         assert instance.model_dump() == snapshot({"tags": [], "created": "HI"})
+
+
+class TestByPathPointers:
+    """`ByPath` addresses nodes by their true JSON Pointer.
+
+    The pointer is built from one token per level, so a union branch index is its own token, a
+    definition sits under `$defs`, and a property name keeps whatever characters it has (escaped
+    per RFC 6901).
+    """
+
+    def test_root_value_is_the_root_pointer(self) -> None:
+        """A root scalar has no tokens above it, so its pointer is `/`."""
+        schema = Schema.model_validate({"type": "string"})
+        model = to_model(schema, rules=[Rule(ByPath("/"), After(strip_upper))])
+
+        assert model(" ab ").model_dump() == snapshot("AB")  # type: ignore[call-arg]
+
+    def test_union_branch_index_is_its_own_token(self) -> None:
+        """A branch is `anyOf/0`, not `anyOf[0]` — only the string branch is normalized."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"value": {"anyOf": [{"type": "string"}, {"type": "integer"}]}},
+                "required": ["value"],
+            }
+        )
+        model = to_model(
+            schema, rules=[Rule(ByPath("#/properties/value/anyOf/0"), After(strip_upper))]
+        )
+
+        assert model(value=" ab ").model_dump() == snapshot({"value": "AB"})
+        assert model(value=7).model_dump() == snapshot({"value": 7})
+
+    def test_definition_node_does_not_claim_the_root_pointer(self) -> None:
+        """A def's nodes live under `$defs/<name>`, so they never collide with root properties."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "$defs": {
+                    "User": {
+                        "type": "object",
+                        "properties": {"name": {"type": "string"}},
+                        "required": ["name"],
+                    }
+                },
+                "properties": {"user": {"$ref": "#/$defs/User"}, "name": {"type": "string"}},
+                "required": ["user", "name"],
+            }
+        )
+        model = to_model(
+            schema, rules=[Rule(ByPath("#/$defs/User/properties/name"), After(strip_upper))]
+        )
+
+        instance = model(user={"name": " nested "}, name=" root ")
+        # Only the def's `name` is normalized; the same-named root property is untouched.
+        assert instance.model_dump() == snapshot({"user": {"name": "NESTED"}, "name": " root "})
+
+    @pytest.mark.parametrize(
+        ("property_name", "pointer"),
+        [
+            ("a.b", "#/properties/a.b"),
+            ("a/b", "#/properties/a~1b"),
+            ("a~b", "#/properties/a~0b"),
+        ],
+        ids=["dotted", "slash-escaped", "tilde-escaped"],
+    )
+    def test_special_characters_in_property_name(
+        self,
+        property_name: str,
+        pointer: str,
+    ) -> None:
+        """A dot stays part of the name; `/` and `~` are escaped as `~1` / `~0`."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {property_name: {"type": "string"}},
+                "required": [property_name],
+            }
+        )
+        model = to_model(schema, rules=[Rule(ByPath(pointer), After(strip_upper))])
+
+        instance = model(**{property_name: " ab "})
+        assert instance.model_dump() == {property_name: "AB"}
+
+
+class TestChildNodes:
+    """Rules reach inline child schemas that never become a field of their own."""
+
+    def test_array_items(self) -> None:
+        """A rule matching the element type applies to every item of an inline `items`."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"tags": {"type": "array", "items": {"type": "string"}}},
+                "required": ["tags"],
+            }
+        )
+        model = to_model(schema, rules=[Rule(ByType(str), After(strip_upper))])
+
+        assert model(tags=[" a ", "b"]).model_dump() == snapshot({"tags": ["A", "B"]})
+
+    def test_map_values(self) -> None:
+        """A rule matching the value type applies to every value of a typed map."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {
+                    "meta": {"type": "object", "additionalProperties": {"type": "string"}}
+                },
+                "required": ["meta"],
+            }
+        )
+        model = to_model(schema, rules=[Rule(ByType(str), After(strip_upper))])
+
+        assert model(meta={"k": " v "}).model_dump() == snapshot({"meta": {"k": "V"}})
+
+    @pytest.mark.parametrize(
+        ("raw_schema", "pointer", "payload", "expected"),
+        [
+            (
+                {
+                    "type": "object",
+                    "properties": {"tags": {"type": "array", "items": {"type": "string"}}},
+                    "required": ["tags"],
+                },
+                "#/properties/tags/items",
+                {"tags": [" a "]},
+                {"tags": ["A"]},
+            ),
+            (
+                {
+                    "type": "object",
+                    "properties": {
+                        "meta": {"type": "object", "additionalProperties": {"type": "string"}}
+                    },
+                    "required": ["meta"],
+                },
+                "#/properties/meta/additionalProperties",
+                {"meta": {"k": " v "}},
+                {"meta": {"k": "V"}},
+            ),
+        ],
+        ids=["items", "additionalProperties"],
+    )
+    def test_child_is_addressable_by_path(
+        self,
+        raw_schema: "SchemaRaw",
+        pointer: str,
+        payload: dict[str, Any],
+        expected: dict[str, Any],
+    ) -> None:
+        """A child node carries its own pointer, so `ByPath` can target it directly."""
+        schema = Schema.model_validate(raw_schema)
+        model = to_model(schema, rules=[Rule(ByPath(pointer), After(strip_upper))])
+
+        assert model(**payload).model_dump() == expected
+
+    def test_dump_on_items(self) -> None:
+        """`Dump` on the element type serializes each item."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"tags": {"type": "array", "items": {"type": "string"}}},
+                "required": ["tags"],
+            }
+        )
+        model = to_model(schema, rules=[Rule(ByType(str), Dump(str.upper))])
+
+        assert model(tags=["a", "b"]).model_dump() == snapshot({"tags": ["A", "B"]})
 
 
 class TestRoundTrip:

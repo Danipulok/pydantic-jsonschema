@@ -95,7 +95,10 @@ class ByPath(Matcher):
     """Match when the node's JSON Pointer equals `pointer`.
 
     `pointer` accepts `#/properties/created`, `/properties/created`, or `properties/created` —
-    all normalize to the same canonical form before comparison.
+    all normalize to the same canonical form before comparison. Node pointers are RFC 6901
+    proper: an index is its own level (`anyOf/0`), a definition is addressed where it is declared
+    (`#/$defs/User/...`), and `~` / `/` inside a name are escaped as `~0` / `~1`. See
+    `docs/rules.md` for the full list of addressable nodes.
     """
 
     pointer: str
