@@ -71,12 +71,49 @@ Every node the converter walks has a pointer, not just top-level properties:
 
 | Node                            | Pointer                                  |
 |---------------------------------|------------------------------------------|
-| root value                      | `/`                                      |
+| root value of a non-object root | `/`                                      |
 | property `code`                 | `#/properties/code`                      |
 | element of an array property    | `#/properties/tags/items`                |
 | value of a typed map            | `#/properties/meta/additionalProperties` |
 | second `anyOf` branch           | `#/properties/value/anyOf/1`             |
 | property inside a `$defs` entry | `#/$defs/User/properties/name`           |
+
+`/` addresses the root only when the root is not an object. A scalar or array root becomes the
+value of a `RootModel`, and that value has an annotation to wrap. An object root becomes the model
+class itself, and a class carries no annotation — a rule at `/` has nothing to attach to there and
+never fires. Target its properties instead.
+
+```python title="rules_root_pointer.py"
+from pydantic_jsonschema import Schema, to_model
+from pydantic_jsonschema.rules import After, ByPath, Rule
+
+
+def strip_upper(value: str) -> str:
+    return value.strip().upper()
+
+
+root_rule = Rule(ByPath("/"), After(strip_upper))
+
+Code = to_model(Schema.model_validate({"type": "string"}), rules=[root_rule])
+
+print(Code("  ab-1  ").root)
+#> AB-1
+
+Product = to_model(
+    Schema.model_validate(
+        {
+            "type": "object",
+            "properties": {"code": {"type": "string"}},
+            "required": ["code"],
+        }
+    ),
+    rules=[root_rule],
+)
+
+# The object root is a class, not an annotation, so the rule never fires.
+print(repr(Product(code="  ab-1  ").code))
+#> '  ab-1  '
+```
 
 A definition is addressed where it is *declared* (`#/$defs/User/...`), not through the `$ref`s that
 point at it, so one rule covers every use of that definition. Property names keep their literal

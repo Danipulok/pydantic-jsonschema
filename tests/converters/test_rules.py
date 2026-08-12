@@ -193,6 +193,24 @@ class TestByPathPointers:
 
         assert model(" ab ").model_dump() == snapshot("AB")  # type: ignore[call-arg]
 
+    def test_object_root_has_no_annotation_at_the_root_pointer(self) -> None:
+        """An object root becomes the model class, so `/` has no annotation to wrap.
+
+        Rules attach where a node turns into an annotation — a field, a validated branch, or an
+        inline child. A `RootModel` value is a field (`field_kind="root"`), but an object root is
+        not: its properties are the fields. Target those instead.
+        """
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"name": {"type": "string"}},
+                "required": ["name"],
+            }
+        )
+        model = to_model(schema, rules=[Rule(ByPath("/"), After(strip_upper))])
+
+        assert model(name=" ab ").model_dump() == snapshot({"name": " ab "})
+
     def test_union_branch_index_is_its_own_token(self) -> None:
         """A branch is `anyOf/0`, not `anyOf[0]` — only the string branch is normalized."""
         schema = Schema.model_validate(
