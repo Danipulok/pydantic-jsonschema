@@ -26,6 +26,9 @@ if TYPE_CHECKING:
 
 __all__: list[str] = []
 
+# Mirrors `ByType.target`: any type or typing form a rule can be aimed at.
+type ByTypeTargetType = Any
+
 _TAGS_SCHEMA: "SchemaRaw" = {
     "type": "object",
     "properties": {
@@ -57,6 +60,16 @@ def reject_empty(value: list[str]) -> list[str]:
 def exclaim(value: str) -> str:
     """Append an exclamation mark, marking that a rule ran after the format substitution."""
     return f"{value}!"
+
+
+def reverse_items[ItemType](value: list[ItemType]) -> list[ItemType]:
+    """Reverse a list, marking which arrays a `ByType` target reached."""
+    return list(reversed(value))
+
+
+def sorted_keys[ValueType](value: dict[str, ValueType]) -> dict[str, ValueType]:
+    """Sort a map by key, marking that a `ByType` target reached the map itself."""
+    return dict(sorted(value.items()))
 
 
 def annotation_is_str(context: MatchContext, /) -> bool:
@@ -221,6 +234,73 @@ class TestMatchers:
 
         instance = model(tags=[], created="  hi ")
         assert instance.model_dump() == snapshot({"tags": [], "created": "HI"})
+
+
+class TestByTypeParameterization:
+    """`ByType` compares annotations exactly, except that a bare generic covers every parameter.
+
+    The converter never produces an unparameterized annotation — an array is `list[str]` or
+    `list[Any]`, a typed map is `dict[str, T]` — so a bare target that compared by equality would
+    match nothing at all.
+    """
+
+    @pytest.mark.parametrize(
+        ("target", "expected"),
+        [
+            (list, {"names": ["B", "A"], "counts": [2, 1], "loose": [False, True]}),
+            (list[str], {"names": ["B", "A"], "counts": [1, 2], "loose": [True, False]}),
+            (list[int], {"names": ["A", "B"], "counts": [2, 1], "loose": [True, False]}),
+            (list[Any], {"names": ["A", "B"], "counts": [1, 2], "loose": [False, True]}),
+        ],
+        ids=["bare", "of-str", "of-int", "of-any"],
+    )
+    def test_bare_generic_covers_every_parameterization(
+        self,
+        target: ByTypeTargetType,
+        expected: dict[str, Any],
+    ) -> None:
+        """A bare `list` matches all three arrays; a parameterized target matches only its own."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {
+                    "names": {"type": "array", "items": {"type": "string"}},
+                    "counts": {"type": "array", "items": {"type": "integer"}},
+                    "loose": {"type": "array"},
+                },
+                "required": ["names", "counts", "loose"],
+            }
+        )
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByType(target), After(reverse_items)),
+            ],
+        )
+
+        instance = model(names=["A", "B"], counts=[1, 2], loose=[True, False])
+        assert instance.model_dump() == expected
+
+    def test_bare_dict_matches_a_typed_map(self) -> None:
+        """The same holds for a map: the converter emits `dict[str, T]`, never a bare `dict`."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {
+                    "meta": {"type": "object", "additionalProperties": {"type": "string"}}
+                },
+                "required": ["meta"],
+            }
+        )
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByType(dict), After(sorted_keys)),
+            ],
+        )
+
+        instance = model(meta={"b": "2", "a": "1"})
+        assert instance.model_dump() == snapshot({"meta": {"a": "1", "b": "2"}})
 
 
 class TestByPathPointers:

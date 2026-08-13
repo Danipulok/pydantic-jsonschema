@@ -15,7 +15,7 @@ not serialize to JSON.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Protocol, override
+from typing import Any, Protocol, get_origin, override
 
 from pydantic_jsonschema.schema import Schema
 
@@ -74,19 +74,28 @@ class Matcher(ABC):
 
 @dataclass(frozen=True, slots=True)
 class ByType(Matcher):
-    """Match when the resolved core annotation equals `target`.
+    """Match when the resolved core annotation equals `target`, or parameterizes it.
 
-    `target` is a Python type or typing form (`list[str]`, `str`, `datetime`). Comparison is
-    equality, so parameterized generics match exactly (`list[str]`, not `list[int]`). A node whose
-    annotation a `formats` entry already replaced (e.g. `Annotated[str, ...]`) will not match a
-    bare `ByType(str)`.
+    `target` is a Python type or typing form (`list[str]`, `str`, `datetime`). A parameterized
+    target matches exactly (`list[str]`, not `list[int]`); an unparameterized generic (`list`,
+    `dict`, `set`) matches every parameterization of itself. A node whose annotation a `formats`
+    entry already replaced (e.g. `Annotated[str, ...]`) will not match a bare `ByType(str)`.
     """
 
     target: AnnotationType
 
     @override
     def matches(self, context: MatchContext, /) -> bool:
-        """Return whether the resolved annotation equals `target`."""
+        """Return whether the resolved annotation equals `target` or is a parameterization of it."""
+        # NOTE: An unparameterized generic never equals what the converter produces — an array is
+        # `list[str]` or `list[Any]`, a typed map is `dict[str, T]` — so under plain equality a
+        # rule built as `Rule(ByType(list), After(dedupe))` would silently match nothing at all.
+        # `Annotated` is safe here: `get_origin(Annotated[str, ...])` is `Annotated`, not `str`,
+        # so a format-substituted node still does not match a bare `ByType(str)`.
+        origin: AnnotationType = get_origin(context.annotation)
+        if isinstance(self.target, type) and origin is self.target:
+            return True
+
         return bool(context.annotation == self.target)
 
 
