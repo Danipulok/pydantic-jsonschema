@@ -468,7 +468,10 @@ class TestByPathPointers:
             }
         )
         model = to_model(
-            schema, rules=[Rule(ByPath("/properties/value/anyOf/0"), After(strip_upper))]
+            schema,
+            rules=[
+                Rule(ByPath("/properties/value/anyOf/0"), After(strip_upper)),
+            ],
         )
 
         assert model(value=" ab ").model_dump() == snapshot({"value": "AB"})
@@ -491,7 +494,10 @@ class TestByPathPointers:
             }
         )
         model = to_model(
-            schema, rules=[Rule(ByPath("/$defs/User/properties/name"), After(strip_upper))]
+            schema,
+            rules=[
+                Rule(ByPath("/$defs/User/properties/name"), After(strip_upper)),
+            ],
         )
 
         instance = model(user={"name": " nested "}, name=" root ")
@@ -690,7 +696,10 @@ class TestModelCache:
             }
         )
         model = to_model(
-            schema, rules=[Rule(ByPath("/$defs/User/properties/name"), After(strip_upper))]
+            schema,
+            rules=[
+                Rule(ByPath("/$defs/User/properties/name"), After(strip_upper)),
+            ],
         )
 
         author = model.model_fields["author"].annotation
@@ -722,7 +731,10 @@ class TestModelCache:
             }
         )
         model = to_model(
-            schema, rules=[Rule(ByPath("/$defs/User/properties/name"), After(strip_upper))]
+            schema,
+            rules=[
+                Rule(ByPath("/$defs/User/properties/name"), After(strip_upper)),
+            ],
         )
 
         user = model.model_fields["user"].annotation
@@ -730,6 +742,44 @@ class TestModelCache:
 
         instance = model(user={"name": " a "}, author={"name": " b "})
         assert instance.model_dump() == snapshot({"user": {"name": "A"}, "author": {"name": "B"}})
+
+    def test_alias_name_is_not_an_addressable_pointer(self) -> None:
+        """An alias has no pointer of its own: only the name declaring the schema addresses it.
+
+        The flip side of the test above. `Author` resolves to `User`'s schema, so the converter
+        walks it once under `/$defs/User` and never emits `/$defs/Author`. Aiming a rule at the
+        alias name is therefore a no-op — asserted here so the choice of pointer cannot change
+        unnoticed.
+        """
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "$defs": {
+                    "User": {
+                        "type": "object",
+                        "properties": {"name": {"type": "string"}},
+                        "required": ["name"],
+                    },
+                    "Author": {"$ref": "#/$defs/User"},
+                },
+                "properties": {
+                    "user": {"$ref": "#/$defs/User"},
+                    "author": {"$ref": "#/$defs/Author"},
+                },
+                "required": ["user", "author"],
+            }
+        )
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByPath("/$defs/Author/properties/name"), After(strip_upper)),
+            ],
+        )
+
+        instance = model(user={"name": " a "}, author={"name": " b "})
+        assert instance.model_dump() == snapshot(
+            {"user": {"name": " a "}, "author": {"name": " b "}}
+        )
 
 
 class TestChildNodes:
