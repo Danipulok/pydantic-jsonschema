@@ -35,7 +35,7 @@ from pydantic.fields import FieldInfo
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 
-from pydantic_jsonschema._utils import sanitize_identifier
+from pydantic_jsonschema._utils import sanitize_identifier, unwrap_type_alias
 from pydantic_jsonschema.applicators import (
     Applicator,
     Contains,
@@ -816,8 +816,7 @@ class SchemaConverter:
         # Built-in format types (`Email`, `UUID`, ...) are PEP 695 `type` aliases, i.e.
         # `TypeAliasType`. Unwrap to the actual `Annotated` / class they alias so the field
         # annotation stays clean (`str`, `uuid.UUID`) instead of the alias wrapper.
-        if isinstance(format_type, TypeAliasType):
-            format_type = format_type.__value__
+        format_type = unwrap_type_alias(format_type)
 
         if get_origin(format_type) is Annotated:
             return format_type

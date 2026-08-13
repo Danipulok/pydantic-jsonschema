@@ -78,8 +78,51 @@ becomes `dict[str, T]`. Comparing a bare `list` by equality would therefore matc
 | `list[Any]` | `list[Any]` — an array without `items`   |
 | `dict`      | `dict[str, str]`, `dict[str, Any]`, …    |
 
-A node whose annotation a [`formats`](formats.md) entry replaced is `Annotated[str, ...]`, which is
-neither equal to `str` nor a parameterization of it — so a bare `ByType(str)` does not match it.
+A PEP 695 alias resolves to whatever it names, so `type Tags = list[str]` and `ByType(Tags)` are
+interchangeable with `ByType(list[str])`.
+
+A node whose annotation a [`formats`](formats.md) entry replaced carries the format type, so target
+it with that same type. `ByType(Email)` reaches the email fields; a bare `ByType(str)` reaches only
+the strings no format touched, because `Annotated[str, ...]` is neither equal to `str` nor a
+parameterization of it.
+
+The format's own validation runs first, so the rule sees a value the format already accepted.
+
+```python title="rules_by_type_format.py"
+from pydantic_jsonschema import Schema, to_model
+from pydantic_jsonschema.formats import Email
+from pydantic_jsonschema.rules import After, ByType, Rule
+
+
+def to_lower(value: str) -> str:
+    return value.lower()
+
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {
+            "contact": {"type": "string", "format": "email"},
+            "note": {"type": "string"},
+        },
+        "required": ["contact", "note"],
+    }
+)
+
+User = to_model(
+    schema,
+    formats={"email": Email},
+    rules=[
+        Rule(ByType(Email), After(to_lower)),
+    ],
+)
+
+user = User(contact="User@Example.COM", note="Kept")
+print(user.contact)
+#> user@example.com
+print(user.note)
+#> Kept
+```
 
 ### `ByPath`
 

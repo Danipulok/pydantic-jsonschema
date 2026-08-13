@@ -17,6 +17,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Protocol, get_origin, override
 
+from pydantic_jsonschema._utils import unwrap_type_alias
 from pydantic_jsonschema.schema import Schema
 
 __all__ = [
@@ -63,10 +64,13 @@ class Matcher(ABC):
 class ByType(Matcher):
     """Match when the resolved core annotation equals `target`, or parameterizes it.
 
-    `target` is a Python type or typing form (`list[str]`, `str`, `datetime`). A parameterized
-    target matches exactly (`list[str]`, not `list[int]`); an unparameterized generic (`list`,
-    `dict`, `set`) matches every parameterization of itself. A node whose annotation a `formats`
-    entry already replaced (e.g. `Annotated[str, ...]`) will not match a bare `ByType(str)`.
+    `target` is a Python type, typing form, or PEP 695 alias (`list[str]`, `str`, `datetime`,
+    `Email`). A parameterized target matches exactly (`list[str]`, not `list[int]`); an
+    unparameterized generic (`list`, `dict`, `set`) matches every parameterization of itself.
+
+    A node whose annotation a `formats` entry replaced carries the format type, so target it with
+    that same type — `ByType(Email)` reaches the email fields, while a bare `ByType(str)` reaches
+    only the strings no format touched.
     """
 
     target: AnnotationType
@@ -74,16 +78,26 @@ class ByType(Matcher):
     @override
     def matches(self, context: MatchContext, /) -> bool:
         """Return whether the resolved annotation equals `target` or is a parameterization of it."""
+        # NOTE: Every built-in format type is a PEP 695 alias, and a `TypeAliasType` compares by
+        # identity — so without unwrapping, aiming a rule at the very type passed to `formats`
+        # matches nothing at all:
+        #
+        #   to_model(schema, formats={"date-time": DateTime},
+        #            rules=[Rule(ByType(DateTime), After(to_utc))])
+        #   # -> rule never fires: the node is `datetime.datetime`, and
+        #   #    `DateTime == datetime.datetime` is False
+        target: AnnotationType = unwrap_type_alias(self.target)
+
         # NOTE: An unparameterized generic never equals what the converter produces — an array is
         # `list[str]` or `list[Any]`, a typed map is `dict[str, T]` — so under plain equality a
         # rule built as `Rule(ByType(list), After(dedupe))` would silently match nothing at all.
         # `Annotated` is safe here: `get_origin(Annotated[str, ...])` is `Annotated`, not `str`,
         # so a format-substituted node still does not match a bare `ByType(str)`.
         origin: AnnotationType = get_origin(context.annotation)
-        if isinstance(self.target, type) and origin is self.target:
+        if isinstance(target, type) and origin is target:
             return True
 
-        return bool(context.annotation == self.target)
+        return bool(context.annotation == target)
 
 
 @dataclass(frozen=True, slots=True)
