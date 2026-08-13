@@ -35,7 +35,12 @@ schema = Schema.model_validate(
     }
 )
 
-User = to_model(schema, rules=[Rule(ByType(list[str]), Before(csv_to_list))])
+User = to_model(
+    schema,
+    rules=[
+        Rule(ByType(list[str]), Before(csv_to_list)),
+    ],
+)
 
 print(User(tags="a,b,c").tags)
 #> ['a', 'b', 'c']
@@ -94,7 +99,10 @@ def strip_upper(value: str) -> str:
 
 root_rule = Rule(ByPath("/"), After(strip_upper))
 
-Code = to_model(Schema.model_validate({"type": "string"}), rules=[root_rule])
+Code = to_model(
+    Schema.model_validate({"type": "string"}),
+    rules=[root_rule],
+)
 
 print(Code("  ab-1  ").root)
 #> AB-1
@@ -137,7 +145,12 @@ schema = Schema.model_validate(
     }
 )
 
-Product = to_model(schema, rules=[Rule(ByPath("#/properties/code"), After(strip_upper))])
+Product = to_model(
+    schema,
+    rules=[
+        Rule(ByPath("#/properties/code"), After(strip_upper)),
+    ],
+)
 
 print(Product(code="  ab-1  ").code)
 #> AB-1
@@ -169,7 +182,12 @@ schema = Schema.model_validate(
     }
 )
 
-Product = to_model(schema, rules=[Rule(ByFunc(is_string), After(strip_upper))])
+Product = to_model(
+    schema,
+    rules=[
+        Rule(ByFunc(is_string), After(strip_upper)),
+    ],
+)
 
 print(Product(code=" ab ").code)
 #> AB

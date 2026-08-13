@@ -122,7 +122,12 @@ schema = Schema.model_validate({
     "required": ["tags"],
 })
 
-User = to_model(schema, rules=[Rule(ByType(list[str]), Before(csv_to_list))])
+User = to_model(
+    schema,
+    rules=[
+        Rule(ByType(list[str]), Before(csv_to_list)),
+    ],
+)
 
 print(User(tags="a,b,c").tags)
 #> ['a', 'b', 'c']
