@@ -64,8 +64,22 @@ thing.
 
 ### `ByType`
 
-Matches when the resolved annotation equals the given type. Parameterized generics match exactly
-(`list[str]`, not `list[int]`).
+Matches on the resolved annotation. A parameterized generic matches exactly — `list[str]` does not
+match `list[int]`.
+
+An **unparameterized** generic matches every parameterization of itself, because the converter never
+produces a bare one: an array becomes `list[str]` (or `list[Any]` without `items`), a typed map
+becomes `dict[str, T]`. Comparing a bare `list` by equality would therefore match nothing at all.
+
+| Target      | Matches                                  |
+|-------------|------------------------------------------|
+| `list`      | `list[str]`, `list[int]`, `list[Any]`, … |
+| `list[str]` | `list[str]`                              |
+| `list[Any]` | `list[Any]` — an array without `items`   |
+| `dict`      | `dict[str, str]`, `dict[str, Any]`, …    |
+
+A node whose annotation a [`formats`](formats.md) entry replaced is `Annotated[str, ...]`, which is
+neither equal to `str` nor a parameterization of it — so a bare `ByType(str)` does not match it.
 
 ### `ByPath`
 
