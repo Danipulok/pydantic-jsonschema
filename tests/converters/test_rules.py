@@ -1,12 +1,12 @@
 """Tests for the `rules` parameter: per-node loading via matchers and actions."""
 
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, Final
 
 import pytest
 from inline_snapshot import snapshot
 from pydantic import AfterValidator, ValidationError
 
-from pydantic_jsonschema import to_model
+from pydantic_jsonschema import formats, to_model
 from pydantic_jsonschema.rules import (
     After,
     Before,
@@ -28,6 +28,37 @@ __all__: list[str] = []
 
 # Mirrors `ByType.target`: any type or typing form a rule can be aimed at.
 type ByTypeTargetType = Any
+
+# The value of whatever field a rule happens to wrap, whichever format it carries.
+type FieldValueType = Any
+
+# User-declared aliases: `ByType` must resolve them to what they name, at any nesting depth.
+type Tags = list[str]
+type Timestamps = Tags
+
+# Every type exported from `pydantic_jsonschema.formats`, with the JSON Schema `format` keyword it
+# serves and a value that satisfies it. `test_every_exported_format_type_is_covered` keeps it whole.
+_FORMAT_CASES: Final[list[tuple[str, ByTypeTargetType, str]]] = [
+    ("date-time", formats.DateTime, "2024-01-15T10:30:00Z"),
+    ("time", formats.Time, "10:30:00"),
+    ("date", formats.Date, "2024-01-15"),
+    ("duration", formats.Duration, "P1D"),
+    ("email", formats.Email, "user@example.com"),
+    ("idn-email", formats.IdnEmail, "user@example.com"),
+    ("hostname", formats.Hostname, "example.com"),
+    ("idn-hostname", formats.IdnHostname, "example.com"),
+    ("uuid", formats.UUID, "00000000-0000-7000-8000-000000000000"),
+    ("regex", formats.Regex, "^a+$"),
+    ("ipv4", formats.IPv4, "192.0.2.1"),
+    ("ipv6", formats.IPv6, "2001:db8::1"),
+    ("uri", formats.Uri, "https://example.com"),
+    ("uri-reference", formats.UriReference, "/path"),
+    ("iri", formats.Iri, "https://example.com"),
+    ("iri-reference", formats.IriReference, "/path"),
+    ("uri-template", formats.UriTemplate, "https://example.com/{id}"),
+    ("json-pointer", formats.JsonPointer, "/a/b"),
+    ("relative-json-pointer", formats.RelativeJsonPointer, "1/a"),
+]
 
 _TAGS_SCHEMA: "SchemaRaw" = {
     "type": "object",
@@ -301,6 +332,87 @@ class TestByTypeParameterization:
 
         instance = model(meta={"b": "2", "a": "1"})
         assert instance.model_dump() == snapshot({"meta": {"a": "1", "b": "2"}})
+
+
+class TestByTypeFormatTypes:
+    """The type passed to `formats` is also the type that targets the nodes it substituted."""
+
+    @pytest.mark.parametrize(
+        ("format_name", "format_type", "value"),
+        _FORMAT_CASES,
+        ids=[format_name for format_name, _, _ in _FORMAT_CASES],
+    )
+    def test_format_type_targets_its_own_nodes(
+        self,
+        format_name: str,
+        format_type: ByTypeTargetType,
+        value: str,
+    ) -> None:
+        """`ByType(<format type>)` reaches the field that same type was substituted into."""
+        matched: list[FieldValueType] = []
+
+        def mark(field_value: FieldValueType) -> FieldValueType:
+            matched.append(field_value)
+            return field_value
+
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"value": {"type": "string", "format": format_name}},
+                "required": ["value"],
+            }
+        )
+        model = to_model(
+            schema,
+            formats={format_name: format_type},
+            rules=[
+                Rule(ByType(format_type), After(mark)),
+            ],
+        )
+
+        model(value=value)
+        assert len(matched) == 1
+
+    def test_every_exported_format_type_is_covered(self) -> None:
+        """The case table above spans the whole `formats` export list.
+
+        Without this guard a newly exported format type would be absent from the table rather
+        than failing it, and would silently keep the alias bug it was added with.
+        """
+        covered = {format_type for _, format_type, _ in _FORMAT_CASES}
+        exported = {getattr(formats, name) for name in formats.__all__}
+
+        assert covered == exported
+
+    @pytest.mark.parametrize(
+        ("target", "expected"),
+        [
+            (Tags, ["b", "a"]),
+            (Timestamps, ["b", "a"]),
+        ],
+        ids=["alias", "alias-of-alias"],
+    )
+    def test_user_alias_resolves_to_what_it_names(
+        self,
+        target: ByTypeTargetType,
+        expected: list[str],
+    ) -> None:
+        """A PEP 695 alias targets whatever it names, however many aliases deep."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"tags": {"type": "array", "items": {"type": "string"}}},
+                "required": ["tags"],
+            }
+        )
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByType(target), After(reverse_items)),
+            ],
+        )
+
+        assert model(tags=["a", "b"]).model_dump() == {"tags": expected}
 
 
 class TestByPathPointers:
