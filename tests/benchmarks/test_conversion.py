@@ -116,7 +116,7 @@ def _annotation_is_int(context: MatchContext, /) -> bool:
 # non-empty rule list also switches the model cache to a pointer-scoped key.
 _RULES: Final[list[Rule]] = [
     Rule(ByType(str), After(_strip_upper)),
-    Rule(ByPath("#/properties/name"), After(_strip_upper)),
+    Rule(ByPath("/properties/name"), After(_strip_upper)),
     Rule(ByFunc(_annotation_is_int), After(abs)),
 ]
 
