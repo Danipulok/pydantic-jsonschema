@@ -56,7 +56,7 @@ from ._discriminator import discriminator_property
 from ._field_kwargs import FieldKindType, build_field_kwargs, get_field_default
 from ._metadata import annotate, array_metadata, object_dict_metadata
 from ._object_keywords import build_dependent_required, build_property_count_bounds
-from ._refs import DEFS_KEY, escape_pointer_token, get_inline_defs
+from ._refs import DEFS_KEY, ResolvedDef, escape_pointer_token, get_inline_defs
 from ._utils import make_union, unwrap
 
 __all__ = [
@@ -120,6 +120,7 @@ class SchemaConverter:
         self._rules: list[Rule] = rules or []
 
         self._defs_cache: dict[Ref, Schema] = {}
+        self._def_names: dict[Ref, str] = {}  # Ref -> `$defs` name declaring its schema
         self._models_cache: dict[SchemaHash, type[BaseModel]] = {}
         self._resolution_path: list[str] = []  # Track path for error reporting
         self._pointer_tokens: list[str] = []  # Raw JSON Pointer tokens for the same nodes
@@ -137,6 +138,66 @@ class SchemaConverter:
         :returns: hash string (using JSON representation).
         """
         return schema.model_dump_json(exclude_unset=True)
+
+    def _model_cache_key(
+        self,
+        schema: Schema,
+        /,
+    ) -> SchemaHash:
+        """Build the model cache key for a schema at the node currently being converted.
+
+        Without rules a schema converts the same way wherever it is declared, so one entry per
+        shape is correct and shares the model across every occurrence. With rules it no longer is:
+        `ByPath` (and a `ByFunc` reading `context.path`) makes the same shape convert differently
+        per declaration site, so the pointer joins the key.
+
+        Reproduce with a shape-only key — two structurally equal inline objects, one rule aimed at
+        the second one's property:
+
+            schema = Schema.model_validate({
+                "type": "object",
+                "properties": {
+                    "first": {"type": "object", "properties": {"code": {"type": "string"}}},
+                    "second": {"type": "object", "properties": {"code": {"type": "string"}}},
+                },
+            })
+            model = to_model(schema, rules=[
+                Rule(ByPath("#/properties/second/properties/code"), After(str.strip)),
+            ])
+            model(first={"code": " a "}, second={"code": " b "}).model_dump()
+            # -> {'first': {'code': ' a '}, 'second': {'code': ' b '}}  (rule never ran: `second`
+            #    reused the model cached while converting `first`)
+
+        :param schema: Schema about to be converted.
+        :returns: Cache key — the schema hash, prefixed with the node's pointer when rules run.
+        """
+        schema_hash: SchemaHash = self._hash_schema(schema)
+        if not self._rules:
+            return schema_hash
+
+        return f"{self._current_pointer()}\n{schema_hash}"
+
+    @contextmanager
+    def _pinned_pointer(
+        self,
+        tokens: tuple[str, ...],
+        /,
+    ) -> Generator[None]:
+        """Replace the pointer stack for the duration of the block.
+
+        `_track_path` appends to the current node's pointer; this one substitutes it wholesale, so
+        a subtree converts under a pointer of its own regardless of where the converter is
+        standing. Used for `$defs`: a definition is addressed where it is declared, so every `$ref`
+        to it must convert (and cache) under `/$defs/<name>`, not under the referring node.
+
+        :param tokens: Raw JSON Pointer tokens the block converts under.
+        """
+        saved: list[str] = self._pointer_tokens
+        self._pointer_tokens = list(tokens)
+        try:
+            yield
+        finally:
+            self._pointer_tokens = saved
 
     @contextmanager
     def _track_path(
@@ -265,13 +326,13 @@ class SchemaConverter:
     ) -> type[BaseModel]:
         """Build Pydantic model from schema (common logic for root and nested).
 
-        Models are cached by schema hash, so each schema is built at most once.
+        Models are cached per `_model_cache_key`, so each schema is built at most once per key.
 
         :param schema: Schema to convert.
         :param model_name: Name for the generated model.
         :returns: Pydantic model class.
         """
-        cache_key = self._hash_schema(schema)
+        cache_key = self._model_cache_key(schema)
         if cache_key in self._models_cache:
             return self._models_cache[cache_key]
 
@@ -561,20 +622,21 @@ class SchemaConverter:
         # Convert each def with its ref marked in-progress, so a body that references the def
         # currently being built (a recursive / mutual `$ref`) defers to a `ForwardRef` instead
         # of recursing forever. `_rebuild_def_models` binds those refs once every model exists.
-        for ref, schema_def in defs.items():
-            self._defs_cache[ref] = schema_def
+        for ref, resolved in defs.items():
+            self._defs_cache[ref] = resolved.schema
+            self._def_names[ref] = resolved.name
             self._building.add(ref)
-            def_name: str = ref.removeprefix(f"#/{DEFS_KEY}/")
             try:
                 # A def is converted here, at the top of the document, so its nodes must be
                 # tracked under `$defs/<name>` — otherwise they claim the root's pointers and a
                 # `ByPath` rule aimed at a root property also fires inside every same-named def
-                # property.
+                # property. An alias tracks under the name that declares the body, so a rule on
+                # the target covers the alias too.
                 with self._track_path(
-                    f"{DEFS_KEY}.{def_name}",
-                    pointer=(DEFS_KEY, def_name),
+                    f"{DEFS_KEY}.{resolved.name}",
+                    pointer=(DEFS_KEY, resolved.name),
                 ):
-                    self._convert_nested_schema(schema_def)
+                    self._convert_nested_schema(resolved.schema)
             finally:
                 self._building.discard(ref)
 
@@ -582,7 +644,7 @@ class SchemaConverter:
 
     def _rebuild_def_models(
         self,
-        defs: dict[Ref, Schema],
+        defs: dict[Ref, ResolvedDef],
         /,
     ) -> None:
         """Re-resolve `ForwardRef` annotations in def models.
@@ -627,9 +689,12 @@ class SchemaConverter:
                 path=self._resolution_path.copy(),
             )
 
-        # `_build_model` handles model caching by schema hash.
+        # `_build_model` handles model caching. A definition converts under its own
+        # `$defs/<name>` pointer whichever `$ref` asks for it, so a path-scoped cache still keeps
+        # one model per definition and every `$ref` resolves to that same class.
         schema = self._defs_cache[ref]
-        return self._convert_nested_schema(schema)
+        with self._pinned_pointer((DEFS_KEY, self._def_names[ref])):
+            return self._convert_nested_schema(schema)
 
     def _get_base_classes(
         self,

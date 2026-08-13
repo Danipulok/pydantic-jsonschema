@@ -628,7 +628,10 @@ class TestConverterCaching:
                 """Simulate scenario where ref exists in defs_cache but model not cached."""
                 test_schema = Schema(type="object", properties={"value": Schema(type="string")})
                 ref = "#/$defs/TestType"
+                # A def is registered with the name that declares its schema — that name is what
+                # its nodes are addressed by, so both halves are filled together.
                 self._defs_cache[ref] = test_schema
+                self._def_names[ref] = "TestType"
                 return self._get_model(ref)
 
         converter = TestableConverter()
