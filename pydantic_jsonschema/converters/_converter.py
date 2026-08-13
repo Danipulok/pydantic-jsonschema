@@ -162,7 +162,7 @@ class SchemaConverter:
                 },
             })
             model = to_model(schema, rules=[
-                Rule(ByPath("#/properties/second/properties/code"), After(str.strip)),
+                Rule(ByPath("/properties/second/properties/code"), After(str.strip)),
             ])
             model(first={"code": " a "}, second={"code": " b "}).model_dump()
             # -> {'first': {'code': ' a '}, 'second': {'code': ' b '}}  (rule never ran: `second`

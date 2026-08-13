@@ -83,19 +83,24 @@ neither equal to `str` nor a parameterization of it — so a bare `ByType(str)` 
 
 ### `ByPath`
 
-Matches a single node by its [JSON Pointer](https://www.rfc-editor.org/rfc/rfc6901). Accepts
-`#/properties/code`, `/properties/code`, or `properties/code` — all normalize identically.
+Matches a single node by its [JSON Pointer](https://www.rfc-editor.org/rfc/rfc6901). The pointer
+starts with `/` and carries no `#` prefix, which is exactly how `MatchContext.path` reports it — so
+a `ByPath` rule and a `ByFunc` predicate comparing `context.path` always agree on the same string.
+
+There is only this one accepted spelling. A `$ref` in the schema looks like `#/$defs/User`, and
+pasting that fragment form into `ByPath` raises `ValueError` naming the pointer to use instead,
+rather than silently producing a rule that matches nothing.
 
 Every node the converter walks has a pointer, not just top-level properties:
 
-| Node                            | Pointer                                  |
-|---------------------------------|------------------------------------------|
-| root value of a non-object root | `/`                                      |
-| property `code`                 | `#/properties/code`                      |
-| element of an array property    | `#/properties/tags/items`                |
-| value of a typed map            | `#/properties/meta/additionalProperties` |
-| second `anyOf` branch           | `#/properties/value/anyOf/1`             |
-| property inside a `$defs` entry | `#/$defs/User/properties/name`           |
+| Node                            | Pointer                                 |
+|---------------------------------|-----------------------------------------|
+| root value of a non-object root | `/`                                     |
+| property `code`                 | `/properties/code`                      |
+| element of an array property    | `/properties/tags/items`                |
+| value of a typed map            | `/properties/meta/additionalProperties` |
+| second `anyOf` branch           | `/properties/value/anyOf/1`             |
+| property inside a `$defs` entry | `/$defs/User/properties/name`           |
 
 `/` addresses the root only when the root is not an object. A scalar or array root becomes the
 value of a `RootModel`, and that value has an annotation to wrap. An object root becomes the model
@@ -137,10 +142,10 @@ print(repr(Product(code="  ab-1  ").code))
 #> '  ab-1  '
 ```
 
-A definition is addressed where it is *declared* (`#/$defs/User/...`), not through the `$ref`s that
+A definition is addressed where it is *declared* (`/$defs/User/...`), not through the `$ref`s that
 point at it, so one rule covers every use of that definition. Property names keep their literal
 characters and are escaped per RFC 6901 — `~` becomes `~0` and `/` becomes `~1`, so a property
-named `a/b` is `#/properties/a~1b`.
+named `a/b` is `/properties/a~1b`.
 
 ```python title="rules_by_path.py"
 from pydantic_jsonschema import Schema, to_model
@@ -162,7 +167,7 @@ schema = Schema.model_validate(
 Product = to_model(
     schema,
     rules=[
-        Rule(ByPath("#/properties/code"), After(strip_upper)),
+        Rule(ByPath("/properties/code"), After(strip_upper)),
     ],
 )
 

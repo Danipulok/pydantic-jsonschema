@@ -5,7 +5,7 @@ A matcher answers one question about a schema node the converter is about to tur
 annotation, JSON Pointer); the three concrete matchers cover the useful axes:
 
 - `ByType` — match on the resolved Python annotation (`list[str]`, `str`, `datetime`, ...);
-- `ByPath` — match on the node's JSON Pointer (`#/properties/created`);
+- `ByPath` — match on the node's JSON Pointer (`/properties/created`);
 - `ByFunc` — escape hatch: an arbitrary predicate over the `MatchContext`.
 
 All matchers are frozen dataclasses, so they compare, hash, and `repr` as plain data. `ByType`
@@ -45,19 +45,6 @@ class SchemaPredicate(Protocol):
     """A user predicate deciding whether a `ByFunc` matcher applies to a node."""
 
     def __call__(self, context: MatchContext, /) -> bool: ...
-
-
-def _normalize_pointer(pointer: str, /) -> str:
-    """Normalize a user-supplied pointer to the converter's canonical `/a/b` form.
-
-    Accepts a JSON Pointer (`#/properties/created`), a leading-slash form
-    (`/properties/created`), or a bare form (`properties/created`); all normalize identically.
-
-    :param pointer: User-supplied path pointer.
-    :returns: Canonical pointer starting with `/`.
-    """
-    stripped: str = pointer.removeprefix("#")
-    return stripped if stripped.startswith("/") else f"/{stripped}"
 
 
 class Matcher(ABC):
@@ -103,19 +90,46 @@ class ByType(Matcher):
 class ByPath(Matcher):
     """Match when the node's JSON Pointer equals `pointer`.
 
-    `pointer` accepts `#/properties/created`, `/properties/created`, or `properties/created` —
-    all normalize to the same canonical form before comparison. Node pointers are RFC 6901
-    proper: an index is its own level (`anyOf/0`), a definition is addressed where it is declared
-    (`#/$defs/User/...`), and `~` / `/` inside a name are escaped as `~0` / `~1`. See
+    `pointer` is a JSON Pointer in exactly the form `MatchContext.path` reports it: a leading `/`,
+    one token per level, no `#` prefix (`/properties/created`). Node pointers are RFC 6901 proper:
+    an index is its own level (`anyOf/0`), a definition is addressed where it is declared
+    (`/$defs/User/...`), and `~` / `/` inside a name are escaped as `~0` / `~1`. See
     `docs/rules.md` for the full list of addressable nodes.
+
+    :raises ValueError: If `pointer` does not start with `/`.
     """
 
     pointer: str
 
+    def __post_init__(self) -> None:
+        """Reject any spelling other than the one the converter itself produces.
+
+        The `#/a/b` fragment form is what a `$ref` looks like, so it is the natural thing to
+        paste. Normalizing it instead of rejecting it makes the pointer a user writes differ from
+        the one they can observe: the converter reports `/properties/code`, so a predicate
+        comparing against the pasted fragment silently never fires while the `ByPath` spelled the
+        same way does.
+
+            Rule(ByFunc(lambda context: context.path == "#/properties/code"), After(strip))
+            # -> never matches, unlike ByPath("#/properties/code") under normalization
+
+        One accepted spelling keeps the two consistent, and turns a mistyped pointer into an
+        error instead of a rule that quietly matches nothing.
+        """
+        if self.pointer.startswith("/"):
+            return
+
+        suggestion: str = f"/{self.pointer.removeprefix('#').lstrip('/')}"
+        msg = (
+            f"`ByPath` takes a JSON Pointer starting with `/`, got {self.pointer!r}. "
+            f"Did you mean {suggestion!r}? This is the form `MatchContext.path` reports."
+        )
+        raise ValueError(msg)
+
     @override
     def matches(self, context: MatchContext, /) -> bool:
-        """Return whether the node's canonical pointer equals the normalized `pointer`."""
-        return context.path == _normalize_pointer(self.pointer)
+        """Return whether the node's pointer equals `pointer`."""
+        return context.path == self.pointer
 
 
 @dataclass(frozen=True, slots=True)

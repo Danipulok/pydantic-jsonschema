@@ -116,7 +116,7 @@ class TestAfter:
         model = to_model(
             schema,
             rules=[
-                Rule(ByPath("#/properties/created"), After(strip_upper)),
+                Rule(ByPath("/properties/created"), After(strip_upper)),
             ],
         )
 
@@ -215,7 +215,7 @@ class TestMatchers:
         model = to_model(
             schema,
             rules=[
-                Rule(ByPath("#/properties/created"), After(strip_upper)),
+                Rule(ByPath("/properties/created"), After(strip_upper)),
             ],
         )
 
@@ -356,7 +356,7 @@ class TestByPathPointers:
             }
         )
         model = to_model(
-            schema, rules=[Rule(ByPath("#/properties/value/anyOf/0"), After(strip_upper))]
+            schema, rules=[Rule(ByPath("/properties/value/anyOf/0"), After(strip_upper))]
         )
 
         assert model(value=" ab ").model_dump() == snapshot({"value": "AB"})
@@ -379,7 +379,7 @@ class TestByPathPointers:
             }
         )
         model = to_model(
-            schema, rules=[Rule(ByPath("#/$defs/User/properties/name"), After(strip_upper))]
+            schema, rules=[Rule(ByPath("/$defs/User/properties/name"), After(strip_upper))]
         )
 
         instance = model(user={"name": " nested "}, name=" root ")
@@ -389,9 +389,9 @@ class TestByPathPointers:
     @pytest.mark.parametrize(
         ("property_name", "pointer"),
         [
-            ("a.b", "#/properties/a.b"),
-            ("a/b", "#/properties/a~1b"),
-            ("a~b", "#/properties/a~0b"),
+            ("a.b", "/properties/a.b"),
+            ("a/b", "/properties/a~1b"),
+            ("a~b", "/properties/a~0b"),
         ],
         ids=["dotted", "slash-escaped", "tilde-escaped"],
     )
@@ -419,6 +419,69 @@ class TestByPathPointers:
         assert instance.model_dump() == {property_name: "AB"}
 
 
+class TestByPathPointerForm:
+    """`ByPath` takes one pointer spelling: the one `MatchContext.path` reports."""
+
+    @pytest.mark.parametrize(
+        ("pointer", "suggestion"),
+        [
+            ("#/properties/code", "/properties/code"),
+            ("#/$defs/User/properties/name", "/$defs/User/properties/name"),
+            ("properties/code", "/properties/code"),
+            ("", "/"),
+        ],
+        ids=["fragment", "ref-fragment", "bare", "empty"],
+    )
+    def test_rejects_other_spellings(self, pointer: str, suggestion: str) -> None:
+        """A pointer that does not start with `/` raises, naming the one to use instead."""
+        with pytest.raises(ValueError, match="takes a JSON Pointer starting with") as error_info:
+            ByPath(pointer)
+
+        assert repr(suggestion) in str(error_info.value)
+
+    def test_reported_paths_are_accepted_verbatim(self) -> None:
+        """Every path a matcher observes is a valid `ByPath` pointer, with no rewriting."""
+        seen: list[str] = []
+
+        def collect(context: MatchContext) -> bool:
+            seen.append(context.path)
+            return False
+
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "$defs": {
+                    "User": {
+                        "type": "object",
+                        "properties": {"name": {"type": "string"}},
+                        "required": ["name"],
+                    }
+                },
+                "properties": {
+                    "user": {"$ref": "#/$defs/User"},
+                    "tags": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["user", "tags"],
+            }
+        )
+        to_model(
+            schema,
+            rules=[
+                Rule(ByFunc(collect), After(strip_upper)),
+            ],
+        )
+
+        assert seen == snapshot(
+            [
+                "/$defs/User/properties/name",
+                "/properties/user",
+                "/properties/tags/items",
+                "/properties/tags",
+            ]
+        )
+        assert [ByPath(path).pointer for path in seen] == seen
+
+
 class TestModelCache:
     """Generated models are cached, and rules make that cache path-aware."""
 
@@ -426,11 +489,11 @@ class TestModelCache:
         ("pointer", "expected"),
         [
             (
-                "#/properties/first/properties/code",
+                "/properties/first/properties/code",
                 {"first": {"code": "A"}, "second": {"code": " b "}},
             ),
             (
-                "#/properties/second/properties/code",
+                "/properties/second/properties/code",
                 {"first": {"code": " a "}, "second": {"code": "B"}},
             ),
         ],
@@ -515,7 +578,7 @@ class TestModelCache:
             }
         )
         model = to_model(
-            schema, rules=[Rule(ByPath("#/$defs/User/properties/name"), After(strip_upper))]
+            schema, rules=[Rule(ByPath("/$defs/User/properties/name"), After(strip_upper))]
         )
 
         author = model.model_fields["author"].annotation
@@ -547,7 +610,7 @@ class TestModelCache:
             }
         )
         model = to_model(
-            schema, rules=[Rule(ByPath("#/$defs/User/properties/name"), After(strip_upper))]
+            schema, rules=[Rule(ByPath("/$defs/User/properties/name"), After(strip_upper))]
         )
 
         user = model.model_fields["user"].annotation
@@ -607,7 +670,7 @@ class TestChildNodes:
                     "properties": {"tags": {"type": "array", "items": {"type": "string"}}},
                     "required": ["tags"],
                 },
-                "#/properties/tags/items",
+                "/properties/tags/items",
                 {"tags": [" a "]},
                 {"tags": ["A"]},
             ),
@@ -619,7 +682,7 @@ class TestChildNodes:
                     },
                     "required": ["meta"],
                 },
-                "#/properties/meta/additionalProperties",
+                "/properties/meta/additionalProperties",
                 {"meta": {"k": " v "}},
                 {"meta": {"k": "V"}},
             ),
@@ -673,7 +736,7 @@ class TestChildNodes:
             schema,
             formats=formats,
             rules=[
-                Rule(ByPath("#/properties/tags/items"), After(exclaim)),
+                Rule(ByPath("/properties/tags/items"), After(exclaim)),
             ],
         )
         assert by_path(tags=["ab"]).model_dump() == snapshot({"tags": ["AB!"]})
@@ -743,9 +806,9 @@ class TestRuleObjects:
 
     def test_repr_is_data(self) -> None:
         """A rule's `repr` shows its matcher and action as data (function address elided)."""
-        rule = Rule(ByPath("#/properties/created"), After(strip_upper))
+        rule = Rule(ByPath("/properties/created"), After(strip_upper))
         # NOTE: A function's `repr` carries its non-deterministic memory address, so match only
         # the stable prefix (`repr(rule) == "..."` would flap across runs).
         assert repr(rule).startswith(
-            "Rule(matcher=ByPath(pointer='#/properties/created'), action=After(func=<function "
+            "Rule(matcher=ByPath(pointer='/properties/created'), action=After(func=<function "
         )

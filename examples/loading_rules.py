@@ -37,7 +37,7 @@ Order = to_model(
     order_schema,
     rules=[
         Rule(ByType(list[str]), Before(csv_to_list)),
-        Rule(ByPath("#/properties/sku"), After(normalize_sku)),
+        Rule(ByPath("/properties/sku"), After(normalize_sku)),
         Rule(ByType(list[str]), Dump(",".join)),
     ],
 )
