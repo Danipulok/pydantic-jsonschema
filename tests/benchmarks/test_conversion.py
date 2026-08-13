@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Final
 import pytest
 
 from pydantic_jsonschema import Schema, to_model
+from pydantic_jsonschema.rules import After, ByFunc, ByPath, ByType, MatchContext, Rule
 
 if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture
@@ -100,6 +101,26 @@ _NESTED_SCHEMA: Final[dict[str, Any]] = {
 }
 
 
+def _strip_upper(value: str) -> str:
+    """Normalize a string — the payload of the benchmarked rules, kept trivial on purpose."""
+    return value.strip().upper()
+
+
+def _annotation_is_int(context: MatchContext, /) -> bool:
+    """Predicate for the `ByFunc` benchmark rule."""
+    return context.annotation is int
+
+
+# One rule per matcher kind. Rules are matched against every node the converter walks, so the cost
+# scales with the rule count rather than with the number of nodes they actually hit — and a
+# non-empty rule list also switches the model cache to a pointer-scoped key.
+_RULES: Final[list[Rule]] = [
+    Rule(ByType(str), After(_strip_upper)),
+    Rule(ByPath("#/properties/name"), After(_strip_upper)),
+    Rule(ByFunc(_annotation_is_int), After(abs)),
+]
+
+
 class TestConversionBenchmarks:
     """Time the converter on representative wide / nested / end-to-end schemas."""
 
@@ -119,3 +140,15 @@ class TestConversionBenchmarks:
     def test_validate_and_convert(self, benchmark: "BenchmarkFixture") -> None:
         """Time the full public entry path: `Schema.model_validate` followed by `to_model`."""
         benchmark(lambda: to_model(Schema.model_validate(_NESTED_SCHEMA)))
+
+    @pytest.mark.benchmark
+    def test_to_model_wide_with_rules(self, benchmark: "BenchmarkFixture") -> None:
+        """Time `to_model` with one rule per matcher kind — the per-node matching cost."""
+        schema = Schema.model_validate(_WIDE_SCHEMA)
+        benchmark(lambda: to_model(schema, rules=_RULES))
+
+    @pytest.mark.benchmark
+    def test_to_model_nested_with_rules(self, benchmark: "BenchmarkFixture") -> None:
+        """Time `to_model` with rules on a `$ref`-heavy schema (pointer-scoped model cache)."""
+        schema = Schema.model_validate(_NESTED_SCHEMA)
+        benchmark(lambda: to_model(schema, rules=_RULES))
