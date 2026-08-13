@@ -70,7 +70,12 @@ class TestBefore:
     def test_csv_string_to_list(self) -> None:
         """A comma-separated string is split into a list before list parsing."""
         schema = Schema.model_validate(_TAGS_SCHEMA)
-        model = to_model(schema, rules=[Rule(ByType(list[str]), Before(csv_to_list))])
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByType(list[str]), Before(csv_to_list)),
+            ],
+        )
 
         instance = model(tags="a,b,c", created="x")
         assert instance.model_dump() == snapshot({"tags": ["a", "b", "c"], "created": "x"})
@@ -78,7 +83,12 @@ class TestBefore:
     def test_list_input_passes_through(self) -> None:
         """A list input is left unchanged (the coercion is idempotent)."""
         schema = Schema.model_validate(_TAGS_SCHEMA)
-        model = to_model(schema, rules=[Rule(ByType(list[str]), Before(csv_to_list))])
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByType(list[str]), Before(csv_to_list)),
+            ],
+        )
 
         instance = model(tags=["a", "b"], created="x")
         assert instance.model_dump() == snapshot({"tags": ["a", "b"], "created": "x"})
@@ -90,7 +100,12 @@ class TestAfter:
     def test_normalizes_value(self) -> None:
         """The parsed string is normalized after core parsing."""
         schema = Schema.model_validate(_TAGS_SCHEMA)
-        model = to_model(schema, rules=[Rule(ByPath("#/properties/created"), After(strip_upper))])
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByPath("#/properties/created"), After(strip_upper)),
+            ],
+        )
 
         instance = model(tags=[], created="  hi  ")
         assert instance.model_dump() == snapshot({"tags": [], "created": "HI"})
@@ -98,7 +113,12 @@ class TestAfter:
     def test_rejects_invalid_value(self) -> None:
         """An `After` validator that raises surfaces as a `ValidationError`."""
         schema = Schema.model_validate(_TAGS_SCHEMA)
-        model = to_model(schema, rules=[Rule(ByType(list[str]), After(reject_empty))])
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByType(list[str]), After(reject_empty)),
+            ],
+        )
 
         with pytest.raises(ValidationError) as exc_info:
             model(tags=[], created="x")
@@ -121,7 +141,12 @@ class TestOverride:
     def test_replaces_parsing(self) -> None:
         """`Override` bypasses list parsing and produces the value directly."""
         schema = Schema.model_validate(_TAGS_SCHEMA)
-        model = to_model(schema, rules=[Rule(ByType(list[str]), Override(csv_to_list))])
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByType(list[str]), Override(csv_to_list)),
+            ],
+        )
 
         instance = model(tags="a,b", created="x")
         assert instance.model_dump() == snapshot({"tags": ["a", "b"], "created": "x"})
@@ -133,7 +158,12 @@ class TestDump:
     def test_serializes_value(self) -> None:
         """The list is joined into a string on `model_dump`."""
         schema = Schema.model_validate(_TAGS_SCHEMA)
-        model = to_model(schema, rules=[Rule(ByType(list[str]), Dump(",".join))])
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByType(list[str]), Dump(",".join)),
+            ],
+        )
 
         instance = model(tags=["x", "y"], created="z")
         assert instance.model_dump() == snapshot({"tags": "x,y", "created": "z"})
@@ -145,7 +175,12 @@ class TestMatchers:
     def test_by_type_no_match_leaves_field_untouched(self) -> None:
         """A `ByType` mismatch does not wrap the field, so raw input fails validation."""
         schema = Schema.model_validate(_TAGS_SCHEMA)
-        model = to_model(schema, rules=[Rule(ByType(list[int]), Before(csv_to_list))])
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByType(list[int]), Before(csv_to_list)),
+            ],
+        )
 
         with pytest.raises(ValidationError) as exc_info:
             model(tags="a,b,c", created="x")
@@ -164,7 +199,12 @@ class TestMatchers:
     def test_by_path_matches_pointer(self) -> None:
         """`ByPath` targets a single node by its JSON Pointer."""
         schema = Schema.model_validate(_TAGS_SCHEMA)
-        model = to_model(schema, rules=[Rule(ByPath("#/properties/created"), After(strip_upper))])
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByPath("#/properties/created"), After(strip_upper)),
+            ],
+        )
 
         instance = model(tags=[], created="hi")
         assert instance.model_dump() == snapshot({"tags": [], "created": "HI"})
@@ -172,7 +212,12 @@ class TestMatchers:
     def test_by_func_predicate(self) -> None:
         """`ByFunc` matches every node whose predicate returns `True`."""
         schema = Schema.model_validate(_TAGS_SCHEMA)
-        model = to_model(schema, rules=[Rule(ByFunc(annotation_is_str), After(strip_upper))])
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByFunc(annotation_is_str), After(strip_upper)),
+            ],
+        )
 
         instance = model(tags=[], created="  hi ")
         assert instance.model_dump() == snapshot({"tags": [], "created": "HI"})
@@ -189,7 +234,12 @@ class TestByPathPointers:
     def test_root_value_is_the_root_pointer(self) -> None:
         """A root scalar has no tokens above it, so its pointer is `/`."""
         schema = Schema.model_validate({"type": "string"})
-        model = to_model(schema, rules=[Rule(ByPath("/"), After(strip_upper))])
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByPath("/"), After(strip_upper)),
+            ],
+        )
 
         assert model(" ab ").model_dump() == snapshot("AB")  # type: ignore[call-arg]
 
@@ -207,7 +257,12 @@ class TestByPathPointers:
                 "required": ["name"],
             }
         )
-        model = to_model(schema, rules=[Rule(ByPath("/"), After(strip_upper))])
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByPath("/"), After(strip_upper)),
+            ],
+        )
 
         assert model(name=" ab ").model_dump() == snapshot({"name": " ab "})
 
@@ -273,7 +328,12 @@ class TestByPathPointers:
                 "required": [property_name],
             }
         )
-        model = to_model(schema, rules=[Rule(ByPath(pointer), After(strip_upper))])
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByPath(pointer), After(strip_upper)),
+            ],
+        )
 
         instance = model(**{property_name: " ab "})
         assert instance.model_dump() == {property_name: "AB"}
@@ -320,7 +380,12 @@ class TestModelCache:
                 "required": ["first", "second"],
             }
         )
-        model = to_model(schema, rules=[Rule(ByPath(pointer), After(strip_upper))])
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByPath(pointer), After(strip_upper)),
+            ],
+        )
 
         instance = model(first={"code": " a "}, second={"code": " b "})
         assert instance.model_dump() == expected
@@ -424,7 +489,12 @@ class TestChildNodes:
                 "required": ["tags"],
             }
         )
-        model = to_model(schema, rules=[Rule(ByType(str), After(strip_upper))])
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByType(str), After(strip_upper)),
+            ],
+        )
 
         assert model(tags=[" a ", "b"]).model_dump() == snapshot({"tags": ["A", "B"]})
 
@@ -439,7 +509,12 @@ class TestChildNodes:
                 "required": ["meta"],
             }
         )
-        model = to_model(schema, rules=[Rule(ByType(str), After(strip_upper))])
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByType(str), After(strip_upper)),
+            ],
+        )
 
         assert model(meta={"k": " v "}).model_dump() == snapshot({"meta": {"k": "V"}})
 
@@ -480,7 +555,12 @@ class TestChildNodes:
     ) -> None:
         """A child node carries its own pointer, so `ByPath` can target it directly."""
         schema = Schema.model_validate(raw_schema)
-        model = to_model(schema, rules=[Rule(ByPath(pointer), After(strip_upper))])
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByPath(pointer), After(strip_upper)),
+            ],
+        )
 
         assert model(**payload).model_dump() == expected
 
@@ -499,14 +579,22 @@ class TestChildNodes:
 
         # `ByType(str)` sees the substituted `Annotated[...]`, so it no longer matches — only the
         # format runs. Same rule as for a formatted field.
-        by_type = to_model(schema, formats=formats, rules=[Rule(ByType(str), After(exclaim))])
+        by_type = to_model(
+            schema,
+            formats=formats,
+            rules=[
+                Rule(ByType(str), After(exclaim)),
+            ],
+        )
         assert by_type(tags=["ab"]).model_dump() == snapshot({"tags": ["AB"]})
 
         # `ByPath` is annotation-independent, so it still matches and layers on top of the format.
         by_path = to_model(
             schema,
             formats=formats,
-            rules=[Rule(ByPath("#/properties/tags/items"), After(exclaim))],
+            rules=[
+                Rule(ByPath("#/properties/tags/items"), After(exclaim)),
+            ],
         )
         assert by_path(tags=["ab"]).model_dump() == snapshot({"tags": ["AB!"]})
 
@@ -519,7 +607,12 @@ class TestChildNodes:
                 "required": ["tags"],
             }
         )
-        model = to_model(schema, rules=[Rule(ByType(str), Dump(str.upper))])
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByType(str), Dump(str.upper)),
+            ],
+        )
 
         assert model(tags=["a", "b"]).model_dump() == snapshot({"tags": ["A", "B"]})
 
