@@ -279,6 +279,139 @@ class TestByPathPointers:
         assert instance.model_dump() == {property_name: "AB"}
 
 
+class TestModelCache:
+    """Generated models are cached, and rules make that cache path-aware."""
+
+    @pytest.mark.parametrize(
+        ("pointer", "expected"),
+        [
+            (
+                "#/properties/first/properties/code",
+                {"first": {"code": "A"}, "second": {"code": " b "}},
+            ),
+            (
+                "#/properties/second/properties/code",
+                {"first": {"code": " a "}, "second": {"code": "B"}},
+            ),
+        ],
+        ids=["first", "second"],
+    )
+    def test_equal_inline_objects_convert_per_path(
+        self,
+        pointer: str,
+        expected: dict[str, Any],
+    ) -> None:
+        """Two structurally equal inline objects each get their own class, so `ByPath` hits one."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {
+                    "first": {
+                        "type": "object",
+                        "properties": {"code": {"type": "string"}},
+                        "required": ["code"],
+                    },
+                    "second": {
+                        "type": "object",
+                        "properties": {"code": {"type": "string"}},
+                        "required": ["code"],
+                    },
+                },
+                "required": ["first", "second"],
+            }
+        )
+        model = to_model(schema, rules=[Rule(ByPath(pointer), After(strip_upper))])
+
+        instance = model(first={"code": " a "}, second={"code": " b "})
+        assert instance.model_dump() == expected
+
+    def test_equal_inline_objects_share_a_class_without_rules(self) -> None:
+        """Without rules the pointer is irrelevant, so the cache still collapses equal schemas."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {
+                    "first": {
+                        "type": "object",
+                        "properties": {"code": {"type": "string"}},
+                        "required": ["code"],
+                    },
+                    "second": {
+                        "type": "object",
+                        "properties": {"code": {"type": "string"}},
+                        "required": ["code"],
+                    },
+                },
+                "required": ["first", "second"],
+            }
+        )
+        model = to_model(schema)
+
+        first = model.model_fields["first"].annotation
+        assert first is model.model_fields["second"].annotation
+
+    def test_shared_definition_stays_one_class(self) -> None:
+        """A def converts once under its own pointer, however many `$ref`s reach it."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "$defs": {
+                    "User": {
+                        "type": "object",
+                        "properties": {"name": {"type": "string"}},
+                        "required": ["name"],
+                    }
+                },
+                "properties": {
+                    "author": {"$ref": "#/$defs/User"},
+                    "reviewer": {"$ref": "#/$defs/User"},
+                },
+                "required": ["author", "reviewer"],
+            }
+        )
+        model = to_model(
+            schema, rules=[Rule(ByPath("#/$defs/User/properties/name"), After(strip_upper))]
+        )
+
+        author = model.model_fields["author"].annotation
+        assert author is model.model_fields["reviewer"].annotation
+
+        instance = model(author={"name": " a "}, reviewer={"name": " b "})
+        assert instance.model_dump() == snapshot(
+            {"author": {"name": "A"}, "reviewer": {"name": "B"}}
+        )
+
+    def test_definition_alias_reuses_the_target_class(self) -> None:
+        """An alias is another name for the target, so a rule on the target covers it too."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "$defs": {
+                    "User": {
+                        "type": "object",
+                        "properties": {"name": {"type": "string"}},
+                        "required": ["name"],
+                    },
+                    "Author": {"$ref": "#/$defs/User"},
+                },
+                "properties": {
+                    "user": {"$ref": "#/$defs/User"},
+                    "author": {"$ref": "#/$defs/Author"},
+                },
+                "required": ["user", "author"],
+            }
+        )
+        model = to_model(
+            schema, rules=[Rule(ByPath("#/$defs/User/properties/name"), After(strip_upper))]
+        )
+
+        user = model.model_fields["user"].annotation
+        assert user is model.model_fields["author"].annotation
+
+        instance = model(user={"name": " a "}, author={"name": " b "})
+        assert instance.model_dump() == snapshot({"user": {"name": "A"}, "author": {"name": "B"}})
+
+
 class TestChildNodes:
     """Rules reach inline child schemas that never become a field of their own."""
 
