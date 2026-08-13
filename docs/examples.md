@@ -12,6 +12,7 @@ Real-world examples showing how to use Pydantic JSON Schema in practice.
 |---------------------------------|-----------------------------------------------------------|-----------------------------------------------|
 | `examples/nested_schemas.py`    | Nested objects, arrays, `$defs`, and `$ref` reuse         | `uv run python examples/nested_schemas.py`    |
 | `examples/custom_formats.py`    | Custom `formats`, normalization, and validation           | `uv run python examples/custom_formats.py`    |
+| `examples/loading_rules.py`     | `rules` for per-node input coercion and output dumping    | `uv run python examples/loading_rules.py`     |
 
 ## Complex Nested Schemas
 
@@ -70,8 +71,39 @@ WDG-1234-PRO
 --8<-- "examples/custom_formats.py"
 ```
 
+## Loading Rules
+
+Use this example when the input arrives in a shape the schema does not describe — a packed cell,
+a value that needs normalizing — or when the output has to go back in that shape.
+
+It demonstrates:
+
+- Coercing raw input with `Before` before the schema type is parsed.
+- Normalizing a single node picked by its JSON Pointer with `ByPath`.
+- Matching every node of one Python type with `ByType`.
+- Pairing a load rule with a `Dump` rule for a round-trip.
+
+Run it with:
+
+```bash
+uv run python examples/loading_rules.py
+```
+
+Expected output:
+
+```text
+WDG-1234-PRO
+['sale', 'clearance']
+{'sku': 'WDG-1234-PRO', 'tags': 'sale,clearance'}
+```
+
+```python
+--8<-- "examples/loading_rules.py"
+```
+
 ## Next Steps
 
 - [Converters](converters.md) - Learn about creating models
 - [Formats](formats.md) - Add custom validation
+- [Rules](rules.md) - Customize loading and dumping per node
 - [Contributing](contributing.md) - Help improve the library
