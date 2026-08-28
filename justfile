@@ -75,9 +75,9 @@ install-docs: _check-uv
 install-audit: _check-uv
     uv sync --no-default-groups --group audit
 
-# Install the release group. Frozen in CI.
+# Install the release group only (`git-cliff` + `twine`). Frozen in CI.
 install-release: _check-uv
-    uv sync --group release
+    uv sync --no-default-groups --group release
 
 # Update local packages and `uv.lock`
 sync: _check-uv
@@ -291,7 +291,7 @@ release-notes output:
 build:
     rm -rf dist/
     uv build
-    uvx twine check dist/*
+    uv run twine check dist/*
 
 # Smoke-test a just-published release: install it FROM PyPI into a throwaway env and verify it
 # imports and converts a real schema. `--isolated --no-project` builds the env from the index only

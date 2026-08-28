@@ -32,6 +32,11 @@ jobs:
       - name: Install `just`
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
 
+      # `just build` runs `twine check` from the locked `release` group, and `UV_NO_SYNC` is on
+      #  in CI, so nothing installs it implicitly.
+      - name: Install dependencies
+        run: just install-release
+
       - name: Build sdist and wheel
         run: just build
 

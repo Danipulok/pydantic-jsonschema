@@ -72,8 +72,13 @@ benchmark = [
 audit = [
     "zizmor>=1.29.0",
 ]
+# `git-cliff` writes the changelog, `twine` checks the built distributions. Locked rather than
+#  run through `uvx` for the same reason as the `audit` group: a floating `uvx twine` gets none of
+#  the supply-chain guards the rest of the tree has, and it runs at the one moment where integrity
+#  matters most — right before the artifact is published.
 release = [
     "git-cliff>=2.0.0",
+    "twine>=6.1.0",
 ]
 lint = [
     "codespell>=2.4.0",
