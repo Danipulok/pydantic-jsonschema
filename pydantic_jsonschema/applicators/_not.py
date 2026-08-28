@@ -76,7 +76,7 @@ class Not(AnnotationApplicator, ObjectApplicator):
         :param value: The raw input value.
         :returns: `True` when the value validates against `not` (and so must be rejected).
         """
-        return self._validates(self._get_adapter(), value)
+        return self._validates(self._get_adapter(), value=value)
 
     @override
     def validate(

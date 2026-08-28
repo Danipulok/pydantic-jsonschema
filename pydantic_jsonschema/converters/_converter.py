@@ -165,7 +165,7 @@ class SchemaConverter:
         self._build_defs_cache(schema)
 
         model = self._build_model(schema, model_name=model_name)
-        model = self._wrap_root_value_assertions(model, schema)
+        model = self._wrap_root_value_assertions(model, schema=schema)
         self._bind_forward_refs()
 
         return model
@@ -173,8 +173,9 @@ class SchemaConverter:
     def _wrap_root_value_assertions(
         self,
         model: type[BaseModel],
-        schema: Schema,
         /,
+        *,
+        schema: Schema,
     ) -> type[BaseModel]:
         """Attach `not` / `if` / `then` / `else` to a root object model.
 
@@ -195,7 +196,7 @@ class SchemaConverter:
             applicators.append(self._build_not(schema))
         if self._has_conditional(schema):
             applicators.append(self._build_conditional(schema))
-        return self._wrap_object_applicators(model, applicators)
+        return self._wrap_object_applicators(model, applicators=applicators)
 
     def _register[ApplicatorT: Applicator](
         self,
@@ -359,7 +360,10 @@ class SchemaConverter:
             __validators__=validators,
             **fields,  # pyright: ignore[reportArgumentType]
         )
-        return self._wrap_object_applicators(cast("type[BaseModel]", created_model), applicators)
+        return self._wrap_object_applicators(
+            cast("type[BaseModel]", created_model),
+            applicators=applicators,
+        )
 
     def _build_object_validators(
         self,
@@ -402,8 +406,9 @@ class SchemaConverter:
     def _wrap_object_applicators(
         self,
         model: type[BaseModel],
-        applicators: list[ObjectApplicator],
         /,
+        *,
+        applicators: list[ObjectApplicator],
     ) -> type[BaseModel]:
         """Subclass an object model so its applicators validate and round-trip into JSON Schema.
 
@@ -694,8 +699,9 @@ class SchemaConverter:
     def _apply_format(
         self,
         annotation: AnnotationType,
-        schema: Schema,
         /,
+        *,
+        schema: Schema,
     ) -> AnnotationType:
         """Apply the registered format type for the schema's `format`, if any.
 
@@ -771,7 +777,7 @@ class SchemaConverter:
         else:
             valid_annotation = annotation
 
-        valid_annotation = self._apply_format(valid_annotation, schema)
+        valid_annotation = self._apply_format(valid_annotation, schema=schema)
 
         default = get_field_default(schema, field_kind=field_kind)
 
@@ -846,8 +852,9 @@ class SchemaConverter:
     def _apply_sibling_type(
         self,
         annotation: type,
-        schema: Schema,
         /,
+        *,
+        schema: Schema,
     ) -> type:
         """Enforce a `type` declared alongside `anyOf` / `oneOf` / `allOf`.
 
@@ -916,7 +923,7 @@ class SchemaConverter:
         if isinstance(schema, Reference):
             return annotation
 
-        annotation = self._apply_format(annotation, schema)
+        annotation = self._apply_format(annotation, schema=schema)
         kwargs = build_field_kwargs(schema, include_metadata=not union_branch)
 
         if kwargs and not (union_branch and annotation is Any):
@@ -1050,7 +1057,7 @@ class SchemaConverter:
         else:
             return None
 
-        return self._apply_sibling_type(annotation, schema)
+        return self._apply_sibling_type(annotation, schema=schema)
 
     def _one_of_annotation(
         self,
@@ -1142,7 +1149,7 @@ class SchemaConverter:
         if contains is not None:
             metadata.append(contains)
 
-        return annotate(list_annotation, metadata)
+        return annotate(list_annotation, metadata=metadata)
 
     def _build_prefix_items(
         self,
@@ -1219,9 +1226,9 @@ class SchemaConverter:
             with self._track_path("additionalProperties"):
                 value_annotation = self._schema_to_annotation(schema.additional_properties)
                 dict_annotation = dict[str, value_annotation]  # type: ignore[valid-type]
-                return annotate(dict_annotation, object_dict_metadata(schema))
+                return annotate(dict_annotation, metadata=object_dict_metadata(schema))
 
-        return annotate(dict[str, Any], object_dict_metadata(schema))
+        return annotate(dict[str, Any], metadata=object_dict_metadata(schema))
 
 
 def to_model(

@@ -49,7 +49,7 @@ def _ensure_unique_items(value: list[Any], /) -> list[Any]:
     return value
 
 
-def annotate(annotation: AnnotationType, metadata: list[Any], /) -> type:
+def annotate(annotation: AnnotationType, /, *, metadata: list[Any]) -> type:
     """Wrap an annotation with `Annotated` metadata (validators / constraints).
 
     :param annotation: Base annotation (e.g. `list[int]`, `dict[str, int]`).

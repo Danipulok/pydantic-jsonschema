@@ -83,8 +83,9 @@ class Applicator:
     @staticmethod
     def _validates(
         adapter: TypeAdapter[AnnotationType],
-        value: AnnotationType,
         /,
+        *,
+        value: AnnotationType,
     ) -> bool:
         """Return whether a value validates against a subschema adapter.
 

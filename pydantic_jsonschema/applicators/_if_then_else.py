@@ -107,11 +107,15 @@ class IfThenElse(AnnotationApplicator, ObjectApplicator):
         """
         if_adapter = self._build_adapters()
 
-        if self._validates(if_adapter, value):
-            if self._then_adapter is not None and not self._validates(self._then_adapter, value):
+        if self._validates(if_adapter, value=value):
+            if self._then_adapter is not None and not self._validates(
+                self._then_adapter, value=value
+            ):
                 msg = "Value matches `if` but not `then`"
                 raise ValueError(msg)
-        elif self._else_adapter is not None and not self._validates(self._else_adapter, value):
+        elif self._else_adapter is not None and not self._validates(
+            self._else_adapter, value=value
+        ):
             msg = "Value does not match `if` and not `else`"
             raise ValueError(msg)
 

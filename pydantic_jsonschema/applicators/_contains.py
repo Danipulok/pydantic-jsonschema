@@ -88,7 +88,7 @@ class Contains(AnnotationApplicator):
         :param item: An array element (already parsed by the array's item type).
         :returns: `True` when the element validates against `contains`.
         """
-        return self._validates(self._get_adapter(), item)
+        return self._validates(self._get_adapter(), value=item)
 
     def _validate(
         self,

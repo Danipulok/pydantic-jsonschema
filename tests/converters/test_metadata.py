@@ -23,12 +23,12 @@ class TestAnnotate:
     def test_no_metadata_returns_annotation_unchanged(self) -> None:
         """With no metadata the base annotation is returned as-is."""
         base = list[int]
-        assert annotate(base, []) is base
+        assert annotate(base, metadata=[]) is base
 
     def test_metadata_wraps_in_annotated(self) -> None:
         """With metadata the base becomes `Annotated[base, *metadata]`."""
         marker = annotated_types.MinLen(1)
-        result = annotate(list[int], [marker])
+        result = annotate(list[int], metadata=[marker])
 
         assert get_origin(result) is Annotated
         assert get_args(result) == (list[int], marker)
