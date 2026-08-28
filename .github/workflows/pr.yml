@@ -11,9 +11,13 @@ on:
 permissions:
   pull-requests: read
 
-# Cancel superseded runs: a new push to the same ref aborts the in-flight run for it.
+# Cancel superseded runs of the SAME pull request. Keyed on the PR number rather than
+#  `github.ref`, which under `pull_request_target` is the repository DEFAULT branch: every PR
+#  into `main` then shared one group and each new one aborted the others' title check with
+#  `Canceling since a higher priority waiting request for PR-refs/heads/main exists`.
+#  https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
