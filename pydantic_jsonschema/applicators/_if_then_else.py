@@ -39,6 +39,7 @@ class IfThenElse(AnnotationApplicator, ObjectApplicator):
         :param else_branch: The `else` subschema applied on no match, or `None`.
         """
         super().__init__()
+
         self._if: AnnotationType = if_branch
         self._then: AnnotationType | None = then_branch
         self._else: AnnotationType | None = else_branch
@@ -70,11 +71,13 @@ class IfThenElse(AnnotationApplicator, ObjectApplicator):
     def json_schema_keyword(self) -> JsonSchemaValue:
         """Return the `if` / `then` / `else` keyword fragment for the dumped JSON Schema."""
         if_adapter = self._build_adapters()
+
         keyword: JsonSchemaValue = {"if": if_adapter.json_schema()}
         if self._then_adapter is not None:
             keyword["then"] = self._then_adapter.json_schema()
         if self._else_adapter is not None:
             keyword["else"] = self._else_adapter.json_schema()
+
         return keyword
 
     def _build_adapters(self) -> TypeAdapter[AnnotationType]:
@@ -87,10 +90,12 @@ class IfThenElse(AnnotationApplicator, ObjectApplicator):
 
         if_adapter: TypeAdapter[AnnotationType] = self._build_adapter(self._if)
         self._if_adapter = if_adapter
+
         if self._then is not None:
             self._then_adapter = self._build_adapter(self._then)
         if self._else is not None:
             self._else_adapter = self._build_adapter(self._else)
+
         return if_adapter
 
     @override

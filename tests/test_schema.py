@@ -129,6 +129,7 @@ class TestSchemaObjects:
         }
         schema = Schema.model_validate(raw)
         dumped: dict[str, Any] = schema.model_dump()
+
         assert dumped == snapshot(
             {
                 "$defs": {
@@ -338,6 +339,7 @@ class TestSchemaSerialization:
         }
         schema = Schema.model_validate(schema_raw)
         dumped: dict[str, Any] = schema.model_dump()
+
         assert dumped == snapshot(
             {
                 "type": DataType.OBJECT,
@@ -495,10 +497,12 @@ class TestSchemaConditionalKeywords:
                 "not": {"const": 5},
             }
         )
+
         assert isinstance(schema.if_, Schema)
         assert isinstance(schema.then, Schema)
         assert isinstance(schema.else_, Schema)
         assert isinstance(schema.not_, Schema)
+
         assert schema.model_dump() == snapshot(
             {
                 "type": DataType.INTEGER,

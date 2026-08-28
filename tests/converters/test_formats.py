@@ -262,6 +262,7 @@ class TestFormats:
         )
 
         annotations = model.model_fields
+
         assert annotations["created_at"].annotation is datetime
         assert annotations["email"].annotation is str
         assert annotations["id"].annotation is UUID
@@ -273,6 +274,7 @@ class TestFormats:
             id="550e8400-e29b-41d4-a716-446655440000",
             ip="192.168.1.1",
         )
+
         assert isinstance(instance.created_at, datetime)  # type: ignore[attr-defined]
         assert isinstance(instance.email, str)  # type: ignore[attr-defined]
         assert isinstance(instance.id, UUID)  # type: ignore[attr-defined]

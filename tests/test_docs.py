@@ -31,12 +31,14 @@ def _configure(eval_example: EvalExample, /) -> None:
     :param eval_example: Fixture for evaluating examples.
     """
     config: dict[str, Any] = {"ruff_ignore": RUFF_IGNORE}
+
     if LINE_LENGTH is not None:
         config["line_length"] = LINE_LENGTH
     if TARGET_VERSION is not None:
         config["target_version"] = TARGET_VERSION
     if QUOTES is not None:
         config["quotes"] = QUOTES
+
     eval_example.set_config(**config)
 
 

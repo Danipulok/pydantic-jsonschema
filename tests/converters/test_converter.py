@@ -629,6 +629,7 @@ class TestConverterCaching:
                 test_schema = Schema(type="object", properties={"value": Schema(type="string")})
                 ref = "#/$defs/TestType"
                 self._defs_cache[ref] = test_schema
+
                 return self._get_model(ref)
 
         converter = TestableConverter()

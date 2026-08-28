@@ -81,8 +81,10 @@ def object_dict_metadata(schema: Schema, /) -> list[Any]:
     :returns: Length metadata for `minProperties` / `maxProperties` (add a keyword's check here).
     """
     metadata: list[Any] = []
+
     if schema.min_properties is not MISSING:
         metadata.append(annotated_types.MinLen(schema.min_properties))
     if schema.max_properties is not MISSING:
         metadata.append(annotated_types.MaxLen(schema.max_properties))
+
     return metadata
