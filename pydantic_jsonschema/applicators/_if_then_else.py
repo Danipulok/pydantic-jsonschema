@@ -111,20 +111,18 @@ class IfThenElse(AnnotationApplicator, ObjectApplicator):
         :raises ValueError: When the selected branch does not validate the value.
         """
         if_adapter = self._build_adapters()
+        matched = self._validates(if_adapter, value=value)
 
-        if self._validates(if_adapter, value=value):
-            if self._then_adapter is not None and not self._validates(
-                self._then_adapter, value=value
-            ):
-                msg = "Value matches `if` but not `then`"
-                raise ValueError(msg)
-        elif self._else_adapter is not None and not self._validates(
-            self._else_adapter, value=value
-        ):
-            msg = "Value does not match `if` and not `else`"
-            raise ValueError(msg)
+        branch_adapter = self._then_adapter if matched else self._else_adapter
+        if branch_adapter is None or self._validates(branch_adapter, value=value):
+            return value
 
-        return value
+        msg = (
+            "Value matches `if` but not `then`"
+            if matched
+            else "Value does not match `if` and not `else`"
+        )
+        raise ValueError(msg)
 
     def _validate(
         self,
