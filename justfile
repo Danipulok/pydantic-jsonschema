@@ -71,6 +71,10 @@ install-benchmark: _check-uv
 install-docs: _check-uv
     uv sync --group docs
 
+# Install the audit group only (just `zizmor`). Frozen in CI.
+install-audit: _check-uv
+    uv sync --no-default-groups --group audit
+
 # Install the release group. Frozen in CI.
 install-release: _check-uv
     uv sync --group release
@@ -104,7 +108,7 @@ scan-deps:
 
 # Audit GitHub Actions workflows for security issues (`zizmor`)
 audit-workflows:
-    uvx zizmor --offline .github/workflows/
+    uv run zizmor --offline .github/workflows/
 
 # Generate a CycloneDX SBOM of the runtime dependency tree into `sbom/`. On-demand convenience only —
 # deliberately NOT wired into releases: the published wheel's `Requires-Dist` already declares deps,
