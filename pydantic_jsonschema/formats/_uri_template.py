@@ -17,12 +17,12 @@ _VARNAME: Final[str] = rf"{_VARCHAR}(?:\.?{_VARCHAR})*"
 _VARSPEC: Final[str] = rf"{_VARNAME}(?::[1-9][0-9]{{0,3}}|\*)?"
 
 # See: https://www.rfc-editor.org/rfc/rfc6570#section-2.2
-# Expression = `{` + optional operator + comma-separated varspec list + `}`.
+#  Expression = `{` + optional operator + comma-separated varspec list + `}`.
 _EXPRESSION: Final[str] = rf"\{{[+#./;?&=,!@|]?{_VARSPEC}(?:,{_VARSPEC})*\}}"
 
 # See: https://www.rfc-editor.org/rfc/rfc6570#section-2.1
-# Literals: any character except controls, space, and `" ' % < > \ ^ ` { | }`;
-# `%` is only allowed as a percent-encoded triplet.
+#  Literals: any character except controls, space, and `" ' % < > \ ^ ` { | }`;
+#  `%` is only allowed as a percent-encoded triplet.
 _LITERAL: Final[str] = r"(?:[^\x00-\x20\x7f\"'%<>\\^`{|}]|%[0-9A-Fa-f]{2})"
 
 _URI_TEMPLATE_RE: Final[re.Pattern[str]] = re.compile(rf"^(?:{_LITERAL}|{_EXPRESSION})*$")

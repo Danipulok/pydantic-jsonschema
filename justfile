@@ -1,16 +1,16 @@
 # Block installing known-malware dependencies (OSV MAL records) before any package code runs.
-# Exported here so every `uv sync` / `uv add` run through `just` is checked — CI and local alike.
-# `malware-check` is a `uv` preview feature; naming it also silences its experimental warning.
+#  Exported here so every `uv sync` / `uv add` run through `just` is checked — CI and local alike.
+#  `malware-check` is a `uv` preview feature; naming it also silences its experimental warning.
 export UV_MALWARE_CHECK := "1"
 export UV_PREVIEW_FEATURES := "malware-check"
 
 # In CI (`$CI` is set by GitHub Actions) skip the per-command auto-sync and pin the lockfile: the
-# environment is provisioned once, up front, by an `install-*` step, so there's no local/CI recipe
-# split — `just lint` / `just test` behave correctly in both. Locally `$CI` is empty, so these
-# resolve to `false` and `uv run` keeps auto-syncing for convenience.
+#  environment is provisioned once, up front, by an `install-*` step, so there's no local/CI recipe
+#  split — `just lint` / `just test` behave correctly in both. Locally `$CI` is empty, so these
+#  resolve to `false` and `uv run` keeps auto-syncing for convenience.
 #
 # NOTE: Normalized to `true`/`false` (not the raw `$CI` value). `just` exports a `:=` variable even
-# when empty, and `uv` rejects an empty boolean:
+#  when empty, and `uv` rejects an empty boolean:
 #   UV_NO_SYNC= uv run ...
 #   # -> error: Failed to parse environment variable `UV_NO_SYNC` with invalid value ``: expected a boolish value
 export UV_NO_SYNC := if env_var_or_default("CI", "") != "" { "true" } else { "false" }
@@ -20,9 +20,9 @@ export UV_FROZEN := if env_var_or_default("CI", "") != "" { "true" } else { "fal
 #  job, which `os-matrix.yml` subsets, sans `3.15`. Keep in sync.
 python_versions := "3.12 3.13 3.14 3.15"
 # Floor = oldest supported (dependency-floor run); ceiling = newest supported (dependency-ceiling
-# run) — currently the `3.15` beta, so breakage surfaces before the October stable release. `uv`
-# resolves `3.15` to the beta because no stable `3.15` exists yet; once one ships it takes over
-# automatically.
+#  run) — currently the `3.15` beta, so breakage surfaces before the October stable release. `uv`
+#  resolves `3.15` to the beta because no stable `3.15` exists yet; once one ships it takes over
+#  automatically.
 python_floor := "3.12"
 python_ceil := "3.15"
 
@@ -100,8 +100,8 @@ lint:
     npx --yes markdownlint-cli2
 
 # Scan the locked dependency graph for known CVEs against a digest-pinned vulnerability DB
-# (frozen for reproducibility). All flags and the DB pin live in `scripts/trivy_scan.sh`,
-# shared verbatim with the CI `Audit` job. Runs `trivy` via docker — no local install needed.
+#  (frozen for reproducibility). All flags and the DB pin live in `scripts/trivy_scan.sh`,
+#  shared verbatim with the CI `Audit` job. Runs `trivy` via docker — no local install needed.
 [doc("Scan uv.lock for known CVEs (frozen, digest-pinned DB)")]
 scan-deps:
     scripts/trivy_scan.sh fs
@@ -111,11 +111,11 @@ audit-workflows:
     uv run zizmor --offline .github/workflows/
 
 # Generate a CycloneDX SBOM of the runtime dependency tree into `sbom/`. On-demand convenience only —
-# deliberately NOT wired into releases: the published wheel's `Requires-Dist` already declares deps,
-# and `just scan-deps` (Trivy) covers active CVE scanning, so this is just a standardized bill-of-materials for
-# anyone who explicitly needs one. `--no-default-groups` restricts it to runtime deps; `uv export`
-# carries hashes for component integrity. `cyclonedx-py` has no native `uv` lockfile support, hence
-# the `requirements` bridge. See https://github.com/CycloneDX/cyclonedx-python/issues/857
+#  deliberately NOT wired into releases: the published wheel's `Requires-Dist` already declares deps,
+#  and `just scan-deps` (Trivy) covers active CVE scanning, so this is just a standardized bill-of-materials for
+#  anyone who explicitly needs one. `--no-default-groups` restricts it to runtime deps; `uv export`
+#  carries hashes for component integrity. `cyclonedx-py` has no native `uv` lockfile support, hence
+#  the `requirements` bridge. See https://github.com/CycloneDX/cyclonedx-python/issues/857
 [doc("Generate a CycloneDX SBOM of the runtime deps into sbom/")]
 sbom:
     #!/usr/bin/env bash
@@ -125,9 +125,9 @@ sbom:
     output_file="sbom/pydantic-jsonschema.cdx.json"
 
     # Export the runtime dependency tree (pinned, with hashes) as requirements, then convert it to a
-    # CycloneDX document. `cyclonedx-py` reads the requirements from stdin (the trailing `-`).
-    # `--frozen` here is explicit: this on-demand recipe must read the lockfile as-is and never
-    # mutate it (the CI-wide `UV_FROZEN` is off locally).
+    #  CycloneDX document. `cyclonedx-py` reads the requirements from stdin (the trailing `-`).
+    #  `--frozen` here is explicit: this on-demand recipe must read the lockfile as-is and never
+    #  mutate it (the CI-wide `UV_FROZEN` is off locally).
     uv export \
         --frozen \
         --no-default-groups \
@@ -178,28 +178,28 @@ test-fix-snapshots:
     uv run pytest --inline-snapshot=fix
 
 # Test the dependency FLOOR: lowest Python + lowest direct deps our bounds allow.
-# `--resolution lowest-direct` re-resolves direct deps to their declared minimums (e.g.
-# `pydantic>=2.13.0` -> `2.13.0`), proving the floor actually resolves and passes. Isolated env
-# (never touches `.venv`); no coverage gate.
+#  `--resolution lowest-direct` re-resolves direct deps to their declared minimums (e.g.
+#  `pydantic>=2.13.0` -> `2.13.0`), proving the floor actually resolves and passes. Isolated env
+#  (never touches `.venv`); no coverage gate.
 #
 # NOTE: `UV_NO_SYNC`/`UV_FROZEN` are forced off here — this recipe MUST sync a throwaway env and MUST
-# re-resolve, both of which conflict with the CI-wide defaults. With `UV_FROZEN=true` it would
-# silently install the *locked* versions instead of the floor, making the test meaningless.
+#  re-resolve, both of which conflict with the CI-wide defaults. With `UV_FROZEN=true` it would
+#  silently install the *locked* versions instead of the floor, making the test meaningless.
 [doc("Test the dependency floor (oldest Python, lowest direct deps)")]
 test-floor:
     UV_NO_SYNC=false UV_FROZEN=false UV_PROJECT_ENVIRONMENT=.venv-floor uv run --python {{python_floor}} --resolution lowest-direct --no-default-groups --group test pytest
 
 # Test the dependency CEILING: newest supported Python + highest resolvable deps.
-# `--upgrade` ignores the lockfile pins and re-resolves to the latest allowed versions (within
-# `tool.uv.exclude-newer` in `pyproject.toml`), catching breakage from a new dependency release
-# before it reaches the lockfile.
-# Isolated env; no coverage gate. See `test-floor` for why the CI-wide flags are cleared.
+#  `--upgrade` ignores the lockfile pins and re-resolves to the latest allowed versions (within
+#  `tool.uv.exclude-newer` in `pyproject.toml`), catching breakage from a new dependency release
+#  before it reaches the lockfile.
+#  Isolated env; no coverage gate. See `test-floor` for why the CI-wide flags are cleared.
 [doc("Test the dependency ceiling (newest supported Python, highest deps)")]
 test-ceil:
     UV_NO_SYNC=false UV_FROZEN=false UV_PROJECT_ENVIRONMENT=.venv-ceil uv run --python {{python_ceil}} --upgrade --no-default-groups --group test pytest
 
 # Run the `CodSpeed` benchmarks (`-m benchmark` overrides the suite-wide `not benchmark`). Locally
-# this measures wall-clock; in CI the `CodSpeedHQ/action` wraps it and records stable measurements.
+#  this measures wall-clock; in CI the `CodSpeedHQ/action` wraps it and records stable measurements.
 [doc("Run the CodSpeed benchmarks")]
 bench:
     uv run pytest --codspeed -m benchmark tests/benchmarks
@@ -243,13 +243,13 @@ docs-delete version:
     uv run mike delete --push {{version}}
 
 # Deploy versioned docs to a single-commit `gh-pages` in CI (history never grows). Kept `ci-`-prefixed
-# because, unlike `docs-deploy`, it configures a bot git identity and force-pushes the remote branch.
+#  because, unlike `docs-deploy`, it configures a bot git identity and force-pushes the remote branch.
 #
 # `mike` keeps every version in the `gh-pages` *tree*, but each `mike deploy --push` adds a
-# commit carrying a full site snapshot, so the branch history balloons over time. Instead we
-# deploy locally (no `--push`), then collapse the whole branch into one orphan commit and
-# force-push it — each release replaces `gh-pages` rather than appending to it.
-# See: https://github.com/ag2ai/ag2/pull/2989
+#  commit carrying a full site snapshot, so the branch history balloons over time. Instead we
+#  deploy locally (no `--push`), then collapse the whole branch into one orphan commit and
+#  force-push it — each release replaces `gh-pages` rather than appending to it.
+#  See: https://github.com/ag2ai/ag2/pull/2989
 [doc("Deploy versioned docs to a single-commit gh-pages branch in CI")]
 ci-docs-deploy version: _ci-configure-git
     #!/usr/bin/env bash
@@ -294,15 +294,15 @@ build:
     uv run twine check dist/*
 
 # Smoke-test a just-published release: install it FROM PyPI into a throwaway env and verify it
-# imports and converts a real schema. `--isolated --no-project` builds the env from the index only
-# (ignores the local source), so this exercises the actual published wheel. `UV_NO_SYNC=false`
-# suppresses uv's "`--no-sync` has no effect with `--no-project`" warning under the CI-wide default.
+#  imports and converts a real schema. `--isolated --no-project` builds the env from the index only
+#  (ignores the local source), so this exercises the actual published wheel. `UV_NO_SYNC=false`
+#  suppresses uv's "`--no-sync` has no effect with `--no-project`" warning under the CI-wide default.
 #
 # NOTE: `--exclude-newer-package "pydantic-jsonschema=2999-12-31"` is required. Our `exclude-newer`
-# cooldown (canonical: `tool.uv.exclude-newer = "7 days"` in `pyproject.toml`) is read because `just`
-# runs inside the repo, so it rejects the just-released version as "too new" (0 days old). The
-# override lifts the cutoff for OUR
-# package only (a far-future date = no limit); dependencies keep the cooldown. Without it:
+#  cooldown (canonical: `tool.uv.exclude-newer = "7 days"` in `pyproject.toml`) is read because `just`
+#  runs inside the repo, so it rejects the just-released version as "too new" (0 days old). The
+#  override lifts the cutoff for OUR
+#  package only (a far-future date = no limit); dependencies keep the cooldown. Without it:
 #   uv run --with 'pydantic-jsonschema==<fresh version>' ...
 #   # -> error: ... filtered by `exclude-newer` ... requirements are unsatisfiable
 [doc("Smoke-test a published release installed from PyPI")]
@@ -337,7 +337,7 @@ release version: (_check-release-version version)
     set -euo pipefail
     version="{{version}}"
     # The changelog lands on `main` via the release PR (`just release-pr`); the tag is a
-    # separate ref, so pushing it never pushes `main` itself.
+    #  separate ref, so pushing it never pushes `main` itself.
     if [[ "$(git rev-parse --abbrev-ref HEAD)" != "main" ]]; then
         printf 'Releases are tagged from `main`; current branch is `%s`.\n' "$(git rev-parse --abbrev-ref HEAD)" >&2
         exit 2
@@ -384,7 +384,7 @@ clean:
     rm -rf site
     rm -rf sbom
     # Remove throwaway envs (`.venv312`-`.venv315`, `.venv-floor`, `.venv-ceil`) but keep the
-    # main `.venv` so a clean doesn't force a full re-sync of the working environment.
+    #  main `.venv` so a clean doesn't force a full re-sync of the working environment.
     find . -maxdepth 1 -type d -name ".venv*" ! -name ".venv" -exec rm -rf {} +
     find . -type d -name __pycache__ -exec rm -rf {} +
     find . -type f -name "*.pyc" -delete

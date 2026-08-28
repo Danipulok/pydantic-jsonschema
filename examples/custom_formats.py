@@ -34,8 +34,8 @@ def validate_price(value: float) -> float:
 
 
 # A custom format is a Pydantic type, the same shape as the built-in formats
-# (e.g. `type Email = Annotated[str, AfterValidator(...)]`). The wrapper you pick
-# (`AfterValidator`, `BeforeValidator`, ...) controls when validation runs.
+#  (e.g. `type Email = Annotated[str, AfterValidator(...)]`). The wrapper you pick
+#  (`AfterValidator`, `BeforeValidator`, ...) controls when validation runs.
 type Sku = Annotated[str, AfterValidator(validate_sku)]
 type Price = Annotated[float, AfterValidator(validate_price)]
 

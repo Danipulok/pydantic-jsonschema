@@ -206,7 +206,7 @@ class TestDiscriminatedOneOf:
         model = to_model(schema)
 
         # Tag says `cat`, so the `cat` branch is checked: its required `meow` is missing.
-        # The error is branch-specific (`pet.cat.meow`), not "matches N oneOf branches".
+        #  The error is branch-specific (`pet.cat.meow`), not "matches N oneOf branches".
         with pytest.raises(ValidationError) as exc_info:
             model(pet={"type": "cat", "bark": True})
 
@@ -392,7 +392,7 @@ class TestDiscriminatedOneOf:
         model = to_model(schema)
 
         # No tag field: both untagged branches match, so the `OneOf` validator
-        # reports the multi-branch match instead of routing by a discriminator.
+        #  reports the multi-branch match instead of routing by a discriminator.
         with pytest.raises(ValidationError) as exc_info:
             model(value={"x": 1})
 

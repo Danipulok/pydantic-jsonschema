@@ -1,11 +1,11 @@
 # Automated dependency update PRs.
 #
 # NOTE: Dependabot does NOT respect `uv`'s `tool.uv.exclude-newer` — it always targets the latest
-# release. The two are separate systems that only collide at lock time: Dependabot runs `uv` to
-# update `uv.lock`, and `uv` then refuses any version inside the `exclude-newer` window, producing a
-# broken (unlockable) PR. `uv`'s own docs therefore recommend mirroring the cutoff as a `cooldown`.
-# `cooldown.default-days` is duplicated from `tool.uv.exclude-newer` ("7 days") in `pyproject.toml` —
-# keep the two values in sync. See: https://docs.astral.sh/uv/guides/integration/dependabot/
+#  release. The two are separate systems that only collide at lock time: Dependabot runs `uv` to
+#  update `uv.lock`, and `uv` then refuses any version inside the `exclude-newer` window, producing a
+#  broken (unlockable) PR. `uv`'s own docs therefore recommend mirroring the cutoff as a `cooldown`.
+#  `cooldown.default-days` is duplicated from `tool.uv.exclude-newer` ("7 days") in `pyproject.toml` —
+#  keep the two values in sync. See: https://docs.astral.sh/uv/guides/integration/dependabot/
 version: 2
 
 updates:
@@ -14,7 +14,7 @@ updates:
     schedule:
       interval: weekly
     # Canonical cutoff: `tool.uv.exclude-newer` in `pyproject.toml`. Mirrored here so Dependabot
-    # never opens a PR for a version `uv` would refuse to lock.
+    #  never opens a PR for a version `uv` would refuse to lock.
     cooldown:
       default-days: 7
     groups:
@@ -34,7 +34,7 @@ updates:
     schedule:
       interval: weekly
     # `exclude-newer` is a `uv`-only resolver setting and does not cover GitHub Actions, so this is
-    # the *only* supply-chain delay for action bumps. Matched to the Python cutoff for consistency.
+    #  the *only* supply-chain delay for action bumps. Matched to the Python cutoff for consistency.
     cooldown:
       default-days: 7
     groups:

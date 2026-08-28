@@ -280,7 +280,7 @@ class TestInvalidIdnEmails:
     def test_total_too_long_in_octets(self) -> None:
         """RFC 6531 keeps the 254-octet total limit, counted in UTF-8 bytes."""
         # Local: 64 octets (valid alone); domain: 253 chars (valid alone);
-        # total: 64 + 1 + 253 = 318 octets > 254.
+        #  total: 64 + 1 + 253 = 318 octets > 254.
         local: str = "ю" * 32
         domain: str = "b" * 63 + "." + "c" * 63 + "." + "d" * 63 + "." + "e" * 61
         with pytest.raises(ValueError, match="Invalid IDN email format"):

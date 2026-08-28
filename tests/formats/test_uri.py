@@ -249,7 +249,7 @@ class TestInvalidUri:
         elapsed = time.perf_counter() - started_at
 
         # The possessive regex finishes in ~0.1ms even on slow runners; the quadratic
-        # regression takes ~8.6s on this payload, so 1s separates them by orders of magnitude.
+        #  regression takes ~8.6s on this payload, so 1s separates them by orders of magnitude.
         assert elapsed < 1.0
 
 

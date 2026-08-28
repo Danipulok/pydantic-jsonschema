@@ -17,20 +17,20 @@ __all__ = [
 ]
 
 # See: https://www.rfc-editor.org/rfc/rfc5321#section-4.1.2
-# Local part: dot-separated atoms of atext characters (letters, digits, and specials).
+#  Local part: dot-separated atoms of atext characters (letters, digits, and specials).
 _LOCAL_RE: Final[re.Pattern[str]] = re.compile(
     r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*$",
 )
 
 # See: https://www.rfc-editor.org/rfc/rfc6531#section-3.3
-# SMTPUTF8 extends atext with any non-ASCII character (`UTF8-non-ascii`).
+#  SMTPUTF8 extends atext with any non-ASCII character (`UTF8-non-ascii`).
 _IDN_LOCAL_RE: Final[re.Pattern[str]] = re.compile(
     r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~\u0080-\U0010FFFF-]+"
     r"(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~\u0080-\U0010FFFF-]+)*$",
 )
 
 # See: https://www.rfc-editor.org/rfc/rfc5321#section-4.5.3.1
-# RFC 6531 keeps the same octet limits, so IDN checks count UTF-8 bytes.
+#  RFC 6531 keeps the same octet limits, so IDN checks count UTF-8 bytes.
 _MAX_LOCAL_LENGTH: Final[int] = 64
 _MAX_EMAIL_LENGTH: Final[int] = 254
 

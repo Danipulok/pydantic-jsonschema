@@ -7,8 +7,8 @@ converter-aware ones (`dependentSchemas` / `patternProperties` / `propertyNames`
 """
 
 # NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
-# recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
-# and flags every `is not MISSING` check as a non-overlapping identity comparison.
+#  recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
+#  and flags every `is not MISSING` check as a non-overlapping identity comparison.
 # mypy: disable-error-code="comparison-overlap"
 
 from typing import Any

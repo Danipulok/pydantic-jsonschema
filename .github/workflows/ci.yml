@@ -50,14 +50,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # `UV_PYTHON` pins `uv` to the matrix interpreter — otherwise `uv` skips prereleases
-    # (like the `3.15` beta) and silently picks a stable one. (No `UV_NO_SYNC` here: the
-    # `justfile`'s top-level `UV_NO_SYNC`/`UV_FROZEN` exports auto-enable in CI, so `just test`
-    # runs on the `install-test` env without re-syncing.)
+    #  (like the `3.15` beta) and silently picks a stable one. (No `UV_NO_SYNC` here: the
+    #  `justfile`'s top-level `UV_NO_SYNC`/`UV_FROZEN` exports auto-enable in CI, so `just test`
+    #  runs on the `install-test` env without re-syncing.)
     env:
       UV_PYTHON: ${{ matrix.python-version }}
       # `pydantic-core` ships no `cp315` wheel yet, so on 3.15 `uv` builds it from source via
-      # `cargo`, whose crates.io downloads intermittently fail (transient TLS / unexpected EOF).
-      # Make `cargo` retry each download before the step-level retry kicks in.
+      #  `cargo`, whose crates.io downloads intermittently fail (transient TLS / unexpected EOF).
+      #  Make `cargo` retry each download before the step-level retry kicks in.
       CARGO_NET_RETRY: "10"
     strategy:
       fail-fast: false
@@ -82,7 +82,7 @@ jobs:
         uses: ./.github/actions/setup
 
       # Retry the whole install: on 3.15 it builds `pydantic-core` from source, so a flaky
-      # crates.io download (not a code fault) shouldn't fail the run. See `CARGO_NET_RETRY` above.
+      #  crates.io download (not a code fault) shouldn't fail the run. See `CARGO_NET_RETRY` above.
       - name: Install dependencies
         run: |
           for attempt in 1 2 3; do
@@ -114,7 +114,7 @@ jobs:
           flags: python-${{ matrix.python-version }}
 
   # Dependency floor / ceiling: the recipes pin Python and resolution, `uv` provisions the
-  # interpreter, so no `setup-python` is needed.
+  #  interpreter, so no `setup-python` is needed.
   test-floor:
     name: Test (dependency floor)
     runs-on: ubuntu-latest
@@ -152,8 +152,8 @@ jobs:
   audit:
     name: Audit
     # No `needs`: the security audit is independent of lint/test, so it starts immediately and in
-    # parallel instead of waiting for them. A CVE surfaces as its own signal even when a test fails,
-    # rather than being masked behind an unrelated failure. It is still gated by the `check` job.
+    #  parallel instead of waiting for them. A CVE surfaces as its own signal even when a test fails,
+    #  rather than being masked behind an unrelated failure. It is still gated by the `check` job.
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -199,7 +199,7 @@ jobs:
         run: just docs-build
 
   # Single required status check: branch protection points only at this job, so matrix legs
-  # can be added/removed without editing protection rules. Fails if any needed job failed.
+  #  can be added/removed without editing protection rules. Fails if any needed job failed.
   check:
     name: CI ok
     if: always()

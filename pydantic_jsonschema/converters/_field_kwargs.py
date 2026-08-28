@@ -1,8 +1,8 @@
 """`FieldInfo` kwargs and defaults derived from JSON Schema constraints."""
 
 # NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
-# recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
-# and flags every `is not MISSING` check as a non-overlapping identity comparison.
+#  recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
+#  and flags every `is not MISSING` check as a non-overlapping identity comparison.
 # mypy: disable-error-code="comparison-overlap"
 
 from types import EllipsisType
@@ -24,7 +24,7 @@ __all__ = [
 type FieldKindType = Literal["required", "optional", "root"]  # How a field is used in a model
 
 # Pydantic's "required, no default" marker for a field default (`...`).
-# See: https://github.com/pydantic/pydantic/blob/6800281ba87625346daf5826563740ded8a9851b/pydantic/fields.py#L241-L247
+#  See: https://github.com/pydantic/pydantic/blob/6800281ba87625346daf5826563740ded8a9851b/pydantic/fields.py#L241-L247
 _PYDANTIC_DEFAULT_MISSING: Final[EllipsisType] = ...
 
 
@@ -110,13 +110,13 @@ def get_field_default(
         return schema.default
 
     # Root model values have no "absent" concept:
-    # a bare `{"type": "string"}` root schema always validates a value.
+    #  a bare `{"type": "string"}` root schema always validates a value.
     if field_kind == "root":
         return _PYDANTIC_DEFAULT_MISSING
 
     # Optional field without explicit default -> `MISSING` sentinel, so the
-    # field is omitted from dumps instead of carrying a fabricated `None`
-    # default that would not even validate against the annotation.
+    #  field is omitted from dumps instead of carrying a fabricated `None`
+    #  default that would not even validate against the annotation.
     return MISSING
 
 
