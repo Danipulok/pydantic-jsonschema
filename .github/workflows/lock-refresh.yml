@@ -59,6 +59,7 @@ jobs:
       # No-op when the lock is unchanged; otherwise reuses the `chore/lock-refresh` branch and
       #  updates the existing PR in place.
       - name: Open pull request
+        id: pull_request
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ steps.app-token.outputs.token }}
@@ -74,4 +75,21 @@ jobs:
             Automated monthly `uv lock --upgrade` — refreshes the transitive dependency tree.
 
             `tool.uv.exclude-newer` ("7 days") still applies, so no release younger than the
-            supply-chain quarantine window is included. Review the diff and merge if CI is green.
+            supply-chain quarantine window is included. Auto-merge is on, so this lands on its own
+            once the required `CI ok` check reports green.
+
+      # `--auto` queues the merge behind the required `CI ok`, so a lock that breaks the build stays
+      #  an open PR instead of landing. Only the PR this job just opened is reachable through the
+      #  step output, so no author guard is needed. Merged with the App token rather than
+      #  `GITHUB_TOKEN`, whose pushes cannot start workflows.
+      #  Gated on the PR number, not on `pull-request-operation`: the action sets the number whenever
+      #  an open PR differs from the base, but leaves the operation at `none` when the branch itself
+      #  needed no update — which is every re-run over an already-open lock PR.
+      #  https://github.com/peter-evans/create-pull-request/blob/5f6978faf089d4d20b00c7766989d076bb2fc7f1/src/create-pull-request.ts#L255
+      - name: Enable auto-merge
+        if: steps.pull_request.outputs.pull-request-number != ''
+        run: gh pr merge --auto --squash "$PR_NUMBER"
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_NUMBER: ${{ steps.pull_request.outputs.pull-request-number }}
