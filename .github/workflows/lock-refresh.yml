@@ -1,8 +1,8 @@
 name: Refresh dependency lock
 
 # Monthly full relock of the transitive dependency tree. Dependabot only bumps deps it has an
-# advisory or version signal for; this keeps the rest of the locked graph from drifting stale and
-# surfaces routine transitive updates (and any new CVE) as a single reviewable PR.
+#  advisory or version signal for; this keeps the rest of the locked graph from drifting stale and
+#  surfaces routine transitive updates (and any new CVE) as a single reviewable PR.
 on:
   schedule:
     # 05:00 UTC on the 1st of each month (mirrors the cadence of a Renovate `lockFileMaintenance`).
@@ -34,16 +34,20 @@ jobs:
         uses: ./.github/actions/setup
 
       # `uv lock --upgrade` refreshes the whole transitive tree. `tool.uv.exclude-newer` ("7 days")
-      # still applies, so nothing inside the supply-chain quarantine window is pulled in.
+      #  still applies, so nothing inside the supply-chain quarantine window is pulled in.
       - name: Upgrade lockfile
         run: uv lock --upgrade
 
       # No-op when the lock is unchanged; otherwise reuses the `chore/lock-refresh` branch and
-      # updates the existing PR in place.
+      #  updates the existing PR in place.
       - name: Open pull request
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           add-paths: uv.lock
+          # `main` requires signed commits, and the action's default push writes an unsigned one:
+          #  the first run produced `verified=false, reason=unsigned` and a `BLOCKED` PR (#124).
+          #  `sign-commits` commits through the API instead, so GitHub signs it.
+          sign-commits: true
           branch: chore/lock-refresh
           delete-branch: true
           commit-message: "chore(deps): refresh transitive dependency lock"
