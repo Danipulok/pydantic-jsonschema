@@ -9,10 +9,10 @@ on:
     - cron: "0 5 1 * *"
   workflow_dispatch:
 
-# Least privilege: what `create-pull-request` needs to push a branch and open the PR.
+# The branch push and the PR both go through the App token minted below, so the workflow's own
+#  token only has to read the repository for the checkout.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}
@@ -38,15 +38,32 @@ jobs:
       - name: Upgrade lockfile
         run: uv lock --upgrade
 
+      # `GITHUB_TOKEN` cannot open a mergeable PR here, in either configuration. Its plain push
+      #  writes an unsigned commit and `main` requires verified signatures (#124:
+      #  `verified=false, reason=unsigned`). Turning on `sign-commits` fixes that but makes the PR
+      #  bot-authored, and a first-time author leaves every workflow `action_required`, so the
+      #  required `CI ok` is never reported (#127). An App token signs through the API and its
+      #  events start workflow runs normally, which closes both halves.
+      #  https://github.com/peter-evans/create-pull-request/blob/5f6978faf089d4d20b00c7766989d076bb2fc7f1/docs/concepts-guidelines.md
+      - name: Mint an App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
+          # Narrowed to what the step below needs — an unscoped token carries every permission the
+          #  App is installed with. https://docs.zizmor.sh/audits/#github-app
+          permission-contents: write
+          permission-pull-requests: write
+
       # No-op when the lock is unchanged; otherwise reuses the `chore/lock-refresh` branch and
       #  updates the existing PR in place.
       - name: Open pull request
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
+          token: ${{ steps.app-token.outputs.token }}
           add-paths: uv.lock
-          # `main` requires signed commits, and the action's default push writes an unsigned one:
-          #  the first run produced `verified=false, reason=unsigned` and a `BLOCKED` PR (#124).
-          #  `sign-commits` commits through the API instead, so GitHub signs it.
+          # Commits through the API so the result carries a verified signature.
           sign-commits: true
           branch: chore/lock-refresh
           delete-branch: true
