@@ -57,12 +57,20 @@ dev = [
     {include-group = "benchmark"},
     {include-group = "docs"},
     {include-group = "release"},
+    {include-group = "audit"},
 ]
 # `pytest-codspeed` provides the `benchmark` fixture and powers the `CodSpeed` CI job. Kept out of
 # the `test` group so the coverage-gated suite never pulls it (and the floor/ceiling runs stay lean).
 benchmark = [
     {include-group = "test"},
     "pytest-codspeed>=5.0.0",
+]
+# `zizmor` audits the workflows. Kept in its own group so CI's `Audit` job — deliberately
+#  independent of `lint`/`test` — installs this one tool instead of the whole lint env. Locked
+#  rather than run through `uvx`: a floating `uvx zizmor` gets none of the supply-chain guards the
+#  rest of the tree has — no `exclude-newer` cooldown, no lockfile hash, no `Dependabot` bump.
+audit = [
+    "zizmor>=1.29.0",
 ]
 release = [
     "git-cliff>=2.0.0",

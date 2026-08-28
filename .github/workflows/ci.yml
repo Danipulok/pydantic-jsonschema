@@ -155,6 +155,9 @@ jobs:
       - name: Set up `uv` + `just`
         uses: ./.github/actions/setup
 
+      - name: Install dependencies
+        run: just install-audit
+
       - name: Scan dependencies for known CVEs
         run: just scan-deps
 
