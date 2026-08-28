@@ -1086,7 +1086,7 @@ class SchemaConverter:
         if (
             discriminator is not None
             and len(union_args) >= _MIN_DISCRIMINATED_UNION_MEMBERS
-            and not any(isinstance(arg, ForwardRef) for arg in union_args)
+            and not any(isinstance(member, ForwardRef) for member in union_args)
         ):
             discriminated = Annotated[make_union(union_args), Field(discriminator=discriminator)]  # type: ignore[valid-type]
             return cast("type", discriminated)

@@ -1,8 +1,14 @@
 """Tests for converter utility functions."""
 
+# `MISSING` is a `Sentinel` instance rather than a type, so mypy rejects the
+#  `X | MISSING` union the `Schema` fields themselves use — see the same
+#  suppression in `pydantic_jsonschema/schema/_models.py`.
+# mypy: disable-error-code="valid-type"
+
 from typing import get_args
 
 import pytest
+from pydantic import JsonValue
 from pydantic.experimental.missing_sentinel import MISSING
 
 from pydantic_jsonschema.converters._utils import make_union, unwrap
@@ -22,7 +28,12 @@ class TestUnwrap:
             pytest.param(MISSING, 42, 42, id="missing-falls-back"),
         ],
     )
-    def test_unwrap(self, value: object, default: object, expected: object) -> None:
+    def test_unwrap(
+        self,
+        value: JsonValue | MISSING,
+        default: JsonValue,
+        expected: JsonValue,
+    ) -> None:
         """A present value is returned; the `MISSING` sentinel falls back to the default."""
         assert unwrap(value, default=default) == expected
 

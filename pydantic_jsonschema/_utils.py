@@ -1,13 +1,14 @@
 """Internal utilities for identifier sanitization."""
 
 import re
+from typing import Final
 
 __all__ = [
     "sanitize_identifier",
 ]
 
-_LEADING_NON_ALPHA: re.Pattern[str] = re.compile(r"^[^a-zA-Z_]+")
-_INVALID_CHARS: re.Pattern[str] = re.compile(r"[^a-zA-Z0-9_]")
+_LEADING_NON_ALPHA: Final[re.Pattern[str]] = re.compile(r"^[^a-zA-Z_]+")
+_INVALID_CHARS: Final[re.Pattern[str]] = re.compile(r"[^a-zA-Z0-9_]")
 
 
 def sanitize_identifier(name: str) -> str:

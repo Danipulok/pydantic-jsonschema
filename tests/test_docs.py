@@ -84,7 +84,7 @@ def test_docs_examples(example: CodeExample, eval_example: EvalExample) -> None:
         eval_example.run_print_check(example)
 
 
-@pytest.mark.parametrize("example_file", get_example_files(), ids=lambda p: p.name)
+@pytest.mark.parametrize("example_file", get_example_files(), ids=lambda path: path.name)
 def test_example_files(example_file: Path, eval_example: EvalExample) -> None:
     """Test that Python example files run correctly.
 

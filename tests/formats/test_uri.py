@@ -9,6 +9,7 @@ https://github.com/python-hyper/rfc3986/blob/0dc64f8de4327709e34e4a3039df01c46fa
 """
 
 import time
+from typing import Final
 
 import pytest
 
@@ -381,7 +382,9 @@ class TestValidIriReference:
 
     def test_ascii_uri_reference_also_valid(self) -> None:
         """ASCII URI references are also valid IRI references."""
-        assert validate_iri_reference("/relative/path") == "/relative/path"
+        reference: Final[str] = "/relative/path"
+
+        assert validate_iri_reference(reference) == reference
 
 
 class TestInvalidIriReference:
