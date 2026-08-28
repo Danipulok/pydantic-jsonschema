@@ -271,7 +271,17 @@ filterwarnings = ["error"]  # Any warning is an error — catches deprecations e
 [tool.coverage.run]
 branch = true       # Enable branch coverage in addition to statement coverage
 parallel = true     # Allow parallel coverage runs for multi-version testing
-source = ["pydantic_jsonschema"]
+# Without this the `<sources>` element of `coverage.xml` holds the absolute path of whichever
+#  machine ran the suite (`/home/runner/work/...` in CI), so the same 100% run yields a different
+#  report on every host and consumers cannot resolve it against the repository. Relative empties
+#  it. https://coverage.readthedocs.io/en/7.14.1/config.html#run-relative-files
+relative_files = true
+# `source_pkgs`, not `source`: with a source *directory* the report is rooted there and every
+#  `filename` loses the `pydantic_jsonschema/` prefix. A consumer then has to match by suffix, and
+#  every path the mirrored test tree also owns is ambiguous — `applicators/__init__.py` fits both
+#  `pydantic_jsonschema/` and `tests/`. `Codecov` dropped 5 of the 31 files that way.
+#  https://coverage.readthedocs.io/en/7.14.1/config.html#run-source-pkgs
+source_pkgs = ["pydantic_jsonschema"]
 omit = ["tests/*"]
 
 # https://coverage.readthedocs.io/en/latest/config.html#report

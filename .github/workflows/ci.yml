@@ -55,8 +55,8 @@ jobs:
       CARGO_NET_RETRY: "10"
     strategy:
       fail-fast: false
-      # Canonical Python matrix. Mirrored by `coverage.yml`, `python_versions` in the `justfile`,
-      # and (minus the `3.15` prerelease) `os-matrix.yml`. Keep them in sync.
+      # Canonical Python matrix. Mirrored by `python_versions` in the `justfile` and (minus the
+      #  `3.15` prerelease) `os-matrix.yml`. Keep them in sync.
       matrix:
         python-version: ["3.12", "3.13", "3.14", "3.15"]
 
@@ -92,15 +92,20 @@ jobs:
       - name: Run tests with coverage
         run: just test
 
-      # Coverage is uploaded to `Codecov` from the separate `coverage.yml` (`workflow_run`), which
-      # runs in the trusted base-repo context — so fork PRs report coverage without ever exposing
-      # `CODECOV_TOKEN` to untrusted PR code. Here we only stash the report as an artifact.
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      # Uploaded from here rather than from a `workflow_run` follow-up: the `Codecov` CLI builds
+      #  its file network by walking the workspace, so it needs the checkout this job already has.
+      #  A job without one sends a network of just `coverage.xml`, every report path fails to
+      #  resolve, and the upload is rejected server-side with `REPORT_EMPTY` while the run stays
+      #  green. https://github.com/codecov/codecov-action#usage
+      #
+      #  Fork PRs get an empty `token` (GitHub withholds secrets from them) and fall back to the
+      #  tokenless upload that public repositories support, so they still report.
+      - name: Upload coverage to `Codecov`
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
-          name: coverage-${{ matrix.python-version }}
-          path: coverage.xml
-          if-no-files-found: error
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          flags: python-${{ matrix.python-version }}
 
   # Dependency floor / ceiling: the recipes pin Python and resolution, `uv` provisions the
   # interpreter, so no `setup-python` is needed.

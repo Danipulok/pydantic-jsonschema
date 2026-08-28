@@ -17,7 +17,7 @@ export UV_NO_SYNC := if env_var_or_default("CI", "") != "" { "true" } else { "fa
 export UV_FROZEN := if env_var_or_default("CI", "") != "" { "true" } else { "false" }
 
 # Python versions under test. Mirrors the canonical matrix — `python-version` in `ci.yml`'s `test`
-# job (which `coverage.yml` also mirrors and `os-matrix.yml` subsets, sans `3.15`). Keep in sync.
+#  job, which `os-matrix.yml` subsets, sans `3.15`. Keep in sync.
 python_versions := "3.12 3.13 3.14 3.15"
 # Floor = oldest supported (dependency-floor run); ceiling = newest supported (dependency-ceiling
 # run) — currently the `3.15` beta, so breakage surfaces before the October stable release. `uv`
