@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Weekly re-run on `main`. The per-PR jobs only ever exercise our own changes, so an upstream
+  #  release that breaks us stays invisible until somebody opens a PR — `test-ceil` resolves with
+  #  `--upgrade` and is what catches it.
+  schedule:
+    # Mondays 06:00 UTC — an hour after `cve-rescan.yml`, same weekly cadence.
+    - cron: "0 6 * * 1"
   workflow_dispatch:
 
 permissions:
