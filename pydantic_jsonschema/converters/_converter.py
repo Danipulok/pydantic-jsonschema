@@ -35,7 +35,7 @@ from pydantic.fields import FieldInfo
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 
-from pydantic_jsonschema._utils import sanitize_identifier
+from pydantic_jsonschema._utils import sanitize_identifier, unwrap_type_alias
 from pydantic_jsonschema.applicators import (
     Applicator,
     Contains,
@@ -49,13 +49,14 @@ from pydantic_jsonschema.applicators import (
     PropertyNames,
 )
 from pydantic_jsonschema.exceptions import SchemaConversionError, SchemaReferenceError
+from pydantic_jsonschema.rules import MatchContext, Rule
 from pydantic_jsonschema.schema import DataType, Reference, Schema
 
 from ._discriminator import discriminator_property
 from ._field_kwargs import FieldKindType, build_field_kwargs, get_field_default
 from ._metadata import annotate, array_metadata, object_dict_metadata
 from ._object_keywords import build_dependent_required, build_property_count_bounds
-from ._refs import DEFS_KEY, get_inline_defs
+from ._refs import DEFS_KEY, ResolvedDef, escape_pointer_token, get_inline_defs
 from ._utils import make_union, unwrap
 
 __all__ = [
@@ -102,21 +103,27 @@ class SchemaConverter:
         default_model_name: str = _DEFAULT_MODEL_NAME,
         refs: dict[Ref, type[BaseModel]] | None = None,
         formats: dict[FormatName, FormatType] | None = None,
+        rules: list[Rule] | None = None,
     ) -> None:
-        """Initialize converter with optional pre-built refs and format types.
+        """Initialize converter with optional pre-built refs, format types, and loading rules.
 
         :param default_model_name: Fallback name for models without `title` (default: `Model`).
         :param refs: Pre-built Pydantic models for `$ref` resolution.
         :param formats: Format types (a `type` or `Annotated` type) keyed by JSON Schema
             `format` value.
+        :param rules: Loading rules matched by type / path, wrapping the field annotation with
+            per-node input coercion or output serialization.
         """
         self._default_model_name: str = default_model_name
         self._refs: dict[Ref, type[BaseModel]] = refs or {}
         self._formats: dict[FormatName, FormatType] = formats or {}
+        self._rules: list[Rule] = rules or []
 
         self._defs_cache: dict[Ref, Schema] = {}
+        self._def_names: dict[Ref, str] = {}  # Ref -> `$defs` name declaring its schema
         self._models_cache: dict[SchemaHash, type[BaseModel]] = {}
         self._resolution_path: list[str] = []  # Track path for error reporting
+        self._pointer_tokens: list[str] = []  # Raw JSON Pointer tokens for the same nodes
         self._applicators: list[Applicator] = []
         self._building: set[Ref] = set()  # Defs whose model is mid-construction
 
@@ -132,20 +139,90 @@ class SchemaConverter:
         """
         return schema.model_dump_json(exclude_unset=True)
 
+    def _model_cache_key(
+        self,
+        schema: Schema,
+        /,
+    ) -> SchemaHash:
+        """Build the model cache key for a schema at the node currently being converted.
+
+        Without rules a schema converts the same way wherever it is declared, so one entry per
+        shape is correct and shares the model across every occurrence. With rules it no longer is:
+        `ByPath` (and a `ByFunc` reading `context.path`) makes the same shape convert differently
+        per declaration site, so the pointer joins the key.
+
+        Reproduce with a shape-only key — two structurally equal inline objects, one rule aimed at
+        the second one's property:
+
+            schema = Schema.model_validate({
+                "type": "object",
+                "properties": {
+                    "first": {"type": "object", "properties": {"code": {"type": "string"}}},
+                    "second": {"type": "object", "properties": {"code": {"type": "string"}}},
+                },
+            })
+            model = to_model(schema, rules=[
+                Rule(ByPath("/properties/second/properties/code"), After(str.strip)),
+            ])
+            model(first={"code": " a "}, second={"code": " b "}).model_dump()
+            # -> {'first': {'code': ' a '}, 'second': {'code': ' b '}}  (rule never ran: `second`
+            #    reused the model cached while converting `first`)
+
+        :param schema: Schema about to be converted.
+        :returns: Cache key — the schema hash, prefixed with the node's pointer when rules run.
+        """
+        schema_hash: SchemaHash = self._hash_schema(schema)
+        if not self._rules:
+            return schema_hash
+
+        return f"{self._current_pointer()}\n{schema_hash}"
+
+    @contextmanager
+    def _pinned_pointer(
+        self,
+        tokens: tuple[str, ...],
+        /,
+    ) -> Generator[None]:
+        """Replace the pointer stack for the duration of the block.
+
+        `_track_path` appends to the current node's pointer; this one substitutes it wholesale, so
+        a subtree converts under a pointer of its own regardless of where the converter is
+        standing. Used for `$defs`: a definition is addressed where it is declared, so every `$ref`
+        to it must convert (and cache) under `/$defs/<name>`, not under the referring node.
+
+        :param tokens: Raw JSON Pointer tokens the block converts under.
+        """
+        saved: list[str] = self._pointer_tokens
+        self._pointer_tokens = list(tokens)
+        try:
+            yield
+        finally:
+            self._pointer_tokens = saved
+
     @contextmanager
     def _track_path(
         self,
         segment: str,
         /,
+        *,
+        pointer: tuple[str, ...] | None = None,
     ) -> Generator[None]:
         """Context manager for tracking resolution path.
 
-        :param segment: Path segment to add.
+        :param segment: Path segment to add, in diagnostic form (`properties.name`, `anyOf[0]`).
+        :param pointer: Raw JSON Pointer tokens for the same step, one per pointer level. Required
+            wherever the diagnostic segment packs two levels into one string — `properties.name`
+            is two tokens, and a property literally named `a.b` is still one. Defaults to
+            `(segment,)`, which is right for the single-keyword steps (`items`, `not`, `if`).
         """
+        tokens: tuple[str, ...] = (segment,) if pointer is None else pointer
+
         self._resolution_path.append(segment)
+        self._pointer_tokens.extend(tokens)
         try:
             yield
         finally:
+            del self._pointer_tokens[len(self._pointer_tokens) - len(tokens) :]
             self._resolution_path.pop()
 
     def convert_schema(
@@ -249,13 +326,13 @@ class SchemaConverter:
     ) -> type[BaseModel]:
         """Build Pydantic model from schema (common logic for root and nested).
 
-        Models are cached by schema hash, so each schema is built at most once.
+        Models are cached per `_model_cache_key`, so each schema is built at most once per key.
 
         :param schema: Schema to convert.
         :param model_name: Name for the generated model.
         :returns: Pydantic model class.
         """
-        cache_key = self._hash_schema(schema)
+        cache_key = self._model_cache_key(schema)
         if cache_key in self._models_cache:
             return self._models_cache[cache_key]
 
@@ -476,7 +553,10 @@ class SchemaConverter:
 
         branches: dict[str, PythonType] = {}
         for trigger, sub_schema in schema.dependent_schemas.items():
-            with self._track_path(f"dependentSchemas.{trigger}"):
+            with self._track_path(
+                f"dependentSchemas.{trigger}",
+                pointer=("dependentSchemas", trigger),
+            ):
                 branches[trigger] = self._constrained_annotation(sub_schema)
 
         return self._register(DependentSchemas(branches=branches))
@@ -499,7 +579,10 @@ class SchemaConverter:
 
         branches: dict[str, PythonType] = {}
         for pattern, sub_schema in schema.pattern_properties.items():
-            with self._track_path(f"patternProperties.{pattern}"):
+            with self._track_path(
+                f"patternProperties.{pattern}",
+                pointer=("patternProperties", pattern),
+            ):
                 branches[pattern] = self._constrained_annotation(sub_schema)
 
         return self._register(PatternProperties(branches=branches))
@@ -539,11 +622,21 @@ class SchemaConverter:
         # Convert each def with its ref marked in-progress, so a body that references the def
         # currently being built (a recursive / mutual `$ref`) defers to a `ForwardRef` instead
         # of recursing forever. `_rebuild_def_models` binds those refs once every model exists.
-        for ref, schema_def in defs.items():
-            self._defs_cache[ref] = schema_def
+        for ref, resolved in defs.items():
+            self._defs_cache[ref] = resolved.schema
+            self._def_names[ref] = resolved.name
             self._building.add(ref)
             try:
-                self._convert_nested_schema(schema_def)
+                # A def is converted here, at the top of the document, so its nodes must be
+                # tracked under `$defs/<name>` — otherwise they claim the root's pointers and a
+                # `ByPath` rule aimed at a root property also fires inside every same-named def
+                # property. An alias tracks under the name that declares the body, so a rule on
+                # the target covers the alias too.
+                with self._track_path(
+                    f"{DEFS_KEY}.{resolved.name}",
+                    pointer=(DEFS_KEY, resolved.name),
+                ):
+                    self._convert_nested_schema(resolved.schema)
             finally:
                 self._building.discard(ref)
 
@@ -551,7 +644,7 @@ class SchemaConverter:
 
     def _rebuild_def_models(
         self,
-        defs: dict[Ref, Schema],
+        defs: dict[Ref, ResolvedDef],
         /,
     ) -> None:
         """Re-resolve `ForwardRef` annotations in def models.
@@ -596,9 +689,12 @@ class SchemaConverter:
                 path=self._resolution_path.copy(),
             )
 
-        # `_build_model` handles model caching by schema hash.
+        # `_build_model` handles model caching. A definition converts under its own
+        # `$defs/<name>` pointer whichever `$ref` asks for it, so a path-scoped cache still keeps
+        # one model per definition and every `$ref` resolves to that same class.
         schema = self._defs_cache[ref]
-        return self._convert_nested_schema(schema)
+        with self._pinned_pointer((DEFS_KEY, self._def_names[ref])):
+            return self._convert_nested_schema(schema)
 
     def _get_base_classes(
         self,
@@ -615,7 +711,7 @@ class SchemaConverter:
 
         base_models = []
         for index, sub_schema in enumerate(schema.all_of):
-            with self._track_path(f"allOf[{index}]"):
+            with self._track_path(f"allOf[{index}]", pointer=("allOf", str(index))):
                 if isinstance(sub_schema, Reference):
                     model = self._get_model(sub_schema.ref)
                 else:
@@ -662,7 +758,7 @@ class SchemaConverter:
         required_names: list[str] = unwrap(schema.required, default=[])
 
         for field_name, field_schema in properties.items():
-            with self._track_path(f"properties.{field_name}"):
+            with self._track_path(f"properties.{field_name}", pointer=("properties", field_name)):
                 annotation: AnnotationType | None = None
                 schema_for_field: Schema
 
@@ -720,8 +816,7 @@ class SchemaConverter:
         # Built-in format types (`Email`, `UUID`, ...) are PEP 695 `type` aliases, i.e.
         # `TypeAliasType`. Unwrap to the actual `Annotated` / class they alias so the field
         # annotation stays clean (`str`, `uuid.UUID`) instead of the alias wrapper.
-        if isinstance(format_type, TypeAliasType):
-            format_type = format_type.__value__
+        format_type = unwrap_type_alias(format_type)
 
         if get_origin(format_type) is Annotated:
             return format_type
@@ -734,6 +829,74 @@ class SchemaConverter:
             f"got `{format_type!r}`"
         )
         raise SchemaConversionError(msg)
+
+    def _current_pointer(self) -> str:
+        """Build the current node's canonical JSON Pointer from the tracked tokens.
+
+        Each token is one pointer level, escaped per RFC 6901 on the way out. The root schema
+        (no tokens) is `/`.
+
+        :returns: Canonical pointer like `/properties/created`, or `/` at the root.
+        """
+        if not self._pointer_tokens:
+            return "/"
+
+        return "/" + "/".join(escape_pointer_token(token) for token in self._pointer_tokens)
+
+    def _apply_rules(
+        self,
+        annotation: AnnotationType,
+        schema: Schema,
+        /,
+    ) -> AnnotationType:
+        """Wrap the annotation with every matching rule's Pydantic metadata.
+
+        Each matcher is tested against the core `annotation` (the same value for all rules), and
+        matching actions are layered as nested `Annotated` metadata in rule order — Pydantic
+        flattens `Annotated[Annotated[T, a], b]` to `Annotated[T, a, b]`.
+
+        :param annotation: The node's core annotation (after format substitution).
+        :param schema: The node's schema.
+        :returns: The annotation, wrapped when any rule matches, else unchanged.
+        """
+        if not self._rules:
+            return annotation
+
+        context = MatchContext(
+            schema=schema,
+            annotation=annotation,
+            path=self._current_pointer(),
+        )
+        result: AnnotationType = annotation
+        for rule in self._rules:
+            if rule.matcher.matches(context):
+                result = Annotated[result, rule.action.metadata()]
+        return result
+
+    def _child_annotation(
+        self,
+        schema: Schema | Reference,
+        /,
+    ) -> AnnotationType:
+        """Convert an inline child schema, applying rules at the child's own path.
+
+        For the two child nodes that never become a field or a validated branch of their own — a
+        homogeneous `items` element and a schema-valued `additionalProperties` value — plain
+        `_schema_to_annotation` is the whole conversion, so `format` substitution and rules have
+        nowhere else to attach. Both run here in the same order as everywhere else (format first,
+        so a rule matches the substituted annotation). A `Reference` child carries no schema of
+        its own to match against, so it is returned as is (same rule as `_constrained_annotation`).
+
+        :param schema: The child schema (or reference).
+        :returns: The child's annotation, with its format substituted and every matching rule
+            wrapped around it.
+        """
+        annotation = self._schema_to_annotation(schema)
+        if isinstance(schema, Reference):
+            return annotation
+
+        annotation = self._apply_format(annotation, schema)
+        return self._apply_rules(annotation, schema)
 
     @staticmethod
     def _build_model_config(
@@ -771,6 +934,7 @@ class SchemaConverter:
             valid_annotation = annotation
 
         valid_annotation = self._apply_format(valid_annotation, schema)
+        valid_annotation = self._apply_rules(valid_annotation, schema)
 
         default = get_field_default(schema, field_kind=field_kind)
 
@@ -803,7 +967,7 @@ class SchemaConverter:
         """
         union_args: list[type | ForwardRef] = []
         for index, sub_schema in enumerate(union_schemas):
-            with self._track_path(f"{kind}[{index}]"):
+            with self._track_path(f"{kind}[{index}]", pointer=(kind, str(index))):
                 union_args.append(self._constrained_annotation(sub_schema, union_branch=True))
         return union_args
 
@@ -916,6 +1080,7 @@ class SchemaConverter:
             return annotation
 
         annotation = self._apply_format(annotation, schema)
+        annotation = self._apply_rules(annotation, schema)
         kwargs = build_field_kwargs(schema, include_metadata=not union_branch)
 
         if kwargs and not (union_branch and annotation is Any):
@@ -1130,7 +1295,7 @@ class SchemaConverter:
         item_type: type | ForwardRef = Any  # pyright: ignore[reportAssignmentType]
         if prefix_items is None and schema.items is not MISSING:
             with self._track_path("items"):
-                item_type = self._schema_to_annotation(schema.items)
+                item_type = self._child_annotation(schema.items)
         list_annotation = list[item_type]  # type: ignore[valid-type]
 
         # `uniqueItems` is stateless; `contains` / `prefixItems` need the converter.
@@ -1161,7 +1326,7 @@ class SchemaConverter:
 
         prefixes: list[PythonType] = []
         for index, sub_schema in enumerate(schema.prefix_items):
-            with self._track_path(f"prefixItems[{index}]"):
+            with self._track_path(f"prefixItems[{index}]", pointer=("prefixItems", str(index))):
                 prefixes.append(self._constrained_annotation(sub_schema))
 
         tail: PythonType | None = None
@@ -1216,7 +1381,7 @@ class SchemaConverter:
 
         if isinstance(schema.additional_properties, (Schema, Reference)):
             with self._track_path("additionalProperties"):
-                value_annotation = self._schema_to_annotation(schema.additional_properties)
+                value_annotation = self._child_annotation(schema.additional_properties)
                 dict_annotation = dict[str, value_annotation]  # type: ignore[valid-type]
                 return annotate(dict_annotation, object_dict_metadata(schema))
 
@@ -1230,6 +1395,7 @@ def to_model(
     model_name: str | None = None,
     refs: dict[Ref, type[BaseModel]] | None = None,
     formats: dict[FormatName, FormatType] | None = None,
+    rules: list[Rule] | None = None,
 ) -> type[BaseModel]:
     """Convert schema to Pydantic model.
 
@@ -1237,11 +1403,14 @@ def to_model(
     :param refs: Pre-built reference models.
     :param formats: Format types (a `type` or `Annotated` type) keyed by JSON Schema
         `format` value.
+    :param rules: Loading rules matched by type / path, wrapping the field annotation with
+        per-node input coercion or output serialization.
     :param model_name: Name for the generated model.
     :returns: Pydantic model class.
     """
     converter = SchemaConverter(
         refs=refs,
         formats=formats,
+        rules=rules,
     )
     return converter.convert_schema(schema, model_name=model_name)

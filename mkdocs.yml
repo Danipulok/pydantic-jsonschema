@@ -78,12 +78,14 @@ nav:
   - Converters: converters.md
   - Applicators: applicators.md
   - Formats: formats.md
+  - Rules: rules.md
   - Examples: examples.md
   - API Reference:
     - Schema model: api/schema.md
     - Converters: api/converters.md
     - Applicators: api/applicators.md
     - Formats: api/formats.md
+    - Rules: api/rules.md
     - Exceptions: api/exceptions.md
   - Development:
     - Contributing: contributing.md
@@ -149,6 +151,7 @@ plugins:
           - schema.md
           - converters.md
           - formats.md
+          - rules.md
           - examples.md
         API reference:
           - api/*.md

@@ -7,6 +7,9 @@ matching entry in `formats`.
 Without a matching validator, `format` is treated as metadata and the normal JSON Schema type still
 applies.
 
+An entry applies wherever its `format` appears — on a property, on an array element (`items`), or
+on a typed map value (`additionalProperties`).
+
 ## Third-Party Validator Libraries
 
 All built-in formats work with zero extra dependencies.

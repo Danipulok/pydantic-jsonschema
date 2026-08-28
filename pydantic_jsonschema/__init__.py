@@ -11,6 +11,8 @@ from pydantic_jsonschema.exceptions import (
 )
 from pydantic_jsonschema.schema import DataType, Reference, Schema
 
+# NOTE: The rules API (`Rule`, matchers, actions) is intentionally not re-exported here — it lives
+# only under `pydantic_jsonschema.rules` to keep the package root focused on the core surface.
 __all__ = [
     "BasePydanticJsonSchemaError",
     "DataType",

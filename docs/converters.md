@@ -633,6 +633,7 @@ converter = SchemaConverter(
     default_model_name="MyModel",
     refs={},
     formats={},
+    rules=[],
 )
 schema = Schema.model_validate({})
 
@@ -651,11 +652,13 @@ print(Model.__name__)
 |-------------------------------------------|--------------------------------------|--------------------------------------------------------------|
 | One generated model                       | `to_model(schema, model_name="...")` | Shortest path and clear class name                           |
 | Existing model for a `$ref`               | `refs={"#/$defs/Name": Model}`       | Keeps generated models connected to your own classes         |
-| Repeated conversions with shared settings | `SchemaConverter(...)`               | Reuses `refs`, `formats`, and `default_model_name`           |
+| Repeated conversions with shared settings | `SchemaConverter(...)`               | Reuses `refs`, `formats`, `rules`, and `default_model_name`  |
 | Clear validation errors                   | `model_name` or schema `title`       | Avoids generic `Model` in error output                       |
 | Custom `format` handling                  | `formats`                            | Adds validation for strings or domain-specific values        |
+| Input in a shape the schema omits         | `rules`                              | Coerces or serializes a node without hand-writing the model  |
 
 ## Next Steps
 
 - [Formats](formats.md) - Add custom validation for special formats
+- [Rules](rules.md) - Coerce input and reshape output per node
 - [Examples](examples.md) - See real-world applications

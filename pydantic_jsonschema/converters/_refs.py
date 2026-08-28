@@ -11,6 +11,7 @@ circular, or dangling targets. They are stateless: alias resolution depends only
 # and flags every `is not MISSING` check as a non-overlapping identity comparison.
 # mypy: disable-error-code="comparison-overlap"
 
+from dataclasses import dataclass
 from typing import Final
 
 from pydantic.experimental.missing_sentinel import MISSING
@@ -20,6 +21,8 @@ from pydantic_jsonschema.schema import Reference, Schema
 
 __all__ = [
     "DEFS_KEY",
+    "ResolvedDef",
+    "escape_pointer_token",
     "get_inline_defs",
     "resolve_def_alias",
 ]
@@ -29,31 +32,56 @@ __all__ = [
 DEFS_KEY: Final[str] = "$defs"
 
 
-def get_inline_defs(schema: Schema, /) -> dict[str, Schema]:
+def escape_pointer_token(token: str, /) -> str:
+    """Escape a raw member name into a JSON Pointer reference token.
+
+    `~` and `/` are the two characters a pointer token cannot carry literally, since `/` separates
+    tokens. RFC 6901 section 3 escapes them as `~0` and `~1`; `~` must go first, or the `~` written
+    by the `/` -> `~1` step would be escaped again into `~01`.
+
+    :param token: Raw member name (a property name, a `$defs` name, an array index).
+    :returns: The escaped reference token.
+    """
+    return token.replace("~", "~0").replace("/", "~1")
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedDef:
+    """A `$defs` entry resolved to its concrete schema and the name that declares that schema.
+
+    The two differ only for a def alias: `{"Author": {"$ref": "#/$defs/User"}}` resolves to
+    `User`'s body, declared under the name `User`.
+    """
+
+    name: str
+    schema: Schema
+
+
+def get_inline_defs(schema: Schema, /) -> dict[str, ResolvedDef]:
     """Extract inline schema defs from a schema's `$defs` field.
 
     `Reference` entries (def aliases) are resolved to their target schemas.
 
     :param schema: Schema to extract defs from.
-    :returns: Mapping of reference paths to schemas.
+    :returns: Mapping of reference paths to resolved definitions.
     :raises SchemaReferenceError: If a def alias cannot be resolved.
     """
     if schema.defs is MISSING:
         return {}
 
-    result_defs: dict[str, Schema] = {}
+    result_defs: dict[str, ResolvedDef] = {}
     for name in schema.defs:
         ref_path = f"#/{DEFS_KEY}/{name}"
         result_defs[ref_path] = resolve_def_alias(schema.defs, name=name)
     return result_defs
 
 
-def resolve_def_alias(defs: dict[str, Schema | Reference], /, *, name: str) -> Schema:
+def resolve_def_alias(defs: dict[str, Schema | Reference], /, *, name: str) -> ResolvedDef:
     """Resolve a `$defs` entry to a concrete schema, following alias chains.
 
     :param defs: Raw `$defs` mapping.
     :param name: Definition name to resolve.
-    :returns: Concrete schema for the definition.
+    :returns: Concrete schema for the definition, with the name that declares it.
     :raises SchemaReferenceError: If an alias chain is circular, points to a
         missing definition, or targets an external reference.
     """
@@ -65,7 +93,10 @@ def resolve_def_alias(defs: dict[str, Schema | Reference], /, *, name: str) -> S
         seen_names.append(target_name)
         current = defs[target_name]
 
-    return current
+    return ResolvedDef(
+        name=seen_names[-1],
+        schema=current,
+    )
 
 
 def _check_alias_target(
