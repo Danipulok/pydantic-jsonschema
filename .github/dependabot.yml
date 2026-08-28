@@ -24,7 +24,13 @@ updates:
           - "*"
 
   - package-ecosystem: github-actions
-    directory: /
+    # `/` scans `.github/workflows/` and a ROOT `action.yml` only, so the composite action at
+    #  `.github/actions/setup/action.yml` was never seen: its `setup-uv` pin sat at `v8.2.0` from
+    #  the commit that added it while `release.yml`'s duplicate of the same pin was bumped twice.
+    #  https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
+    directories:
+      - /
+      - /.github/actions/setup
     schedule:
       interval: weekly
     # `exclude-newer` is a `uv`-only resolver setting and does not cover GitHub Actions, so this is
