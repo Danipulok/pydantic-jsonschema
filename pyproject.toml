@@ -271,6 +271,11 @@ filterwarnings = ["error"]  # Any warning is an error — catches deprecations e
 [tool.coverage.run]
 branch = true       # Enable branch coverage in addition to statement coverage
 parallel = true     # Allow parallel coverage runs for multi-version testing
+# Without this the `<sources>` element of `coverage.xml` holds the absolute path of whichever
+#  machine ran the suite (`/home/runner/work/...` in CI), so the same 100% run yields a different
+#  report on every host and consumers cannot resolve it against the repository. Relative makes it
+#  `pydantic_jsonschema`. https://coverage.readthedocs.io/en/7.14.1/config.html#run-relative-files
+relative_files = true
 source = ["pydantic_jsonschema"]
 omit = ["tests/*"]
 
