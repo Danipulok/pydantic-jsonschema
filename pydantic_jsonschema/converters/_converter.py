@@ -449,7 +449,7 @@ class SchemaConverter:
         ) -> JsonSchemaValue:
             json_schema = handler(schema)
             for applicator in applicators:
-                json_schema.update(applicator.json_schema_keyword())
+                json_schema.update(applicator.json_schema_keyword(handler))
             return json_schema
 
         wrapped = type(

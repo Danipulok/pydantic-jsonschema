@@ -265,3 +265,52 @@ class TestIfThenElseJsonSchema:
                 "type": "object",
             }
         )
+
+    def test_if_then_else_recursive_ref_round_trips(self) -> None:
+        """Recursive `if` / `then` / `else` branches keep their `$ref` resolvable from the root."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "properties": {
+                        "a": {
+                            "if": {"$ref": "#/$defs/Node"},
+                            "then": {"$ref": "#/$defs/Node"},
+                            "else": {"$ref": "#/$defs/Node"},
+                        },
+                    },
+                    "required": ["a"],
+                    "$defs": {
+                        "Node": {
+                            "type": "object",
+                            "properties": {"next": {"$ref": "#/$defs/Node"}},
+                        },
+                    },
+                }
+            )
+        )
+
+        assert model.model_json_schema() == snapshot(
+            {
+                "$defs": {
+                    "Model": {
+                        "additionalProperties": True,
+                        "properties": {"next": {"$ref": "#/$defs/Model", "title": "Next"}},
+                        "title": "Model",
+                        "type": "object",
+                    }
+                },
+                "additionalProperties": True,
+                "properties": {
+                    "a": {
+                        "else": {"$ref": "#/$defs/Model"},
+                        "if": {"$ref": "#/$defs/Model"},
+                        "then": {"$ref": "#/$defs/Model"},
+                        "title": "A",
+                    }
+                },
+                "required": ["a"],
+                "title": "Model",
+                "type": "object",
+            }
+        )

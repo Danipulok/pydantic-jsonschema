@@ -64,7 +64,7 @@ class Contains(AnnotationApplicator):
         """Restore the `contains` / `minContains` / `maxContains` keywords on dump."""
         json_schema = handler(schema)
 
-        json_schema["contains"] = self._get_adapter().json_schema()
+        json_schema["contains"] = self._branch_schema(self._get_adapter(), handler=handler)
         if self._min_contains != _DEFAULT_MIN_CONTAINS:
             json_schema["minContains"] = self._min_contains
         if self._max_contains is not None:

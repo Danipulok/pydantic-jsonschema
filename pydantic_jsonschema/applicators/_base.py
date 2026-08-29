@@ -27,7 +27,7 @@ from pydantic import (
     ValidationError,
 )
 from pydantic.json_schema import JsonSchemaValue
-from pydantic_core import CoreSchema
+from pydantic_core import CoreSchema, core_schema
 
 __all__ = [
     "AnnotationApplicator",
@@ -79,6 +79,35 @@ class Applicator:
             self._namespace[branch.__forward_arg__] if isinstance(branch, ForwardRef) else branch
         )
         return TypeAdapter(resolved)
+
+    @staticmethod
+    def _branch_schema(
+        adapter: TypeAdapter[AnnotationType],
+        /,
+        *,
+        handler: GetJsonSchemaHandler,
+    ) -> JsonSchemaValue:
+        """Render a subschema branch into the JSON Schema document being generated.
+
+        :param adapter: The subschema adapter.
+        :param handler: The handler of the in-progress generation.
+        :returns: The branch schema, with the definitions it needs registered at the document root.
+        """
+        # `adapter.json_schema()` builds a *separate* document. A branch Pydantic cannot inline — a
+        #  recursive model — comes back as `{"$ref": "#/$defs/Model"}` carrying its own `$defs`,
+        #  and embedding only that fragment leaves the reference pointing at nothing:
+        #  `KeyError: '#/$defs/Model'` out of `GenerateJsonSchema.get_json_ref_counts`. The active
+        #  handler registers the definitions in the root document instead.
+        #  https://github.com/pydantic/pydantic/blob/cf67d4b3193c3fe43ede18612ed62785eee11382/pydantic/json_schema.py#L2435
+        #
+        # The empty `definitions_schema` wrapper is what makes that handler take the full path.
+        #  Called on a foreign schema it dispatches straight to the per-type method, skipping the
+        #  `pydantic_js_updates` metadata of the schema it was handed — a typeless branch
+        #  (`{"maxLength": 3}` -> `Annotated[Any, MaxLen(3)]`) then dumps as `{}`. The wrapper
+        #  re-enters `generate_inner`, which applies that metadata.
+        #  https://github.com/pydantic/pydantic/blob/cf67d4b3193c3fe43ede18612ed62785eee11382/pydantic/json_schema.py#L529
+        #  https://github.com/pydantic/pydantic/blob/cf67d4b3193c3fe43ede18612ed62785eee11382/pydantic/json_schema.py#L2103
+        return handler(core_schema.definitions_schema(adapter.core_schema, []))
 
     @staticmethod
     def _validates(
@@ -137,5 +166,9 @@ class ObjectApplicator(Applicator, ABC):
         """Validate the raw mapping, returning it unchanged or raising `ValueError`."""
 
     @abstractmethod
-    def json_schema_keyword(self) -> JsonSchemaValue:
+    def json_schema_keyword(
+        self,
+        handler: GetJsonSchemaHandler,
+        /,
+    ) -> JsonSchemaValue:
         """Return this applicator's keyword fragment for the dumped JSON Schema."""
