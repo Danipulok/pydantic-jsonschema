@@ -71,12 +71,12 @@ of those code examples. The included `examples/*.py` files are still tested dire
 
 ## Code Style
 
-`just lint` runs Ruff, `mypy`, `pyright`, `codespell` and `markdownlint`, and it is the gate — if
+`just lint` runs `ruff`, `mypy`, `pyright`, `codespell` and `markdownlint`, and it is the gate — if
 it passes, the mechanical half of the style is satisfied and no reviewer will argue about it.
 
-- Use Ruff for formatting and linting.
+- Use `ruff` for formatting and linting.
 - Add type hints to public APIs and internal code where type inference is not obvious.
-- Use Sphinx-style docstrings for public APIs (`:param:`, `:returns:`, `:raises:`).
+- Use `Sphinx`-style docstrings for public APIs (`:param:`, `:returns:`, `:raises:`).
 - Keep `mypy` strict mode passing.
 - Keep tests explicit about generated model behavior, validation errors, references, and formats.
 
