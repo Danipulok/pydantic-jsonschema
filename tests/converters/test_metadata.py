@@ -4,7 +4,7 @@ from typing import Annotated, get_args, get_origin
 
 import annotated_types
 import pytest
-from pydantic import AfterValidator
+from pydantic import AfterValidator, JsonValue
 
 from pydantic_jsonschema.converters._metadata import (
     _ensure_unique_items,
@@ -23,12 +23,12 @@ class TestAnnotate:
     def test_no_metadata_returns_annotation_unchanged(self) -> None:
         """With no metadata the base annotation is returned as-is."""
         base = list[int]
-        assert annotate(base, []) is base
+        assert annotate(base, metadata=[]) is base
 
     def test_metadata_wraps_in_annotated(self) -> None:
         """With metadata the base becomes `Annotated[base, *metadata]`."""
         marker = annotated_types.MinLen(1)
-        result = annotate(list[int], [marker])
+        result = annotate(list[int], metadata=[marker])
 
         assert get_origin(result) is Annotated
         assert get_args(result) == (list[int], marker)
@@ -51,7 +51,7 @@ class TestArrayMetadata:
             pytest.param({"type": "array", "uniqueItems": False}, id="false"),
         ],
     )
-    def test_no_unique_items_no_metadata(self, schema_raw: dict[str, object]) -> None:
+    def test_no_unique_items_no_metadata(self, schema_raw: dict[str, JsonValue]) -> None:
         """Absent or `false` `uniqueItems` imposes no constraint."""
         assert array_metadata(Schema.model_validate(schema_raw)) == []
 
@@ -85,11 +85,11 @@ class TestEnsureUniqueItems:
         [
             pytest.param([1, 1], id="scalars"),
             pytest.param([{"a": 1}, {"a": 1}], id="unhashable-dicts"),
-            # NOTE: Python equates `True == 1`, so this is treated as a duplicate.
+            # Python equates `True == 1`, so this is treated as a duplicate.
             pytest.param([True, 1], id="bool-int-edge"),
         ],
     )
-    def test_duplicates_rejected(self, items: list[object]) -> None:
+    def test_duplicates_rejected(self, items: list[JsonValue]) -> None:
         """Equal items (including the `True == 1` edge) raise `ValueError`."""
         with pytest.raises(ValueError, match="Array items must be unique"):
             _ensure_unique_items(items)

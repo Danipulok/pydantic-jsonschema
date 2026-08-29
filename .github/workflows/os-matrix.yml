@@ -34,9 +34,9 @@ jobs:
         # Subset of the canonical `ci.yml` `test` matrix — `3.15` omitted (see the file header).
         python-version: ["3.12", "3.13", "3.14"]
     # `UV_PYTHON` pins `uv` to the matrix interpreter. (The `justfile`'s top-level `UV_NO_SYNC`
-    # export auto-enables in CI, so `just test` stays on the test-only env from `install-test`
-    # without re-syncing — its `--no-default-groups --group test` skips the `docs` group, whose
-    # native deps, e.g. Pillow / imaging, are never pulled on macOS / Windows.)
+    #  export auto-enables in CI, so `just test` stays on the test-only env from `install-test`
+    #  without re-syncing — its `--no-default-groups --group test` skips the `docs` group, whose
+    #  native deps, e.g. Pillow / imaging, are never pulled on macOS / Windows.)
     env:
       UV_PYTHON: ${{ matrix.python-version }}
 

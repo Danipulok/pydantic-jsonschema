@@ -1,14 +1,14 @@
 # Accepted-finding ledger for the frozen CVE gate (`scripts/trivy_scan.sh`).
 #
 # Empty by default: we fix advisories rather than suppress them. The scan runs with
-# `--ignore-unfixed`, so a finding only reaches this gate once a FIX exists upstream.
-# Add an entry ONLY when that fix cannot be adopted yet (e.g. it is a breaking major
-# bump we need time to absorb) or the finding is provably not exploitable here.
+#  `--ignore-unfixed`, so a finding only reaches this gate once a FIX exists upstream.
+#  Add an entry ONLY when that fix cannot be adopted yet (e.g. it is a breaking major
+#  bump we need time to absorb) or the finding is provably not exploitable here.
 #
 # Policy: every entry MUST carry a future `expired_at`. trivy re-raises a finding once
-# that date passes, so a dated suppression cannot outlive its justification. An entry
-# WITHOUT the field never expires — trivy does not require it, so this rule is enforced
-# by review, not tooling: do not approve an entry that omits `expired_at`.
+#  that date passes, so a dated suppression cannot outlive its justification. An entry
+#  WITHOUT the field never expires — trivy does not require it, so this rule is enforced
+#  by review, not tooling: do not approve an entry that omits `expired_at`.
 #
 # Schema (trivy structured YAML ignorefile):
 #   vulnerabilities:

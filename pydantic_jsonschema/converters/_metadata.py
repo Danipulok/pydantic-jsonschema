@@ -1,8 +1,8 @@
 """`Annotated` metadata helpers for array / object value annotations."""
 
 # NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
-# recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
-# and flags every `is not MISSING` check as a non-overlapping identity comparison.
+#  recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
+#  and flags every `is not MISSING` check as a non-overlapping identity comparison.
 # mypy: disable-error-code="comparison-overlap"
 
 from typing import Annotated, Any, cast
@@ -49,7 +49,7 @@ def _ensure_unique_items(value: list[Any], /) -> list[Any]:
     return value
 
 
-def annotate(annotation: AnnotationType, metadata: list[Any], /) -> type:
+def annotate(annotation: AnnotationType, /, *, metadata: list[Any]) -> type:
     """Wrap an annotation with `Annotated` metadata (validators / constraints).
 
     :param annotation: Base annotation (e.g. `list[int]`, `dict[str, int]`).
@@ -81,8 +81,10 @@ def object_dict_metadata(schema: Schema, /) -> list[Any]:
     :returns: Length metadata for `minProperties` / `maxProperties` (add a keyword's check here).
     """
     metadata: list[Any] = []
+
     if schema.min_properties is not MISSING:
         metadata.append(annotated_types.MinLen(schema.min_properties))
     if schema.max_properties is not MISSING:
         metadata.append(annotated_types.MaxLen(schema.max_properties))
+
     return metadata

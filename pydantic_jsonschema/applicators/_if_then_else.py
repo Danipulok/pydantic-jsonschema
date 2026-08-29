@@ -39,6 +39,7 @@ class IfThenElse(AnnotationApplicator, ObjectApplicator):
         :param else_branch: The `else` subschema applied on no match, or `None`.
         """
         super().__init__()
+
         self._if: AnnotationType = if_branch
         self._then: AnnotationType | None = then_branch
         self._else: AnnotationType | None = else_branch
@@ -70,11 +71,13 @@ class IfThenElse(AnnotationApplicator, ObjectApplicator):
     def json_schema_keyword(self) -> JsonSchemaValue:
         """Return the `if` / `then` / `else` keyword fragment for the dumped JSON Schema."""
         if_adapter = self._build_adapters()
+
         keyword: JsonSchemaValue = {"if": if_adapter.json_schema()}
         if self._then_adapter is not None:
             keyword["then"] = self._then_adapter.json_schema()
         if self._else_adapter is not None:
             keyword["else"] = self._else_adapter.json_schema()
+
         return keyword
 
     def _build_adapters(self) -> TypeAdapter[AnnotationType]:
@@ -87,10 +90,12 @@ class IfThenElse(AnnotationApplicator, ObjectApplicator):
 
         if_adapter: TypeAdapter[AnnotationType] = self._build_adapter(self._if)
         self._if_adapter = if_adapter
+
         if self._then is not None:
             self._then_adapter = self._build_adapter(self._then)
         if self._else is not None:
             self._else_adapter = self._build_adapter(self._else)
+
         return if_adapter
 
     @override
@@ -106,16 +111,18 @@ class IfThenElse(AnnotationApplicator, ObjectApplicator):
         :raises ValueError: When the selected branch does not validate the value.
         """
         if_adapter = self._build_adapters()
+        matched = self._validates(if_adapter, value=value)
 
-        if self._validates(if_adapter, value):
-            if self._then_adapter is not None and not self._validates(self._then_adapter, value):
-                msg = "Value matches `if` but not `then`"
-                raise ValueError(msg)
-        elif self._else_adapter is not None and not self._validates(self._else_adapter, value):
-            msg = "Value does not match `if` and not `else`"
-            raise ValueError(msg)
+        branch_adapter = self._then_adapter if matched else self._else_adapter
+        if branch_adapter is None or self._validates(branch_adapter, value=value):
+            return value
 
-        return value
+        msg = (
+            "Value matches `if` but not `then`"
+            if matched
+            else "Value does not match `if` and not `else`"
+        )
+        raise ValueError(msg)
 
     def _validate(
         self,

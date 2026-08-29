@@ -1,8 +1,8 @@
 """Convert a JSON Schema `Schema` into a Pydantic model (`to_model` / `SchemaConverter`)."""
 
 # NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
-# recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
-# and flags every `is not MISSING` check as a non-overlapping identity comparison.
+#  recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
+#  and flags every `is not MISSING` check as a non-overlapping identity comparison.
 # mypy: disable-error-code="comparison-overlap"
 
 from collections.abc import Generator
@@ -70,10 +70,10 @@ _DEFAULT_MODEL_NAME: Final[str] = "Model"
 _MIN_DISCRIMINATED_UNION_MEMBERS: Final[int] = 2
 
 # NOTE: `ARRAY` / `OBJECT` entries are only reachable from multi-type unions
-# (`{"type": ["object", "string"]}`) — single `array` / `object` schemas are handled
-# by `_type_annotation` before the mapping is consulted.
-# `OBJECT` must not map to `Any`: `Union[Any, str]` collapses to `Any`,
-# and the union stops rejecting anything.
+#  (`{"type": ["object", "string"]}`) — single `array` / `object` schemas are handled
+#  by `_type_annotation` before the mapping is consulted.
+#  `OBJECT` must not map to `Any`: `Union[Any, str]` collapses to `Any`,
+#  and the union stops rejecting anything.
 _DATA_TYPE_ANNOTATION_MAPPING: Final[dict[DataType, type]] = {
     DataType.NULL: NoneType,
     DataType.STRING: str,
@@ -165,7 +165,7 @@ class SchemaConverter:
         self._build_defs_cache(schema)
 
         model = self._build_model(schema, model_name=model_name)
-        model = self._wrap_root_value_assertions(model, schema)
+        model = self._wrap_root_value_assertions(model, schema=schema)
         self._bind_forward_refs()
 
         return model
@@ -173,8 +173,9 @@ class SchemaConverter:
     def _wrap_root_value_assertions(
         self,
         model: type[BaseModel],
-        schema: Schema,
         /,
+        *,
+        schema: Schema,
     ) -> type[BaseModel]:
         """Attach `not` / `if` / `then` / `else` to a root object model.
 
@@ -195,7 +196,7 @@ class SchemaConverter:
             applicators.append(self._build_not(schema))
         if self._has_conditional(schema):
             applicators.append(self._build_conditional(schema))
-        return self._wrap_object_applicators(model, applicators)
+        return self._wrap_object_applicators(model, applicators=applicators)
 
     def _register[ApplicatorT: Applicator](
         self,
@@ -289,8 +290,8 @@ class SchemaConverter:
             return self._create_root_model(schema, model_name=model_name)
 
         # Root object without `properties` but with schema-valued `additionalProperties`
-        # -> `RootModel[dict[str, ...]]`, so values are validated the same way as in
-        # nested objects (a plain `BaseModel` with `extra="allow"` would not check them).
+        #  -> `RootModel[dict[str, ...]]`, so values are validated the same way as in
+        #  nested objects (a plain `BaseModel` with `extra="allow"` would not check them).
         if (
             schema.properties is MISSING
             and schema.all_of is MISSING
@@ -348,8 +349,8 @@ class SchemaConverter:
         applicators = self._build_object_applicators(schema)
 
         # For some reason, `create_model` "accepts" `fields` values as `tuple[str, Any]`,
-        # when in reality it accepts `tuple[type, FieldInfo]`. Neither `mypy` nor `pyright` can
-        # match the `**fields` splat to a `create_model` overload.
+        #  when in reality it accepts `tuple[type, FieldInfo]`. Neither `mypy` nor `pyright` can
+        #  match the `**fields` splat to a `create_model` overload.
         created_model = create_model(  # type: ignore[call-overload]  # pyright: ignore[reportCallIssue]
             model_name,
             __config__=model_config,
@@ -359,7 +360,10 @@ class SchemaConverter:
             __validators__=validators,
             **fields,  # pyright: ignore[reportArgumentType]
         )
-        return self._wrap_object_applicators(cast("type[BaseModel]", created_model), applicators)
+        return self._wrap_object_applicators(
+            cast("type[BaseModel]", created_model),
+            applicators=applicators,
+        )
 
     def _build_object_validators(
         self,
@@ -402,8 +406,9 @@ class SchemaConverter:
     def _wrap_object_applicators(
         self,
         model: type[BaseModel],
-        applicators: list[ObjectApplicator],
         /,
+        *,
+        applicators: list[ObjectApplicator],
     ) -> type[BaseModel]:
         """Subclass an object model so its applicators validate and round-trip into JSON Schema.
 
@@ -537,8 +542,8 @@ class SchemaConverter:
         defs = get_inline_defs(schema)
 
         # Convert each def with its ref marked in-progress, so a body that references the def
-        # currently being built (a recursive / mutual `$ref`) defers to a `ForwardRef` instead
-        # of recursing forever. `_rebuild_def_models` binds those refs once every model exists.
+        #  currently being built (a recursive / mutual `$ref`) defers to a `ForwardRef` instead
+        #  of recursing forever. `_rebuild_def_models` binds those refs once every model exists.
         for ref, schema_def in defs.items():
             self._defs_cache[ref] = schema_def
             self._building.add(ref)
@@ -668,14 +673,15 @@ class SchemaConverter:
 
                 if isinstance(field_schema, Reference):
                     # Defer a recursive / mutual ref (its target def is still building) to a
-                    # `ForwardRef`, bound later by `_rebuild_def_models`. Otherwise resolve
-                    # eagerly, so an unknown `$ref` still raises here instead of silently deferring.
+                    #  `ForwardRef`, bound later by `_rebuild_def_models`. Otherwise resolve
+                    #  eagerly, so an unknown `$ref` still raises here instead of silently
+                    #  deferring.
                     if field_schema.ref in self._building:
                         annotation = ForwardRef(sanitize_identifier(field_schema.ref))
                     else:
                         annotation = self._get_model(field_schema.ref)
                     # A local `$ref` carries its own field metadata in `$defs`; an unknown
-                    # ref (external / pre-built) contributes none, so fall back to an empty schema.
+                    #  ref (external / pre-built) contributes none, so fall back to an empty schema.
                     schema_for_field = self._defs_cache.get(field_schema.ref, Schema())
                 else:
                     schema_for_field = field_schema
@@ -693,8 +699,9 @@ class SchemaConverter:
     def _apply_format(
         self,
         annotation: AnnotationType,
-        schema: Schema,
         /,
+        *,
+        schema: Schema,
     ) -> AnnotationType:
         """Apply the registered format type for the schema's `format`, if any.
 
@@ -718,8 +725,8 @@ class SchemaConverter:
         format_type = self._formats[schema.format]
 
         # Built-in format types (`Email`, `UUID`, ...) are PEP 695 `type` aliases, i.e.
-        # `TypeAliasType`. Unwrap to the actual `Annotated` / class they alias so the field
-        # annotation stays clean (`str`, `uuid.UUID`) instead of the alias wrapper.
+        #  `TypeAliasType`. Unwrap to the actual `Annotated` / class they alias so the field
+        #  annotation stays clean (`str`, `uuid.UUID`) instead of the alias wrapper.
         if isinstance(format_type, TypeAliasType):
             format_type = format_type.__value__
 
@@ -770,7 +777,7 @@ class SchemaConverter:
         else:
             valid_annotation = annotation
 
-        valid_annotation = self._apply_format(valid_annotation, schema)
+        valid_annotation = self._apply_format(valid_annotation, schema=schema)
 
         default = get_field_default(schema, field_kind=field_kind)
 
@@ -833,8 +840,8 @@ class SchemaConverter:
             )
 
         # `not` and `if` / `then` / `else` are checked against the raw value before the host type,
-        # attached as `Annotated` wrap-validator metadata (the path used for every shape that has a
-        # host annotation; root object models take the `before`-validator path instead).
+        #  attached as `Annotated` wrap-validator metadata (the path used for every shape that has a
+        #  host annotation; root object models take the `before`-validator path instead).
         if schema.not_ is not MISSING:
             annotation = cast("type", Annotated[annotation, self._build_not(schema)])
         if self._has_conditional(schema):
@@ -845,8 +852,9 @@ class SchemaConverter:
     def _apply_sibling_type(
         self,
         annotation: type,
-        schema: Schema,
         /,
+        *,
+        schema: Schema,
     ) -> type:
         """Enforce a `type` declared alongside `anyOf` / `oneOf` / `allOf`.
 
@@ -915,7 +923,7 @@ class SchemaConverter:
         if isinstance(schema, Reference):
             return annotation
 
-        annotation = self._apply_format(annotation, schema)
+        annotation = self._apply_format(annotation, schema=schema)
         kwargs = build_field_kwargs(schema, include_metadata=not union_branch)
 
         if kwargs and not (union_branch and annotation is Any):
@@ -993,8 +1001,8 @@ class SchemaConverter:
         :returns: Resolved model or `ForwardRef` for later resolution.
         """
         # A ref to a def whose model is still being built (a recursive or mutual `$ref`)
-        # must defer: returning its half-built model would recurse forever. The `ForwardRef`
-        # is bound once every def model exists (`_rebuild_def_models` / `_bind_forward_refs`).
+        #  must defer: returning its half-built model would recurse forever. The `ForwardRef`
+        #  is bound once every def model exists (`_rebuild_def_models` / `_bind_forward_refs`).
         if reference.ref in self._building:
             return ForwardRef(sanitize_identifier(reference.ref))
 
@@ -1016,7 +1024,7 @@ class SchemaConverter:
         values = schema.enum if schema.enum is not MISSING else (schema.const,)
 
         # An empty `enum` has no valid value; `Literal[()]` makes Pydantic raise a bare
-        # `AssertionError` deep in schema generation, so reject it with a library error instead.
+        #  `AssertionError` deep in schema generation, so reject it with a library error instead.
         if not values:
             msg = "`enum` must contain at least one value"
             raise SchemaConversionError(msg)
@@ -1049,7 +1057,7 @@ class SchemaConverter:
         else:
             return None
 
-        return self._apply_sibling_type(annotation, schema)
+        return self._apply_sibling_type(annotation, schema=schema)
 
     def _one_of_annotation(
         self,
@@ -1074,11 +1082,11 @@ class SchemaConverter:
         discriminator = discriminator_property(schema.one_of, defs_cache=self._defs_cache)
 
         # A discriminated union needs >= 2 concrete members to introspect the tag field.
-        # Unresolved `ForwardRef` branches keep the `OneOf` lazy path.
+        #  Unresolved `ForwardRef` branches keep the `OneOf` lazy path.
         if (
             discriminator is not None
             and len(union_args) >= _MIN_DISCRIMINATED_UNION_MEMBERS
-            and not any(isinstance(arg, ForwardRef) for arg in union_args)
+            and not any(isinstance(member, ForwardRef) for member in union_args)
         ):
             discriminated = Annotated[make_union(union_args), Field(discriminator=discriminator)]  # type: ignore[valid-type]
             return cast("type", discriminated)
@@ -1109,7 +1117,7 @@ class SchemaConverter:
             return make_union(union_args)
 
         # `Any` is a valid annotation but is not a `type`, so `pyright` rejects it under the
-        # `-> type` return; the same `Any`-as-annotation pattern recurs below for `item_type`.
+        #  `-> type` return; the same `Any`-as-annotation pattern recurs below for `item_type`.
         return Any  # pyright: ignore[reportReturnType]
 
     def _array_annotation(
@@ -1123,8 +1131,8 @@ class SchemaConverter:
         :returns: `list[...]` annotation, wrapped with array constraint metadata when set.
         """
         # With `prefixItems`, element types are positional, so the base stays `list[Any]` and
-        # `PrefixItems` validates each position (including the `items` tail). Without it, `items`
-        # is the homogeneous element type.
+        #  `PrefixItems` validates each position (including the `items` tail). Without it, `items`
+        #  is the homogeneous element type.
         prefix_items = self._build_prefix_items(schema)
 
         item_type: type | ForwardRef = Any  # pyright: ignore[reportAssignmentType]
@@ -1141,7 +1149,7 @@ class SchemaConverter:
         if contains is not None:
             metadata.append(contains)
 
-        return annotate(list_annotation, metadata)
+        return annotate(list_annotation, metadata=metadata)
 
     def _build_prefix_items(
         self,
@@ -1218,9 +1226,9 @@ class SchemaConverter:
             with self._track_path("additionalProperties"):
                 value_annotation = self._schema_to_annotation(schema.additional_properties)
                 dict_annotation = dict[str, value_annotation]  # type: ignore[valid-type]
-                return annotate(dict_annotation, object_dict_metadata(schema))
+                return annotate(dict_annotation, metadata=object_dict_metadata(schema))
 
-        return annotate(dict[str, Any], object_dict_metadata(schema))
+        return annotate(dict[str, Any], metadata=object_dict_metadata(schema))
 
 
 def to_model(

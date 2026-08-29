@@ -1,8 +1,8 @@
 name: CodSpeed
 
 # Continuous benchmarking: runs the `tests/benchmarks/` suite under `CodSpeed`'s simulation
-# instrument and reports performance deltas on each PR (vs the `main` baseline). Not part of the
-# `CI` required-check gate — perf is informational and must never block a merge.
+#  instrument and reports performance deltas on each PR (vs the `main` baseline). Not part of the
+#  `CI` required-check gate — perf is informational and must never block a merge.
 on:
   push:
     branches: [main]
@@ -25,7 +25,7 @@ jobs:
     permissions:
       contents: read
       # Tokenless upload for public repos: `CodSpeed` verifies the run via OIDC, so no
-      # `CODSPEED_TOKEN` secret is needed. See https://docs.codspeed.io/integrations/ci/github-actions
+      #  `CODSPEED_TOKEN` secret is needed. See https://docs.codspeed.io/integrations/ci/github-actions
       id-token: write
 
     steps:

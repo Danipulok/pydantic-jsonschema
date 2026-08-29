@@ -6,8 +6,8 @@ probing `OneOf` validator.
 """
 
 # NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
-# recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
-# and flags every `is not MISSING` check as a non-overlapping identity comparison.
+#  recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
+#  and flags every `is not MISSING` check as a non-overlapping identity comparison.
 # mypy: disable-error-code="comparison-overlap"
 
 from types import NoneType
@@ -53,7 +53,7 @@ def discriminator_property(
             tags_by_property.setdefault(name, []).append(tag)
 
     # A discriminator tags every branch (count of tags == branch count)
-    # with a distinct value (count of unique tags == branch count).
+    #  with a distinct value (count of unique tags == branch count).
     qualified: list[str] = [
         name
         for name, tags in tags_by_property.items()
@@ -110,9 +110,9 @@ def _branch_tag_values(
             continue
 
         # NOTE: Only scalar tags are accepted. `discriminator_property` puts these
-        # values in a `set()` to check distinctness across branches, so a non-hashable
-        # `const` (array/object) would crash. `float` is excluded on purpose:
-        # float-equality discrimination is fragile, so such unions fall back to `OneOf`.
+        #  values in a `set()` to check distinctness across branches, so a non-hashable
+        #  `const` (array/object) would crash. `float` is excluded on purpose:
+        #  float-equality discrimination is fragile, so such unions fall back to `OneOf`.
         if isinstance(tag, (str, int, NoneType)):
             tags[name] = tag
 

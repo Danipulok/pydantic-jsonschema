@@ -74,7 +74,7 @@ class DependentSchemas(ObjectApplicator):
         for trigger, adapter in self._get_adapters().items():
             if trigger not in data:
                 continue
-            if not self._validates(adapter, data):
+            if not self._validates(adapter, value=data):
                 msg = f"Property `{trigger}` does not satisfy its `dependentSchemas` schema"
                 raise ValueError(msg)
 

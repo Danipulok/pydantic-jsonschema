@@ -16,17 +16,17 @@ __all__ = [
 ]
 
 # See: https://www.rfc-editor.org/rfc/rfc1123#section-2.1
-# Each label: 1-63 alphanumeric/hyphen chars, no leading/trailing hyphen.
-# Trailing dot allowed (absolute FQDN).
-# Case-insensitive.
+#  Each label: 1-63 alphanumeric/hyphen chars, no leading/trailing hyphen.
+#  Trailing dot allowed (absolute FQDN).
+#  Case-insensitive.
 _HOSTNAME_RE: Final[re.Pattern[str]] = re.compile(
     r"^(?!-)[-A-Z\d]{1,63}(?<!-)(?:\.(?!-)[-A-Z\d]{1,63}(?<!-))*\.?$",
     re.IGNORECASE,
 )
 
 # See: https://www.rfc-editor.org/rfc/rfc1035#section-2.3.4
-# RFC 1035 specifies 255 octets in wire format (length-prefixed labels + null terminator).
-# Text representation replaces those 2 overhead bytes with dot separators: 255 - 2 = 253.
+#  RFC 1035 specifies 255 octets in wire format (length-prefixed labels + null terminator).
+#  Text representation replaces those 2 overhead bytes with dot separators: 255 - 2 = 253.
 _MAX_HOSTNAME_LENGTH: Final[int] = 253
 
 

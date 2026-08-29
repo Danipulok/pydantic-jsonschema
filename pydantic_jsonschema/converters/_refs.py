@@ -7,8 +7,8 @@ circular, or dangling targets. They are stateless: alias resolution depends only
 """
 
 # NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
-# recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
-# and flags every `is not MISSING` check as a non-overlapping identity comparison.
+#  recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
+#  and flags every `is not MISSING` check as a non-overlapping identity comparison.
 # mypy: disable-error-code="comparison-overlap"
 
 from typing import Final
@@ -25,7 +25,7 @@ __all__ = [
 ]
 
 # JSON Schema 2020-12 definitions key
-# See: https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.4
+#  See: https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.4
 DEFS_KEY: Final[str] = "$defs"
 
 

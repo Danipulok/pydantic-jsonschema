@@ -1,5 +1,5 @@
 # https://github.com/DavidAnson/markdownlint-cli2
-# https://github.com/DavidAnson/markdownlint#rules--aliases
+#  https://github.com/DavidAnson/markdownlint#rules--aliases
 
 globs:
   - "README.md"
@@ -32,8 +32,8 @@ config:
   no-inline-html: false
 
   # Need to disable in order to support PyMdown Tabbed extension and admonitions.
-  # https://facelessuser.github.io/pymdown-extensions/extensions/tabbed/
-  # https://squidfunk.github.io/mkdocs-material/reference/admonitions/
+  #  https://facelessuser.github.io/pymdown-extensions/extensions/tabbed/
+  #  https://squidfunk.github.io/mkdocs-material/reference/admonitions/
   code-block-style: false
 
   # Disabled in order to support references to API.

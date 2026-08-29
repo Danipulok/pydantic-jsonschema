@@ -40,6 +40,7 @@ class Contains(AnnotationApplicator):
         :param max_contains: Maximum number of matching elements (`maxContains`), or `None`.
         """
         super().__init__()
+
         self._branch: AnnotationType = branch
         self._min_contains: int = min_contains
         self._max_contains: int | None = max_contains
@@ -62,11 +63,13 @@ class Contains(AnnotationApplicator):
     ) -> JsonSchemaValue:
         """Restore the `contains` / `minContains` / `maxContains` keywords on dump."""
         json_schema = handler(schema)
+
         json_schema["contains"] = self._get_adapter().json_schema()
         if self._min_contains != _DEFAULT_MIN_CONTAINS:
             json_schema["minContains"] = self._min_contains
         if self._max_contains is not None:
             json_schema["maxContains"] = self._max_contains
+
         return json_schema
 
     def _get_adapter(self) -> TypeAdapter[AnnotationType]:
@@ -88,7 +91,7 @@ class Contains(AnnotationApplicator):
         :param item: An array element (already parsed by the array's item type).
         :returns: `True` when the element validates against `contains`.
         """
-        return self._validates(self._get_adapter(), item)
+        return self._validates(self._get_adapter(), value=item)
 
     def _validate(
         self,

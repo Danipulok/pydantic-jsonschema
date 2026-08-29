@@ -609,9 +609,9 @@ class TestConverterCaching:
         model = converter.convert_schema(schema)
 
         # `required` keeps the bare model annotation: both fields share the `$ref`
-        # cache, so the annotation is the same model object. Optional fields would
-        # wrap it as `User | MISSING`, whose identity is not stable across Python
-        # versions (`X | Y` is no longer interned on 3.15+), making `is` fail there.
+        #  cache, so the annotation is the same model object. Optional fields would
+        #  wrap it as `User | MISSING`, whose identity is not stable across Python
+        #  versions (`X | Y` is no longer interned on 3.15+), making `is` fail there.
         assert model.model_fields["user1"].annotation is model.model_fields["user2"].annotation
 
     def test_model_generation_with_uncached_ref(self) -> None:
@@ -629,6 +629,7 @@ class TestConverterCaching:
                 test_schema = Schema(type="object", properties={"value": Schema(type="string")})
                 ref = "#/$defs/TestType"
                 self._defs_cache[ref] = test_schema
+
                 return self._get_model(ref)
 
         converter = TestableConverter()

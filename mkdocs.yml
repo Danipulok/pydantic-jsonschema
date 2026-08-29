@@ -184,7 +184,7 @@ plugins:
             members_order: source
             show_bases: true
             # Hide implementation noise: raw attribute values, `type` alias values
-            # (`Email = Annotated[...]`), and the `module-attribute` / `class-attribute` badges.
+            #  (`Email = Annotated[...]`), and the `module-attribute` / `class-attribute` badges.
             show_attribute_values: false
             show_value: false
             show_labels: false
@@ -197,7 +197,7 @@ plugins:
             group_by_category: true
             summary: false
             # `model_config` has no docstring, but the `types` page turns on
-            # `show_if_no_docstring` to list `Schema` fields, so filter it out there.
+            #  `show_if_no_docstring` to list `Schema` fields, so filter it out there.
             filters:
               - "!^_"
               - "!^model_config$"

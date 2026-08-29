@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 __all__: list[str] = []
 
 # A wide, flat object: many primitive properties exercising every scalar branch plus the
-# common constraint keywords (bounds, length, pattern, enum, format).
+#  common constraint keywords (bounds, length, pattern, enum, format).
 _WIDE_SCHEMA: Final[dict[str, Any]] = {
     "type": "object",
     "properties": {
@@ -46,7 +46,7 @@ _WIDE_SCHEMA: Final[dict[str, Any]] = {
 }
 
 # A deep, recursive shape: `$defs` + `$ref`, `allOf` composition, and arrays of nested objects —
-# the paths most likely to regress when the reference resolver or composition logic changes.
+#  the paths most likely to regress when the reference resolver or composition logic changes.
 _NESTED_SCHEMA: Final[dict[str, Any]] = {
     "$defs": {
         "Address": {

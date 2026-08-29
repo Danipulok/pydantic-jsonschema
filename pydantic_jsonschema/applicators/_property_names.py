@@ -67,7 +67,7 @@ class PropertyNames(ObjectApplicator):
 
         adapter = self._get_adapter()
         for name in data:
-            if not self._validates(adapter, name):
+            if not self._validates(adapter, value=name):
                 msg = f"Property name `{name}` does not satisfy the `propertyNames` schema"
                 raise ValueError(msg)
 

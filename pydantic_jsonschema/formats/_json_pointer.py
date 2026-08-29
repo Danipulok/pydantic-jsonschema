@@ -15,15 +15,15 @@ __all__ = [
 ]
 
 # See: https://www.rfc-editor.org/rfc/rfc6901#section-3
-# Zero or more `/`-prefixed reference tokens; `~` is only valid as `~0` / `~1`.
-# The empty string is a valid pointer (it references the whole document).
-# NOTE: `S105` is a false positive: "reference-token" is the RFC 6901 ABNF rule
-# name for a pointer segment, not a credential.
+#  Zero or more `/`-prefixed reference tokens; `~` is only valid as `~0` / `~1`.
+#  The empty string is a valid pointer (it references the whole document).
+#  NOTE: `S105` is a false positive: "reference-token" is the RFC 6901 ABNF rule
+#  name for a pointer segment, not a credential.
 _REFERENCE_TOKEN: Final[str] = r"(?:[^/~]|~[01])*"  # noqa: S105
 _JSON_POINTER_RE: Final[re.Pattern[str]] = re.compile(rf"^(?:/{_REFERENCE_TOKEN})*$")
 
 # See: https://datatracker.ietf.org/doc/html/draft-bhutton-relative-json-pointer-00#section-3
-# Non-negative integer without leading zeros, followed by `#` or a JSON Pointer.
+#  Non-negative integer without leading zeros, followed by `#` or a JSON Pointer.
 _RELATIVE_JSON_POINTER_RE: Final[re.Pattern[str]] = re.compile(
     rf"^(?:0|[1-9][0-9]*)(?:#|(?:/{_REFERENCE_TOKEN})*)$",
 )

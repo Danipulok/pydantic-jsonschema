@@ -32,11 +32,11 @@ class TestFormats:
     def test_annotated_validator_basic(self) -> None:
         """Test basic Annotated type as validator."""
 
-        def validate_positive(v: int) -> int:
-            if v <= 0:
+        def validate_positive(value: int) -> int:
+            if value <= 0:
                 msg = "Must be positive"
                 raise ValueError(msg)
-            return v
+            return value
 
         PositiveInt = Annotated[int, AfterValidator(validate_positive)]  # noqa: N806
 
@@ -68,14 +68,14 @@ class TestFormats:
     def test_annotated_validator_with_transformation(self) -> None:
         """Test Annotated type with value transformation."""
 
-        def double(v: int) -> int:
-            return v * 2
+        def double(value: int) -> int:
+            return value * 2
 
-        def check_even(v: int) -> int:
-            if v % 2 != 0:
+        def check_even(value: int) -> int:
+            if value % 2 != 0:
                 msg = "Must be even"
                 raise ValueError(msg)
-            return v
+            return value
 
         DoubledEvenInt = Annotated[int, AfterValidator(double), AfterValidator(check_even)]  # noqa: N806
 
@@ -96,11 +96,11 @@ class TestFormats:
     def test_annotated_str_validator(self) -> None:
         """Test an `Annotated` string type as a format."""
 
-        def validate_email_simple(v: str) -> str:
-            if "@" not in v:
+        def validate_email_simple(value: str) -> str:
+            if "@" not in value:
                 msg = "Invalid email"
                 raise ValueError(msg)
-            return v
+            return value
 
         EmailSimple = Annotated[str, AfterValidator(validate_email_simple)]  # noqa: N806
 
@@ -132,17 +132,17 @@ class TestFormats:
     def test_mixed_validators(self) -> None:
         """Test multiple format types in one schema."""
 
-        def validate_positive(v: int) -> int:
-            if v <= 0:
+        def validate_positive(value: int) -> int:
+            if value <= 0:
                 msg = "Must be positive"
                 raise ValueError(msg)
-            return v
+            return value
 
-        def validate_uppercase(v: str) -> str:
-            if not v.isupper():
+        def validate_uppercase(value: str) -> str:
+            if not value.isupper():
                 msg = "Must be uppercase"
                 raise ValueError(msg)
-            return v
+            return value
 
         PositiveInt = Annotated[int, AfterValidator(validate_positive)]  # noqa: N806
         Uppercase = Annotated[str, AfterValidator(validate_uppercase)]  # noqa: N806
@@ -262,6 +262,7 @@ class TestFormats:
         )
 
         annotations = model.model_fields
+
         assert annotations["created_at"].annotation is datetime
         assert annotations["email"].annotation is str
         assert annotations["id"].annotation is UUID
@@ -273,6 +274,7 @@ class TestFormats:
             id="550e8400-e29b-41d4-a716-446655440000",
             ip="192.168.1.1",
         )
+
         assert isinstance(instance.created_at, datetime)  # type: ignore[attr-defined]
         assert isinstance(instance.email, str)  # type: ignore[attr-defined]
         assert isinstance(instance.id, UUID)  # type: ignore[attr-defined]
@@ -467,7 +469,7 @@ class TestFormatAcceptedForms:
         self,
         format_type: type | TypeAliasType,
         value: str,
-        expected: object,
+        expected: IPv4Address | str,
     ) -> None:
         """Each accepted form (raw `Annotated`, plain class, PEP 695 alias) is applied."""
         schema = Schema.model_validate(

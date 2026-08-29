@@ -10,9 +10,9 @@ from pytest_examples import CodeExample, EvalExample, find_examples
 __all__ = []
 
 # `pytest-examples` has no native `pyproject.toml` support, so source its settings here instead of
-# hardcoding them: `line-length` / `target-version` / `quote-style` track `[tool.ruff]`, and the
-# doc/example-only `ruff` ignores live in `[tool.pytest-examples]`. A `None` (key absent) means
-# "leave the `pytest-examples` default" — the value is simply not forwarded to `set_config`.
+#  hardcoding them: `line-length` / `target-version` / `quote-style` track `[tool.ruff]`, and the
+#  doc/example-only `ruff` ignores live in `[tool.pytest-examples]`. A `None` (key absent) means
+#  "leave the `pytest-examples` default" — the value is simply not forwarded to `set_config`.
 _PYPROJECT_TOML_DATA: Final[dict[str, Any]] = tomllib.loads(
     (Path(__file__).parent.parent / "pyproject.toml").read_text(encoding="utf-8"),
 )
@@ -31,12 +31,14 @@ def _configure(eval_example: EvalExample, /) -> None:
     :param eval_example: Fixture for evaluating examples.
     """
     config: dict[str, Any] = {"ruff_ignore": RUFF_IGNORE}
+
     if LINE_LENGTH is not None:
         config["line_length"] = LINE_LENGTH
     if TARGET_VERSION is not None:
         config["target_version"] = TARGET_VERSION
     if QUOTES is not None:
         config["quotes"] = QUOTES
+
     eval_example.set_config(**config)
 
 
@@ -61,8 +63,8 @@ def get_examples() -> list[CodeExample]:
     paths = [readme, *(path for path in docs_dir.glob("*.md") if path.name != "examples.md")]
 
     # NOTE: `list(...)` is required — `find_examples` returns a generator, and `parametrize`
-    # deprecated non-`Collection` iterables (`PytestRemovedIn10Warning`, surfaced by the ceiling
-    # test on a newer pytest). Reproduce:
+    #  deprecated non-`Collection` iterables (`PytestRemovedIn10Warning`, surfaced by the ceiling
+    #  test on a newer pytest). Reproduce:
     #   uv run --upgrade pytest -W error -q   # -> error during collection of `tests/test_docs.py`
     return list(find_examples(*paths))
 
@@ -84,7 +86,7 @@ def test_docs_examples(example: CodeExample, eval_example: EvalExample) -> None:
         eval_example.run_print_check(example)
 
 
-@pytest.mark.parametrize("example_file", get_example_files(), ids=lambda p: p.name)
+@pytest.mark.parametrize("example_file", get_example_files(), ids=lambda path: path.name)
 def test_example_files(example_file: Path, eval_example: EvalExample) -> None:
     """Test that Python example files run correctly.
 

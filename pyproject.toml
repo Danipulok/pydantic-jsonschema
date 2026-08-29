@@ -34,8 +34,8 @@ classifiers = [
 ]
 dependencies = [
     # NOTE: `2.12.0` is the floor for `pydantic.experimental.missing_sentinel`,
-    # but `2.12.x` emits `PydanticSerializationUnexpectedValue` warnings on every
-    # `Schema.model_dump()` with nested schemas. Clean from `2.13.0`.
+    #  but `2.12.x` emits `PydanticSerializationUnexpectedValue` warnings on every
+    #  `Schema.model_dump()` with nested schemas. Clean from `2.13.0`.
     #
     # Reproduce on `2.12.5`:
     #   uv run --with 'pydantic==2.12.5' -m pytest -q
@@ -60,7 +60,7 @@ dev = [
     {include-group = "audit"},
 ]
 # `pytest-codspeed` provides the `benchmark` fixture and powers the `CodSpeed` CI job. Kept out of
-# the `test` group so the coverage-gated suite never pulls it (and the floor/ceiling runs stay lean).
+#  the `test` group so the coverage-gated suite never pulls it (and the floor/ceiling runs stay lean).
 benchmark = [
     {include-group = "test"},
     "pytest-codspeed>=5.0.0",
@@ -112,11 +112,11 @@ docs = [
 ]
 
 # NOTE: Supply-chain safety net — only resolve packages published at least
-# 7 days ago so a compromised or typo-squatted release has time to be caught
-# and yanked before it lands in our lockfile.
+#  7 days ago so a compromised or typo-squatted release has time to be caught
+#  and yanked before it lands in our lockfile.
 #
 # This is the canonical cutoff. It is mirrored as `cooldown.default-days` in
-# `.github/dependabot.yml` (Dependabot ignores `exclude-newer`) — keep both in sync.
+#  `.github/dependabot.yml` (Dependabot ignores `exclude-newer`) — keep both in sync.
 [tool.uv]
 exclude-newer = "7 days"
 
@@ -148,9 +148,9 @@ local_partial_types = true
 warn_return_any = true
 warn_unused_configs = true
 # NOTE: `warn_unreachable` and the `redundant-expr` code are intentionally NOT enabled — the
-# `X | MISSING` sentinel fields (see `schema/_models.py`) defeat mypy's flow analysis (it doesn't
-# model `MISSING` as a type), so both flag dozens of false "unreachable" / "always true|false"
-# errors. Same root cause as the per-file `comparison-overlap` disables.
+#  `X | MISSING` sentinel fields (see `schema/_models.py`) defeat mypy's flow analysis (it doesn't
+#  model `MISSING` as a type), so both flag dozens of false "unreachable" / "always true|false"
+#  errors. Same root cause as the per-file `comparison-overlap` disables.
 enable_error_code = [
     "truthy-bool",
     "truthy-iterable",
@@ -166,24 +166,24 @@ enable_error_code = [
 files = ["pydantic_jsonschema", "tests", "examples"]
 
 # Second type checker alongside `mypy`: the two disagree often enough that running both
-# catches issues neither finds alone (e.g. `pyright` flagged the `examples/custom_formats.py`
-# alias that used bare `X = Annotated[...]` instead of the canonical `type X = ...`).
+#  catches issues neither finds alone (e.g. `pyright` flagged the `examples/custom_formats.py`
+#  alias that used bare `X = Annotated[...]` instead of the canonical `type X = ...`).
 #
 # `tests` are intentionally excluded: `pyright` has no Pydantic plugin, so it (a) cannot resolve
-# field aliases (`$ref`, `if_`, `else_`, `not_`) and (b) flags the deliberate "wrong" inputs our
-# validation tests feed to coercing fields. `mypy` (with `pydantic.mypy`) covers `tests`.
+#  field aliases (`$ref`, `if_`, `else_`, `not_`) and (b) flags the deliberate "wrong" inputs our
+#  validation tests feed to coercing fields. `mypy` (with `pydantic.mypy`) covers `tests`.
 [tool.pyright]
 # https://github.com/microsoft/pyright/blob/main/docs/configuration.md
 venvPath = "."
 venv = ".venv"
 typeCheckingMode = "standard"
 # Scoped to the library source. `tests` and `examples` *consume* the models that `to_model`
-# builds at runtime, whose attributes/types are unknowable statically (`post.comments`,
-# `Reference(ref=...)` wanting the `$ref` alias, raw strings fed to coercing fields) — `pyright`
-# can only add `# pyright: ignore` noise there. `mypy` (+ `pydantic.mypy`) already covers both.
+#  builds at runtime, whose attributes/types are unknowable statically (`post.comments`,
+#  `Reference(ref=...)` wanting the `$ref` alias, raw strings fed to coercing fields) — `pyright`
+#  can only add `# pyright: ignore` noise there. `mypy` (+ `pydantic.mypy`) already covers both.
 include = ["pydantic_jsonschema"]
 # `# type: ignore` belongs to `mypy`; `pyright` uses `# pyright: ignore`. Without this, `pyright`
-# flags `mypy`-only ignores as unnecessary (and vice versa) when both checkers run.
+#  flags `mypy`-only ignores as unnecessary (and vice versa) when both checkers run.
 enableTypeIgnoreComments = false
 reportUnusedImport = "error"
 reportUnnecessaryCast = "error"
@@ -213,8 +213,8 @@ ignore = [
     "TD003",    # Missing issue link on the line following this _TODO
 
     # Per-file copyright headers are not this project's convention — the root `LICENSE` covers
-    # everything. The rule was preview-only (so `ALL` skipped it) until `ruff` `0.16.0` stabilized
-    # it, at which point it flagged every single module.
+    #  everything. The rule was preview-only (so `ALL` skipped it) until `ruff` `0.16.0` stabilized
+    #  it, at which point it flagged every single module.
     #
     # Reproduce on `ruff` `0.16.0` without this entry:
     #   uv run ruff check
@@ -268,8 +268,8 @@ addopts = [
     "--strict-markers",     # Raise error for unregistered markers
     "--strict-config",      # Raise error for unknown config options
     # Benchmarks (`tests/benchmarks/`) need `pytest-codspeed` and run only in the `CodSpeed` job,
-    # which overrides this with `-m benchmark`. Excluding them here keeps the normal suite plugin-free
-    # and out of the 100% coverage gate.
+    #  which overrides this with `-m benchmark`. Excluding them here keeps the normal suite plugin-free
+    #  and out of the 100% coverage gate.
     "-m", "not benchmark",
 ]
 markers = [
@@ -278,7 +278,7 @@ markers = [
 xfail_strict = true         # An `xfail` test that unexpectedly passes is a failure
 filterwarnings = ["error"]  # Any warning is an error — catches deprecations early (e.g. in the
                             # dependency-ceiling run); add targeted `ignore::...` entries if a
-                            # third-party warning is genuinely out of our control
+                            #  third-party warning is genuinely out of our control
 
 # https://coverage.readthedocs.io/en/latest/config.html#run
 [tool.coverage.run]

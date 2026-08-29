@@ -78,7 +78,7 @@ class PatternProperties(ObjectApplicator):
                 # ECMA-262 `patternProperties` is unanchored; `re.search` matches anywhere.
                 if not pattern.search(str(name)):
                     continue
-                if not self._validates(adapter, value):
+                if not self._validates(adapter, value=value):
                     msg = f"Property `{name}` does not satisfy its `patternProperties` schema"
                     raise ValueError(msg)
 

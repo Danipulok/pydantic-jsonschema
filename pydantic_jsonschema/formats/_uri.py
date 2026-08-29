@@ -17,7 +17,7 @@ __all__ = [
 ]
 
 # See: https://www.rfc-editor.org/rfc/rfc3986#appendix-B
-# Decompose a URI-reference into scheme, authority, path, query, and fragment.
+#  Decompose a URI-reference into scheme, authority, path, query, and fragment.
 #
 # NOTE: Quantifiers are possessive (`++`/`*+`) to keep matching linear: the `scheme`,
 #       `authority`, `path`, and query character classes overlap, so on non-matching
@@ -34,12 +34,12 @@ _URI_RE: Final[re.Pattern[str]] = re.compile(
 )
 
 # See: https://www.rfc-editor.org/rfc/rfc3986#section-3.1
-# Scheme starts with a letter, followed by any combination of letters, digits, `+`, `-`, `.`.
+#  Scheme starts with a letter, followed by any combination of letters, digits, `+`, `-`, `.`.
 _SCHEME_RE: Final[re.Pattern[str]] = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.\-]*$")
 
 # See: https://www.rfc-editor.org/rfc/rfc3986#section-3.2
-# Authority = [userinfo@]host[:port]. Host is either an IPv6 literal in brackets or a reg-name.
-# Port must be digits-only; non-numeric port or unclosed IPv6 bracket fails to match.
+#  Authority = [userinfo@]host[:port]. Host is either an IPv6 literal in brackets or a reg-name.
+#  Port must be digits-only; non-numeric port or unclosed IPv6 bracket fails to match.
 _AUTHORITY_RE: Final[re.Pattern[str]] = re.compile(
     r"^(?:[^@]*@)?"
     r"(?:\[(?P<ipv6>[^\]]+)\]|(?P<host>[^:\[\]]*))"
@@ -47,7 +47,7 @@ _AUTHORITY_RE: Final[re.Pattern[str]] = re.compile(
 )
 
 # See: https://www.rfc-editor.org/rfc/rfc3986#section-3.2.2
-# IPv4 address: four decimal octets (0-255) separated by dots.
+#  IPv4 address: four decimal octets (0-255) separated by dots.
 _IPV4_RE: Final[re.Pattern[str]] = re.compile(r"^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$")
 
 _MAX_IPV4_OCTET: Final[int] = 255

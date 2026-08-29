@@ -91,7 +91,7 @@ class OneOf(AnnotationApplicator):
         :raises ValueError: If the value does not match exactly one branch.
         """
         matched_count: int = sum(
-            1 for adapter in self._get_adapters() if self._validates(adapter, value)
+            1 for adapter in self._get_adapters() if self._validates(adapter, value=value)
         )
 
         if matched_count != 1:

@@ -37,6 +37,7 @@ class PrefixItems(AnnotationApplicator):
             is absent (extra elements are then unconstrained).
         """
         super().__init__()
+
         self._prefixes: tuple[AnnotationType, ...] = tuple(prefixes)
         self._tail: AnnotationType | None = tail
         self._prefix_adapters: list[TypeAdapter[AnnotationType]] | None = None
@@ -60,11 +61,13 @@ class PrefixItems(AnnotationApplicator):
         """Restore the `prefixItems` (and tail `items`) keywords on dump."""
         json_schema = handler(schema)
         self._build_adapters()
+
         json_schema["prefixItems"] = [
             adapter.json_schema() for adapter in self._prefix_adapters or []
         ]
         if self._tail_adapter is not None:
             json_schema["items"] = self._tail_adapter.json_schema()
+
         return json_schema
 
     def _build_adapters(self) -> None:
