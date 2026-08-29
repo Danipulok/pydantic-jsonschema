@@ -58,13 +58,17 @@ class Not(AnnotationApplicator, ObjectApplicator):
     ) -> JsonSchemaValue:
         """Restore the `not` keyword on dump (the wrap-validator drops it otherwise)."""
         json_schema = handler(schema)
-        json_schema.update(self.json_schema_keyword())
+        json_schema.update(self.json_schema_keyword(handler))
         return json_schema
 
     @override
-    def json_schema_keyword(self) -> JsonSchemaValue:
+    def json_schema_keyword(
+        self,
+        handler: GetJsonSchemaHandler,
+        /,
+    ) -> JsonSchemaValue:
         """Return the `not` keyword fragment for the dumped JSON Schema."""
-        return {"not": self._get_adapter().json_schema()}
+        return {"not": self._branch_schema(self._get_adapter(), handler=handler)}
 
     def matches(
         self,

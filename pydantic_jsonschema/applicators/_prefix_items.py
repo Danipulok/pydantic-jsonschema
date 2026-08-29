@@ -63,10 +63,10 @@ class PrefixItems(AnnotationApplicator):
         self._build_adapters()
 
         json_schema["prefixItems"] = [
-            adapter.json_schema() for adapter in self._prefix_adapters or []
+            self._branch_schema(adapter, handler=handler) for adapter in self._prefix_adapters or []
         ]
         if self._tail_adapter is not None:
-            json_schema["items"] = self._tail_adapter.json_schema()
+            json_schema["items"] = self._branch_schema(self._tail_adapter, handler=handler)
 
         return json_schema
 

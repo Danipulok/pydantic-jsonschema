@@ -161,3 +161,97 @@ class TestPrefixItemsJsonSchema:
         assert model.model_json_schema()["properties"]["a"] == snapshot(
             {"items": {}, "prefixItems": [{"type": "string"}], "title": "A", "type": "array"}
         )
+
+    def test_prefix_items_recursive_ref_round_trips(self) -> None:
+        """A recursive `prefixItems` branch keeps its `$ref` resolvable from the document root."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "properties": {
+                        "a": {"type": "array", "prefixItems": [{"$ref": "#/$defs/Node"}]},
+                    },
+                    "required": ["a"],
+                    "$defs": {
+                        "Node": {
+                            "type": "object",
+                            "properties": {"next": {"$ref": "#/$defs/Node"}},
+                        },
+                    },
+                }
+            )
+        )
+
+        assert model.model_json_schema() == snapshot(
+            {
+                "$defs": {
+                    "Model": {
+                        "additionalProperties": True,
+                        "properties": {"next": {"$ref": "#/$defs/Model", "title": "Next"}},
+                        "title": "Model",
+                        "type": "object",
+                    }
+                },
+                "additionalProperties": True,
+                "properties": {
+                    "a": {
+                        "items": {},
+                        "prefixItems": [{"$ref": "#/$defs/Model"}],
+                        "title": "A",
+                        "type": "array",
+                    }
+                },
+                "required": ["a"],
+                "title": "Model",
+                "type": "object",
+            }
+        )
+
+    def test_items_tail_recursive_ref_round_trips(self) -> None:
+        """A recursive tail `items` branch keeps its `$ref` resolvable from the document root."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "properties": {
+                        "a": {
+                            "type": "array",
+                            "prefixItems": [{"type": "string"}],
+                            "items": {"$ref": "#/$defs/Node"},
+                        },
+                    },
+                    "required": ["a"],
+                    "$defs": {
+                        "Node": {
+                            "type": "object",
+                            "properties": {"next": {"$ref": "#/$defs/Node"}},
+                        },
+                    },
+                }
+            )
+        )
+
+        assert model.model_json_schema() == snapshot(
+            {
+                "$defs": {
+                    "Model": {
+                        "additionalProperties": True,
+                        "properties": {"next": {"$ref": "#/$defs/Model", "title": "Next"}},
+                        "title": "Model",
+                        "type": "object",
+                    }
+                },
+                "additionalProperties": True,
+                "properties": {
+                    "a": {
+                        "items": {"$ref": "#/$defs/Model"},
+                        "prefixItems": [{"type": "string"}],
+                        "title": "A",
+                        "type": "array",
+                    }
+                },
+                "required": ["a"],
+                "title": "Model",
+                "type": "object",
+            }
+        )

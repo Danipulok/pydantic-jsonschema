@@ -120,9 +120,8 @@ class TestDependentSchemasJsonSchema:
 
         assert model.model_json_schema() == snapshot(
             {
-                "additionalProperties": True,
-                "dependentSchemas": {
-                    "a": {
+                "$defs": {
+                    "Model": {
                         "additionalProperties": True,
                         "properties": {"b": {"title": "B", "type": "integer"}},
                         "required": ["b"],
@@ -130,7 +129,45 @@ class TestDependentSchemasJsonSchema:
                         "type": "object",
                     }
                 },
+                "additionalProperties": True,
+                "dependentSchemas": {"a": {"$ref": "#/$defs/Model"}},
                 "properties": {},
+                "title": "Model",
+                "type": "object",
+            }
+        )
+
+    def test_dependent_schemas_recursive_ref_round_trips(self) -> None:
+        """A recursive `dependentSchemas` branch keeps its `$ref` resolvable from the root."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "properties": {"a": {"type": "string"}},
+                    "dependentSchemas": {"a": {"$ref": "#/$defs/Node"}},
+                    "$defs": {
+                        "Node": {
+                            "type": "object",
+                            "properties": {"next": {"$ref": "#/$defs/Node"}},
+                        },
+                    },
+                }
+            )
+        )
+
+        assert model.model_json_schema() == snapshot(
+            {
+                "$defs": {
+                    "Model": {
+                        "additionalProperties": True,
+                        "properties": {"next": {"$ref": "#/$defs/Model", "title": "Next"}},
+                        "title": "Model",
+                        "type": "object",
+                    }
+                },
+                "additionalProperties": True,
+                "dependentSchemas": {"a": {"$ref": "#/$defs/Model"}},
+                "properties": {"a": {"title": "A", "type": "string"}},
                 "title": "Model",
                 "type": "object",
             }

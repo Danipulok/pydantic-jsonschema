@@ -172,15 +172,54 @@ class TestNotJsonSchema:
 
         assert model.model_json_schema() == snapshot(
             {
-                "additionalProperties": True,
-                "not": {
-                    "additionalProperties": True,
-                    "properties": {"secret": {"title": "Secret", "type": "integer"}},
-                    "required": ["secret"],
-                    "title": "Model",
-                    "type": "object",
+                "$defs": {
+                    "Model": {
+                        "additionalProperties": True,
+                        "properties": {"secret": {"title": "Secret", "type": "integer"}},
+                        "required": ["secret"],
+                        "title": "Model",
+                        "type": "object",
+                    }
                 },
+                "additionalProperties": True,
+                "not": {"$ref": "#/$defs/Model"},
                 "properties": {"role": {"title": "Role", "type": "string"}},
+                "title": "Model",
+                "type": "object",
+            }
+        )
+
+    def test_not_recursive_ref_round_trips(self) -> None:
+        """A recursive `not` branch keeps its `$ref` resolvable from the document root."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "properties": {"a": {"not": {"$ref": "#/$defs/Node"}}},
+                    "required": ["a"],
+                    "$defs": {
+                        "Node": {
+                            "type": "object",
+                            "properties": {"next": {"$ref": "#/$defs/Node"}},
+                        },
+                    },
+                }
+            )
+        )
+
+        assert model.model_json_schema() == snapshot(
+            {
+                "$defs": {
+                    "Model": {
+                        "additionalProperties": True,
+                        "properties": {"next": {"$ref": "#/$defs/Model", "title": "Next"}},
+                        "title": "Model",
+                        "type": "object",
+                    }
+                },
+                "additionalProperties": True,
+                "properties": {"a": {"not": {"$ref": "#/$defs/Model"}, "title": "A"}},
+                "required": ["a"],
                 "title": "Model",
                 "type": "object",
             }

@@ -129,3 +129,38 @@ class TestPatternPropertiesJsonSchema:
                 "type": "object",
             }
         )
+
+    def test_pattern_properties_recursive_ref_round_trips(self) -> None:
+        """A recursive `patternProperties` branch keeps its `$ref` resolvable from the root."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "patternProperties": {"^x": {"$ref": "#/$defs/Node"}},
+                    "$defs": {
+                        "Node": {
+                            "type": "object",
+                            "properties": {"next": {"$ref": "#/$defs/Node"}},
+                        },
+                    },
+                }
+            )
+        )
+
+        assert model.model_json_schema() == snapshot(
+            {
+                "$defs": {
+                    "Model": {
+                        "additionalProperties": True,
+                        "properties": {"next": {"$ref": "#/$defs/Model", "title": "Next"}},
+                        "title": "Model",
+                        "type": "object",
+                    }
+                },
+                "additionalProperties": True,
+                "patternProperties": {"^x": {"$ref": "#/$defs/Model"}},
+                "properties": {},
+                "title": "Model",
+                "type": "object",
+            }
+        )

@@ -64,19 +64,23 @@ class IfThenElse(AnnotationApplicator, ObjectApplicator):
     ) -> JsonSchemaValue:
         """Restore the `if` / `then` / `else` keywords on dump."""
         json_schema = handler(schema)
-        json_schema.update(self.json_schema_keyword())
+        json_schema.update(self.json_schema_keyword(handler))
         return json_schema
 
     @override
-    def json_schema_keyword(self) -> JsonSchemaValue:
+    def json_schema_keyword(
+        self,
+        handler: GetJsonSchemaHandler,
+        /,
+    ) -> JsonSchemaValue:
         """Return the `if` / `then` / `else` keyword fragment for the dumped JSON Schema."""
         if_adapter = self._build_adapters()
 
-        keyword: JsonSchemaValue = {"if": if_adapter.json_schema()}
+        keyword: JsonSchemaValue = {"if": self._branch_schema(if_adapter, handler=handler)}
         if self._then_adapter is not None:
-            keyword["then"] = self._then_adapter.json_schema()
+            keyword["then"] = self._branch_schema(self._then_adapter, handler=handler)
         if self._else_adapter is not None:
-            keyword["else"] = self._else_adapter.json_schema()
+            keyword["else"] = self._branch_schema(self._else_adapter, handler=handler)
 
         return keyword
 

@@ -89,3 +89,59 @@ class TestPropertyNamesJsonSchema:
                 "type": "object",
             }
         )
+
+    def test_property_names_typeless_branch_round_trips(self) -> None:
+        """A branch carrying only a constraint keeps that constraint on dump.
+
+        A typeless branch converts to `Annotated[Any, ...]`, whose keyword lives in the core
+        schema's own `pydantic_js_updates` metadata rather than in a nested schema — the one
+        place a branch renderer can drop it while every typed branch still round-trips.
+        """
+        model = to_model(
+            Schema.model_validate({"type": "object", "propertyNames": {"maxLength": 3}})
+        )
+
+        assert model.model_json_schema() == snapshot(
+            {
+                "additionalProperties": True,
+                "properties": {},
+                "propertyNames": {"maxLength": 3},
+                "title": "Model",
+                "type": "object",
+            }
+        )
+
+    def test_property_names_recursive_ref_round_trips(self) -> None:
+        """A recursive `propertyNames` branch keeps its `$ref` resolvable from the document root."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "propertyNames": {"$ref": "#/$defs/Node"},
+                    "$defs": {
+                        "Node": {
+                            "type": "object",
+                            "properties": {"next": {"$ref": "#/$defs/Node"}},
+                        },
+                    },
+                }
+            )
+        )
+
+        assert model.model_json_schema() == snapshot(
+            {
+                "$defs": {
+                    "Model": {
+                        "additionalProperties": True,
+                        "properties": {"next": {"$ref": "#/$defs/Model", "title": "Next"}},
+                        "title": "Model",
+                        "type": "object",
+                    }
+                },
+                "additionalProperties": True,
+                "properties": {},
+                "propertyNames": {"$ref": "#/$defs/Model"},
+                "title": "Model",
+                "type": "object",
+            }
+        )
