@@ -91,11 +91,14 @@ what it does from the signature.
   is a table, not a paragraph — leave those unbroken.
 - **Guard clauses over nesting.** Each condition returns or raises early; `try` holds only what can
   actually raise, and the success path goes in `else`.
+- **A comment on why a branch exists goes above its keyword** — above `except` / `else` / `elif` /
+  `finally`, at the same indent, not inside the block.
 - **Full names everywhere.** No abbreviations and no single letters, in any scope. The exceptions
   are `_`, `er` for exception variables, `i`/`j`/`k` for matrix indices, `x`/`y`/`z` for geometric
   coordinates, and `cls`/`self`.
 - **At most one positional parameter**; everything after it is keyword-only, behind `*`. Signatures
   a library fixes for us — a `pydantic` callback, a dunder, an `@overload` — are exempt.
+- **Two or more keyword arguments in a call go one per line**, with a trailing comma.
 - **Catch the narrowest exception that can occur**, and bind it as `er`. A broad catch carries a
   comment saying why the boundary is broad.
 - **Constants carry `Final[type]`**, module level and class level alike. A meaningful literal at a
@@ -107,7 +110,11 @@ what it does from the signature.
   a union — with a comment saying why. Callbacks use a `Protocol` with `__call__`, not `Callable`.
 - **Structures have field names.** No anonymous tuples in signatures, and a `dict` in a signature
   is a missing `dataclass`, `NamedTuple`, model or `TypedDict`. Raw dicts belong at the boundary.
-- **Every module defines `__all__`**, and imports live at the top of it.
+- **Type aliases use the `type` statement and carry a `Type` suffix** — `type IdType = UUID`.
+- **`import datetime as dt`**, never `from datetime import datetime` — the module and the class
+  share a name, and the alias keeps every reference unambiguous.
+- **Every module defines `__all__`**, and imports live at the top of it. An import inside a function
+  carries a comment naming the import cycle or the optional dependency that forces it.
 - **Comments say why, in one plain line, ending with a period.** A continuation line starts at
   `#` followed by two spaces — one more than the first line takes. `# TODO:` is the only tag we use. A non-obvious workaround
   names what failed without it and links a permalink pinned to a commit SHA.
@@ -122,6 +129,8 @@ Tests are held to all of the above, without exception; see
 - Add tests for every new feature or behavior change.
 - Maintain 100% coverage.
 - Prefer direct behavior assertions over implementation-detail assertions.
+- Prefer one parametrized test with explicit `pytest.param` ids over near-duplicate tests — the id
+  is what a failing CI log names.
 - Include validation failure cases when schema constraints should reject input.
 - Add documentation examples when a behavior needs user-facing explanation.
 - Annotate every test `-> None`, and every fixture, factory and helper in full, parameters
