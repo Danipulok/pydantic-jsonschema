@@ -60,7 +60,6 @@ reviews:
         - Functions neither accept nor return an anonymous tuple, and a `dict` in a signature is a
           missing model: use a `dataclass`, a `NamedTuple`, a `pydantic` model or a `TypedDict`.
         - Type aliases use the `type` statement and carry a `Type` suffix (`type IdType = UUID`).
-        - Generics use the PEP 695 syntax (`def convert[T](...)`), never `TypeVar` or `Generic`.
         - `import datetime as dt`, never `from datetime import datetime`.
 
         Modules and comments.
@@ -85,7 +84,6 @@ reviews:
           fully annotated, parameters included.
         - A fixture that returns a callable is typed with a `Protocol` in `conftest.py`, never
           `Callable` and never `Any`.
-        - No `**kwargs: Any` in builders or fixtures — list every parameter with its default.
         - Nothing reads the environment: no `os.environ`, no `os.getenv`, no `dotenv`. A fixture
           builds the prepared object once and tests take it as a parameter.
         - The test tree mirrors the source tree — one source module, one test module, same path.
