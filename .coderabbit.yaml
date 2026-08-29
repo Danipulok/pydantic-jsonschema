@@ -2,9 +2,8 @@
 language: en-US
 
 reviews:
-  # NOTE: `assertive` is the verbose profile — we start with maximum feedback
-  #       to evaluate the tool; downgrade to `chill` if the noise outweighs
-  #       the signal.
+  # `assertive` is the verbose profile — we start with maximum feedback to evaluate the tool;
+  #  downgrade to `chill` if the noise outweighs the signal.
   profile: assertive
   high_level_summary: true
   poem: false
@@ -14,6 +13,94 @@ reviews:
     - "!dist/**"
     - "!site/**"
     - "!sbom/**"
+
+  # The conventions below are the ones `ruff`, `mypy` and `pyright` have no rule for, so review is
+  #  the only place they are checked. Everything they DO cover is left out on purpose: a convention
+  #  restated here would be a second home for one rule, and the linter is the one that blocks.
+  #  Canonical prose version, written for contributors:
+  #  https://danipulok.github.io/pydantic-jsonschema/contributing/#code-style
+  path_instructions:
+    - path: "**/*.py"
+      instructions: |
+        Readability, in this order — a reader who has never seen the code should predict what it
+        does from the signature.
+
+        - Separate logical blocks with blank lines. Flag a run of eight or more sibling statements
+          at one indent with no blank line between them; five to seven is worth a nudge. A run of
+          plain declarations, or a table of `if <cond>: <container>[<key>] = <value>` lines writing
+          into one container, is a table rather than a paragraph — leave those unbroken.
+        - Guard clauses over nested `if` / `elif` chains. Each condition returns or raises early.
+        - Keep a `try` body to what can actually raise; the success path goes in `else`.
+        - A comment explaining why a branch exists goes ABOVE `except` / `else` / `elif` /
+          `finally`, at the same indent, not inside the block.
+
+        Naming and signatures.
+
+        - No abbreviated or single-letter names, in any scope — not in loops, comprehensions,
+          lambdas, parameters or attributes. The only allowed short names are `_`, `er`, `i`/`j`/`k`
+          for matrix indices, `x`/`y`/`z` for geometric coordinates, and `cls`/`self`.
+        - Exception variables are always named `er`, and the caught type is the narrowest one that
+          can occur. `except Exception` needs a comment saying why the boundary is broad.
+        - At most one positional parameter. Everything after it is keyword-only, behind `*`. This
+          does not apply to dunders, `@overload`, `@override`, or a signature a library fixes for
+          us — a `pydantic` callback, for instance.
+        - Calls with two or more keyword arguments put one argument per line, with a trailing comma.
+
+        Types and constants.
+
+        - Every constant carries `Final[type]` — module level and class level alike, never a bare
+          `Final`. A meaningful literal at a call site is a missing constant.
+        - Annotate an assignment when the right-hand side does not state its type (literals, `None`,
+          empty containers, arithmetic, a declaration with no value). Do NOT annotate one that does
+          (a typed call, a constructor, a comprehension) — the second copy drifts.
+        - `object` is never written as a type. `Any` is a last resort behind a concrete type, a
+          `Protocol`, then a union, and it needs a comment saying why.
+        - Callbacks are typed with a `Protocol` defining `__call__`, never `Callable` — `Callable`
+          loses the parameter names.
+        - Functions neither accept nor return an anonymous tuple, and a `dict` in a signature is a
+          missing model: use a `dataclass`, a `NamedTuple`, a `pydantic` model or a `TypedDict`.
+        - Type aliases use the `type` statement and carry a `Type` suffix (`type IdType = UUID`).
+        - `import datetime as dt`, never `from datetime import datetime`.
+
+        Modules and comments.
+
+        - Every module defines `__all__`. Entry points, `conftest.py` and test modules are exempt.
+        - Imports live at the top of the module. An import inside a function needs a comment naming
+          the import cycle or the optional dependency that forces it.
+        - A comment says WHY in one plain line and ends with a period; code a comment would restate
+          needs no comment. A continuation line starts with `#` followed by two spaces, one more
+          than the first line takes.
+        - `# TODO:` is the only tag. No `NOTE:`, `FIXME:`, `HACK:` or `XXX:`.
+        - Wrap every code entity in backticks — identifiers, paths, flags, versions, config keys.
+        - A non-obvious workaround or guard carries the reason, what failed without it, and a
+          permalink pinned to a commit SHA.
+
+    - path: "tests/**/*.py"
+      instructions: |
+        Everything in the `**/*.py` instructions applies here too — tests are not exempt from any
+        of it, and the naming, typing and readability rules least of all.
+
+        - Every test function is annotated `-> None`, and every fixture, factory and helper is
+          fully annotated, parameters included.
+        - A fixture that returns a callable is typed with a `Protocol` in `conftest.py`, never
+          `Callable` and never `Any`.
+        - Nothing reads the environment: no `os.environ`, no `os.getenv`, no `dotenv`. A fixture
+          builds the prepared object once and tests take it as a parameter.
+        - The test tree mirrors the source tree — one source module, one test module, same path.
+        - `tests/` holds tests, fixtures and `conftest.py` and nothing else. A one-off utility
+          belongs in `scripts/`, exposing a function the test imports.
+        - Prefer parametrized cases with explicit `pytest.param` ids over near-duplicate tests, and
+          assert on behavior rather than on implementation details.
+
+    - path: "**/*.md"
+      instructions: |
+        - Every fact lives in exactly one place. A statement already made elsewhere in the docs is
+          replaced by a link to it, never by a second copy that drifts.
+        - Wrap every code entity in backticks — identifiers, paths, commands, flags, env var names,
+          version numbers, config keys.
+        - Plain, short sentences. Technical precision over academic prose.
+        - Never name a contributor's personal paths, hostnames or credentials in an example; use
+          obvious placeholders such as `your-api-key-here` or `https://example.com`.
 
 chat:
   auto_reply: true

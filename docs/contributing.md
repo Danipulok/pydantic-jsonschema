@@ -71,19 +71,75 @@ of those code examples. The included `examples/*.py` files are still tested dire
 
 ## Code Style
 
-- Use Ruff for formatting and linting.
+`just lint` runs `ruff`, `mypy`, `pyright`, `codespell` and `markdownlint`, and it is the gate — if
+it passes, the mechanical half of the style is satisfied and no reviewer will argue about it.
+
+- Use `ruff` for formatting and linting.
 - Add type hints to public APIs and internal code where type inference is not obvious.
-- Use Sphinx-style docstrings for public APIs (`:param:`, `:returns:`, `:raises:`).
+- Use `Sphinx`-style docstrings for public APIs (`:param:`, `:returns:`, `:raises:`).
 - Keep `mypy` strict mode passing.
 - Keep tests explicit about generated model behavior, validation errors, references, and formats.
+
+### Conventions the linters cannot check
+
+These are the ones review actually spends its time on, so they are worth knowing before you open a
+pull request. The theme behind all of them: a reader who has never seen the code should predict
+what it does from the signature.
+
+- **Separate logical blocks with blank lines.** A wall of statements at one indent is the single
+  most common thing sent back. A run of plain declarations or a table of one-line `if` assignments
+  is a table, not a paragraph — leave those unbroken.
+- **Guard clauses over nesting.** Each condition returns or raises early; `try` holds only what can
+  actually raise, and the success path goes in `else`.
+- **A comment on why a branch exists goes above its keyword** — above `except` / `else` / `elif` /
+  `finally`, at the same indent, not inside the block.
+- **Full names everywhere.** No abbreviations and no single letters, in any scope. The exceptions
+  are `_`, `er` for exception variables, `i`/`j`/`k` for matrix indices, `x`/`y`/`z` for geometric
+  coordinates, and `cls`/`self`.
+- **At most one positional parameter**; everything after it is keyword-only, behind `*`. Signatures
+  a library fixes for us — a `pydantic` callback, a dunder, an `@overload` — are exempt.
+- **Two or more keyword arguments in a call go one per line**, with a trailing comma.
+- **Catch the narrowest exception that can occur**, and bind it as `er`. A broad catch carries a
+  comment saying why the boundary is broad.
+- **Constants carry `Final[type]`**, module level and class level alike. A meaningful literal at a
+  call site is a missing constant.
+- **Annotate an assignment only when the right-hand side does not state its type.** Literals,
+  `None`, empty containers and arithmetic need one; a typed call, a constructor or a comprehension
+  already says it, and the second copy drifts.
+- **`object` is never a type, and `Any` is a last resort** behind a concrete type, a `Protocol` and
+  a union — with a comment saying why. Callbacks use a `Protocol` with `__call__`, not `Callable`.
+- **Structures have field names.** No anonymous tuples in signatures, and a `dict` in a signature
+  is a missing `dataclass`, `NamedTuple`, model or `TypedDict`. Raw dicts belong at the boundary.
+- **Type aliases use the `type` statement and carry a `Type` suffix** — `type IdType = UUID`.
+- **`import datetime as dt`**, never `from datetime import datetime` — the module and the class
+  share a name, and the alias keeps every reference unambiguous.
+- **Every module defines `__all__`**, and imports live at the top of it. An import inside a function
+  carries a comment naming the import cycle or the optional dependency that forces it.
+- **Comments say why, in one plain line, ending with a period.** A continuation line starts at
+  `#` followed by two spaces — one more than the first line takes. `# TODO:` is the only tag we use. A non-obvious workaround
+  names what failed without it and links a permalink pinned to a commit SHA.
+- **Backtick every code entity in prose** — identifiers, paths, flags, versions, config keys — in
+  comments, docstrings, documentation, commit messages and pull request descriptions alike.
+
+Tests are held to all of the above, without exception; see
+[Testing Requirements](#testing-requirements) for what they add on top.
 
 ## Testing Requirements
 
 - Add tests for every new feature or behavior change.
 - Maintain 100% coverage.
 - Prefer direct behavior assertions over implementation-detail assertions.
+- Prefer one parametrized test with explicit `pytest.param` ids over near-duplicate tests — the id
+  is what a failing CI log names.
 - Include validation failure cases when schema constraints should reject input.
 - Add documentation examples when a behavior needs user-facing explanation.
+- Annotate every test `-> None`, and every fixture, factory and helper in full, parameters
+  included. A fixture returning a callable is typed with a `Protocol` in `conftest.py`.
+- Mirror the source tree: one source module, one test module, same path under `tests/`.
+- Keep the environment out of tests — no `os.environ`, no `os.getenv`, no `dotenv`. A fixture
+  builds the prepared object once and each test takes it as a parameter.
+- Keep `tests/` to tests, fixtures and `conftest.py`. A one-off utility belongs in `scripts/`,
+  exposing a function the test imports.
 
 ## Pull Request Process
 
