@@ -37,7 +37,7 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
 
       - name: Set up `uv` + `just`
-        uses: ./.github/actions/setup
+        uses: $/.github/actions/setup
 
       - name: Install dependencies
         run: just install-all
@@ -79,7 +79,7 @@ jobs:
           allow-prereleases: true
 
       - name: Set up `uv` + `just`
-        uses: ./.github/actions/setup
+        uses: $/.github/actions/setup
 
       # Retry the whole install: on 3.15 it builds `pydantic-core` from source, so a flaky
       #  crates.io download (not a code fault) shouldn't fail the run. See `CARGO_NET_RETRY` above.
@@ -107,7 +107,7 @@ jobs:
       #  Fork PRs get an empty `token` (GitHub withholds secrets from them) and fall back to the
       #  tokenless upload that public repositories support, so they still report.
       - name: Upload coverage to `Codecov`
-        uses: codecov/codecov-action@0b35c9ecc4f0529d0eb674914510c22f85b196b4 # v7.1.0
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
@@ -127,7 +127,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up `uv` + `just`
-        uses: ./.github/actions/setup
+        uses: $/.github/actions/setup
 
       - name: Run tests at the dependency floor
         run: just test-floor
@@ -144,7 +144,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up `uv` + `just`
-        uses: ./.github/actions/setup
+        uses: $/.github/actions/setup
 
       - name: Run tests at the dependency ceiling
         run: just test-ceil
@@ -164,7 +164,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up `uv` + `just`
-        uses: ./.github/actions/setup
+        uses: $/.github/actions/setup
 
       - name: Install dependencies
         run: just install-audit
@@ -190,7 +190,7 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
 
       - name: Set up `uv` + `just`
-        uses: ./.github/actions/setup
+        uses: $/.github/actions/setup
 
       - name: Install dependencies
         run: just install-docs

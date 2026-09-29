@@ -31,7 +31,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up `uv` + `just`
-        uses: ./.github/actions/setup
+        uses: $/.github/actions/setup
 
       # `uv lock --upgrade` refreshes the whole transitive tree. `tool.uv.exclude-newer` ("7 days")
       #  still applies, so nothing inside the supply-chain quarantine window is pulled in.

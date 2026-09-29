@@ -1,0 +1,8 @@
+paths:
+  .github/workflows/**/*.yml:
+    ignore:
+      # TODO: Drop once an `actionlint` release accepts the `$/` self-repository form.
+      #       It knows only `./` and `docker://`, so `$/` is parsed as `owner/repo@ref`.
+      #       https://github.com/rhysd/actionlint/blob/914e7df21a07ef503a81201c76d2b11c789d3fca/rule_action.go#L331-L352
+      #       https://github.blog/changelog/2026-07-30-reference-same-repository-actions-with-self-repository-syntax/
+      - 'specifying action "\$/[^"]+" in invalid format because ref is missing'
