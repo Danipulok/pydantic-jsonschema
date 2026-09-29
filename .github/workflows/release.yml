@@ -87,7 +87,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up `uv` + `just`
-        uses: ./.github/actions/setup
+        uses: $/.github/actions/setup
 
       # PyPI needs a moment to make a fresh upload installable.
       - name: Wait for `PyPI` to propagate the release
