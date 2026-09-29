@@ -52,7 +52,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Set up `uv` + `just`
-        uses: ./.github/actions/setup
+        uses: $/.github/actions/setup
 
       - name: Install dependencies
         run: just install-test
