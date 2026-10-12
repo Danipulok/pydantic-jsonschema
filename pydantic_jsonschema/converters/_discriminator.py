@@ -5,9 +5,7 @@ promoted to a native Pydantic discriminated union (`Field(discriminator=...)`) i
 probing `OneOf` validator.
 """
 
-# NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
-#  recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
-#  and flags every `is not MISSING` check as a non-overlapping identity comparison.
+# mypy flags every `is not MISSING` check on a `Schema` field; see `_utils.py`.
 # mypy: disable-error-code="comparison-overlap"
 
 from types import NoneType
@@ -94,7 +92,7 @@ def _branch_tag_values(
 ) -> dict[str, TagType]:
     """Map each required single-constant property of a branch to its tag value.
 
-    Only scalar constants (`str` / `int` / `bool` / `None`) are eligible tags —
+    Only scalar constants (`str` / `int` / `bool` / `None`) are eligible tags:
     they are the hashable, `Literal`-compatible values Pydantic accepts as discriminators.
 
     :param properties: The branch's `properties`.
@@ -113,7 +111,7 @@ def _branch_tag_values(
         else:
             continue
 
-        # NOTE: Only scalar tags are accepted. `discriminator_property` puts these
+        # Only scalar tags are accepted. `discriminator_property` puts these
         #  values in a `set()` to check distinctness across branches, so a non-hashable
         #  `const` (array/object) would crash. `float` is excluded on purpose:
         #  float-equality discrimination is fragile, so such unions fall back to `OneOf`.

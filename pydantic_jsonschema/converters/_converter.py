@@ -1,8 +1,6 @@
 """Convert a JSON Schema `Schema` into a Pydantic model (`to_model` / `SchemaConverter`)."""
 
-# NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
-#  recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
-#  and flags every `is not MISSING` check as a non-overlapping identity comparison.
+# mypy flags every `is not MISSING` check on a `Schema` field; see `_utils.py`.
 # mypy: disable-error-code="comparison-overlap"
 
 from collections.abc import Generator
@@ -69,8 +67,8 @@ _DEFAULT_MODEL_NAME: Final[str] = "Model"
 # A discriminated union needs at least two members for Pydantic to tag-dispatch.
 _MIN_DISCRIMINATED_UNION_MEMBERS: Final[int] = 2
 
-# NOTE: `ARRAY` / `OBJECT` entries are only reachable from multi-type unions
-#  (`{"type": ["object", "string"]}`) — single `array` / `object` schemas are handled
+# `ARRAY` / `OBJECT` entries are only reachable from multi-type unions
+#  (`{"type": ["object", "string"]}`): single `array` / `object` schemas are handled
 #  by `_type_annotation` before the mapping is consulted.
 #  `OBJECT` must not map to `Any`: `Union[Any, str]` collapses to `Any`,
 #  and the union stops rejecting anything.
@@ -425,7 +423,7 @@ class SchemaConverter:
         `Annotated[...]` is not a class and cannot be returned as the root model. A nested object
         (used as a field type) could instead carry the applicators as `Annotated` and skip the
         subclass, but subclassing covers root and nested through one path. The classmethod hooks are
-        Pydantic's own extension points — subclassing is merely where they get defined for a model
+        Pydantic's own extension points; subclassing is merely where they get defined for a model
         built at runtime by `create_model` (which has no place to declare them otherwise).
 
         :param model: The freshly built object model.
@@ -805,7 +803,7 @@ class SchemaConverter:
 
         Branches go through `_constrained_annotation` (not plain `_schema_to_annotation`), so a
         branch's own field-level constraints (`minimum`, `maxLength`, `pattern`, ...) are enforced
-        instead of being dropped — otherwise a constraint-only branch collapses to `Any`.
+        instead of being dropped; otherwise a constraint-only branch collapses to `Any`.
 
         :param union_schemas: Sub-schemas of an `anyOf` / `oneOf` composition.
         :param kind: Composition keyword for path tracking (`anyOf` or `oneOf`).
@@ -890,7 +888,7 @@ class SchemaConverter:
     ) -> type:
         """Map the sibling `type` to a plain JSON-type guard.
 
-        Unlike `_type_annotation`, this only checks the value's JSON type — it does not build a
+        Unlike `_type_annotation`, this only checks the value's JSON type: it does not build a
         nested model or attach array applicators, since it guards a value already shaped by the
         composition.
 
@@ -918,7 +916,7 @@ class SchemaConverter:
         `pattern`, `multipleOf`, ...), so they are re-applied here as `Annotated` `Field` metadata.
 
         :param schema: The subschema (or reference) to convert.
-        :param union_branch: `True` for `anyOf` / `oneOf` branches — drop non-validating metadata
+        :param union_branch: `True` for `anyOf` / `oneOf` branches: drop non-validating metadata
             (`title` / `description` / `examples`, which would leak into the dumped union) and skip
             constraints on an untyped (`Any`) branch (a bound on `Any` makes Pydantic raise
             `TypeError` on non-comparable input).
@@ -1034,7 +1032,7 @@ class SchemaConverter:
     ) -> type | None:
         """Convert `anyOf` / `oneOf` / `allOf` composition to an annotation.
 
-        A `type` declared alongside the composition is enforced too — JSON Schema applies all
+        A `type` declared alongside the composition is enforced too, since JSON Schema applies all
         keywords conjunctively (see `_apply_sibling_type`).
 
         :param schema: Schema to convert.
