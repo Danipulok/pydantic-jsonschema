@@ -118,6 +118,37 @@ class TestIfThenElse:
             ]
         )
 
+    @pytest.mark.parametrize(
+        "branch",
+        [
+            "then",
+            "else",
+        ],
+    )
+    def test_branch_without_if_is_ignored(self, branch: str) -> None:
+        """Test `then` or `else` without `if` (JSON Schema ignores both without `if`)."""
+        schema = Schema.model_validate(
+            {
+                "type": "string",
+                branch: {"minLength": 3},
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate("ab").model_dump() == snapshot("ab")
+
+    def test_if_without_branch_is_ignored(self) -> None:
+        """Test `if` without `then` or `else` (never resolved, so a dangling `$ref` is harmless)."""
+        schema = Schema.model_validate(
+            {
+                "type": "string",
+                "if": {"$ref": "#/$defs/Missing"},
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate("ab").model_dump() == snapshot("ab")
+
     def test_if_then_ref(self) -> None:
         """Test `if` / `then` pointing at `$ref`s (resolved via the bound namespace)."""
         schema = Schema.model_validate(

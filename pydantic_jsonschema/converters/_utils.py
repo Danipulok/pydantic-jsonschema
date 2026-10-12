@@ -1,9 +1,11 @@
 """Small shared utilities for the converter package."""
 
-# NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
-#  recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
-#  and flags every `is not MISSING` check as a non-overlapping identity comparison.
-# mypy: disable-error-code="comparison-overlap"
+# `Schema` fields use `X | MISSING` unions (see `schema/_models.py`), and so does `unwrap`
+#  below. mypy rejects `MISSING` as a type (`valid-type`), then infers the fields without
+#  the `Sentinel` branch and flags every `is not MISSING` check as a non-overlapping
+#  identity comparison (`comparison-overlap`). This module needs only the first; the
+#  modules that compare fields disable the second.
+# mypy: disable-error-code="valid-type"
 
 from typing import Any, Union, cast
 
@@ -17,7 +19,7 @@ __all__ = [
 type PythonType = Any
 
 
-def unwrap[T](value: T, /, *, default: T) -> T:
+def unwrap[ValueT](value: ValueT | MISSING, /, *, default: ValueT) -> ValueT:
     """Return a `Schema` field's value, or `default` when it is the `MISSING` sentinel.
 
     Replaces the `value if value is not MISSING else default` ternary repeated across the

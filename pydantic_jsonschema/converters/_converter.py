@@ -193,9 +193,12 @@ class SchemaConverter:
 
         applicators: list[ObjectApplicator] = []
         if schema.not_ is not MISSING:
-            applicators.append(self._build_not(schema))
-        if self._has_conditional(schema):
-            applicators.append(self._build_conditional(schema))
+            applicators.append(self._build_not(schema.not_))
+
+        conditional = self._build_conditional(schema)
+        if conditional is not None:
+            applicators.append(conditional)
+
         return self._wrap_object_applicators(model, applicators=applicators)
 
     def _register[ApplicatorT: Applicator](
@@ -843,9 +846,11 @@ class SchemaConverter:
         #  attached as `Annotated` wrap-validator metadata (the path used for every shape that has a
         #  host annotation; root object models take the `before`-validator path instead).
         if schema.not_ is not MISSING:
-            annotation = cast("type", Annotated[annotation, self._build_not(schema)])
-        if self._has_conditional(schema):
-            annotation = cast("type", Annotated[annotation, self._build_conditional(schema)])
+            annotation = cast("type", Annotated[annotation, self._build_not(schema.not_)])
+
+        conditional = self._build_conditional(schema)
+        if conditional is not None:
+            annotation = cast("type", Annotated[annotation, conditional])
 
         return annotation
 
@@ -870,7 +875,7 @@ class SchemaConverter:
         if schema.type is MISSING:
             return annotation
 
-        adapter: TypeAdapter[PythonType] = TypeAdapter(self._host_type_guard(schema))
+        adapter: TypeAdapter[PythonType] = TypeAdapter(self._host_type_guard(schema.type))
 
         def _check(value: PythonType) -> PythonType:
             adapter.validate_python(value)
@@ -880,7 +885,7 @@ class SchemaConverter:
 
     @staticmethod
     def _host_type_guard(
-        schema: Schema,
+        sibling_type: DataType | list[DataType],
         /,
     ) -> type:
         """Map the sibling `type` to a plain JSON-type guard.
@@ -889,13 +894,13 @@ class SchemaConverter:
         nested model or attach array applicators, since it guards a value already shaped by the
         composition.
 
-        :param schema: Schema whose `type` is set (single `DataType` or a list).
+        :param sibling_type: The schema's `type` (single `DataType` or a list).
         :returns: A type (or union of types) to validate the value's JSON type against.
         """
-        if isinstance(schema.type, DataType):
-            return _DATA_TYPE_ANNOTATION_MAPPING[schema.type]
+        if isinstance(sibling_type, DataType):
+            return _DATA_TYPE_ANNOTATION_MAPPING[sibling_type]
 
-        union_args = [_DATA_TYPE_ANNOTATION_MAPPING[data_type] for data_type in schema.type]
+        union_args = [_DATA_TYPE_ANNOTATION_MAPPING[data_type] for data_type in sibling_type]
         return make_union(union_args)
 
     def _constrained_annotation(
@@ -932,43 +937,33 @@ class SchemaConverter:
 
     def _build_not(
         self,
-        schema: Schema,
+        not_schema: Schema | Reference,
         /,
     ) -> Not:
         """Build the `not` validator, registering it for namespace binding.
 
-        :param schema: Schema carrying `not`.
+        :param not_schema: The schema's `not` subschema.
         :returns: A `Not` validator for the subschema.
         """
         with self._track_path("not"):
-            branch = self._constrained_annotation(schema.not_)
+            branch = self._constrained_annotation(not_schema)
 
         return self._register(Not(branch=branch))
-
-    @staticmethod
-    def _has_conditional(
-        schema: Schema,
-        /,
-    ) -> bool:
-        """Return whether `if` gates an actual `then` / `else` branch.
-
-        :param schema: Schema to inspect.
-        :returns: `True` when `if` is present together with `then` and/or `else`.
-        """
-        return schema.if_ is not MISSING and (
-            schema.then is not MISSING or schema.else_ is not MISSING
-        )
 
     def _build_conditional(
         self,
         schema: Schema,
         /,
-    ) -> IfThenElse:
+    ) -> IfThenElse | None:
         """Build the `if` / `then` / `else` validator, registering it for namespace binding.
 
-        :param schema: Schema carrying `if` / `then` / `else`.
-        :returns: An `IfThenElse` validator for the subschemas.
+        :param schema: Schema to inspect.
+        :returns: An `IfThenElse` validator for the subschemas, or `None` unless `if` is present
+            together with `then` and/or `else`.
         """
+        if schema.if_ is MISSING or (schema.then is MISSING and schema.else_ is MISSING):
+            return None
+
         with self._track_path("if"):
             if_branch = self._constrained_annotation(schema.if_)
 
@@ -1050,7 +1045,7 @@ class SchemaConverter:
             annotation: type = make_union(self._union_args(schema.any_of, kind="anyOf"))
         # `oneOf` -> discriminated union or exactly-one-branch validation:
         elif schema.one_of is not MISSING:
-            annotation = self._one_of_annotation(schema)
+            annotation = self._one_of_annotation(schema.one_of)
         # `allOf` -> nested model:
         elif schema.all_of is not MISSING:
             annotation = self._convert_nested_schema(schema)
@@ -1061,7 +1056,7 @@ class SchemaConverter:
 
     def _one_of_annotation(
         self,
-        schema: Schema,
+        one_of_schemas: list[Schema | Reference],
         /,
     ) -> type:
         """Convert a `oneOf` composition to an annotation.
@@ -1075,11 +1070,11 @@ class SchemaConverter:
         Otherwise it falls back to the `OneOf` wrap-validator,
         which enforces exactly-one-branch semantics by probing.
 
-        :param schema: Schema with `oneOf` set.
+        :param one_of_schemas: Sub-schemas of the `oneOf` composition.
         :returns: Discriminated `Union` annotation or `OneOf`-wrapped union.
         """
-        union_args = self._union_args(schema.one_of, kind="oneOf")
-        discriminator = discriminator_property(schema.one_of, defs_cache=self._defs_cache)
+        union_args = self._union_args(one_of_schemas, kind="oneOf")
+        discriminator = discriminator_property(one_of_schemas, defs_cache=self._defs_cache)
 
         # A discriminated union needs >= 2 concrete members to introspect the tag field.
         #  Unresolved `ForwardRef` branches keep the `OneOf` lazy path.

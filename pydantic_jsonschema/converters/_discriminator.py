@@ -49,7 +49,9 @@ def discriminator_property(
         if branch_schema is None or branch_schema.properties is MISSING:
             return None
 
-        for name, tag in _branch_tag_values(branch_schema).items():
+        required = set(unwrap(branch_schema.required, default=[]))
+        tag_values = _branch_tag_values(branch_schema.properties, required=required)
+        for name, tag in tag_values.items():
             tags_by_property.setdefault(name, []).append(tag)
 
     # A discriminator tags every branch (count of tags == branch count)
@@ -85,20 +87,22 @@ def _resolve_branch_schema(
 
 
 def _branch_tag_values(
-    schema: Schema,
+    properties: dict[str, Schema | Reference],
     /,
+    *,
+    required: set[str],
 ) -> dict[str, TagType]:
     """Map each required single-constant property of a branch to its tag value.
 
     Only scalar constants (`str` / `int` / `bool` / `None`) are eligible tags —
     they are the hashable, `Literal`-compatible values Pydantic accepts as discriminators.
 
-    :param schema: Object branch schema.
+    :param properties: The branch's `properties`.
+    :param required: The branch's `required` property names.
     :returns: Mapping of property name to its constant tag value.
     """
-    required: set[str] = set(unwrap(schema.required, default=[]))
     tags: dict[str, TagType] = {}
-    for name, prop in schema.properties.items():
+    for name, prop in properties.items():
         if name not in required or isinstance(prop, Reference):
             continue
 
