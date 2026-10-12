@@ -29,7 +29,7 @@ fi
 #  via the environment so the weekly floating rescan can point at the unpinned
 #  `:2` tag. Kept here rather than in the workflow so CI and `just scan-deps` share
 #  one source of truth for the pin.
-TRIVY_DB_REPOSITORY="${TRIVY_DB_REPOSITORY:-ghcr.io/aquasecurity/trivy-db:2@sha256:620c338424c30aa0141ccec1b5791aec4e1cc2559b26d9bfe8af6238aa1ab5c0}"
+TRIVY_DB_REPOSITORY="${TRIVY_DB_REPOSITORY:-ghcr.io/aquasecurity/trivy-db:2@sha256:b49a9c5cd32fac41a782c7266155447fb600dbe5b48d7c1c53bfc66a0e96e9ca}"
 
 # Pinned trivy image for the local/CI docker fallback below. Digest-pinned for
 #  the same reproducibility reason as the DB.
