@@ -1,11 +1,11 @@
 #!/bin/sh
-# Frozen CVE gate over the locked dependency graph (`uv.lock`) — the single home
+# Frozen CVE gate over the locked dependency graph (`uv.lock`), the single home
 #  of the scan flags and the pinned vulnerability DB, invoked by BOTH the CI
 #  `Audit` job and the local `just scan-deps` recipe, so local and CI runs execute
 #  the identical scan and can never disagree just because they ran on different
 #  days.
 #
-# Usage: scripts/trivy_scan.sh fs
+# Usage: `scripts/trivy_scan.sh fs`
 #
 # Reproducibility is the whole point: `TRIVY_DB_REPOSITORY` pins the vulnerability
 #  DB by digest, so a freshly published advisory can no longer turn a green commit
@@ -24,12 +24,12 @@ if [ "$MODE" != "fs" ]; then
     exit 2
 fi
 
-# The pinned vulnerability DB. A digest — not a floating tag — is what makes the
+# The pinned vulnerability DB. A digest, not a floating tag, is what makes the
 #  gate reproducible; bumping it is a deliberate, reviewable change. Overridable
 #  via the environment so the weekly floating rescan can point at the unpinned
 #  `:2` tag. Kept here rather than in the workflow so CI and `just scan-deps` share
 #  one source of truth for the pin.
-TRIVY_DB_REPOSITORY="${TRIVY_DB_REPOSITORY:-ghcr.io/aquasecurity/trivy-db:2@sha256:620c338424c30aa0141ccec1b5791aec4e1cc2559b26d9bfe8af6238aa1ab5c0}"
+TRIVY_DB_REPOSITORY="${TRIVY_DB_REPOSITORY:-ghcr.io/aquasecurity/trivy-db:2@sha256:b49a9c5cd32fac41a782c7266155447fb600dbe5b48d7c1c53bfc66a0e96e9ca}"
 
 # Pinned trivy image for the local/CI docker fallback below. Digest-pinned for
 #  the same reproducibility reason as the DB.
@@ -43,7 +43,7 @@ TRIVY_SEVERITY="${TRIVY_SEVERITY:-MEDIUM,HIGH,CRITICAL}"
 
 # trivy auto-discovers only the legacy plain `.trivyignore`, never the structured
 #  YAML form, so the ledger has to be named explicitly. Left unnamed it does not
-#  error — it simply stops suppressing, turning every accepted finding back into a
+#  error: it simply stops suppressing, turning every accepted finding back into a
 #  gate failure.
 TRIVY_IGNOREFILE="${TRIVY_IGNOREFILE:-.trivyignore.yaml}"
 
@@ -53,7 +53,7 @@ export TRIVY_DB_REPOSITORY TRIVY_SEVERITY TRIVY_IGNOREFILE
 #  lookup). The script `cd`s here on both the host and the container re-exec.
 cd "$(dirname "$0")/.."
 
-# CI runners and local machines have no `trivy` binary — re-exec inside the pinned
+# CI runners and local machines have no `trivy` binary, so re-exec inside the pinned
 #  image. The exported `TRIVY_*` vars cross the boundary so the in-container run
 #  uses the identical flags, DB pin and ignorefile. Inside the container `trivy` is
 #  on `PATH`, so this branch is not re-entered.
@@ -70,16 +70,15 @@ if ! command -v trivy >/dev/null 2>&1; then
         scripts/trivy_scan.sh "$MODE"
 fi
 
-# NOTE: trivy reuses a cached DB purely on age — it records no provenance
-#  (`db/metadata.json` holds only `Version`/`UpdatedAt`/`NextUpdate`/
-#  `DownloadedAt`), so a cache populated under a DIFFERENT `TRIVY_DB_REPOSITORY`
-#  (e.g. the weekly floating rescan's unpinned DB) is served without complaint,
-#  silently defeating the pin. Guard with a marker file: when the requested
-#  repository changes, drop the DB (`--vuln-db` removes `db/` only; the scan cache
-#  survives) and record the new one.
+# trivy reuses a cached DB purely on age and records no provenance
+#  (`db/metadata.json` holds only `Version`/`UpdatedAt`/`NextUpdate`/`DownloadedAt`),
+#  so a cache populated under a DIFFERENT `TRIVY_DB_REPOSITORY` (e.g. the weekly
+#  floating rescan's unpinned DB) is served without complaint, silently defeating
+#  the pin. Guard with a marker file: when the requested repository changes, drop
+#  the DB (`--vuln-db` removes `db/` only; the scan cache survives) and record it.
 #
 # Reproduce (warm cache + a nonexistent digest -> exits 0, downloads nothing; the
-#  same command on a cold cache dies with MANIFEST_UNKNOWN):
+#  same command on a cold cache dies with `MANIFEST_UNKNOWN`):
 #   docker run --rm -v pydantic_jsonschema_trivy_cache:/root/.cache/trivy \
 #     --entrypoint trivy aquasec/trivy:0.72.0 image --download-db-only \
 #     --db-repository ghcr.io/aquasecurity/trivy-db:2@sha256:$(printf '0%.0s' $(seq 64))
@@ -89,7 +88,7 @@ if [ "$(cat "$db_ref_marker" 2>/dev/null || true)" != "$TRIVY_DB_REPOSITORY" ]; 
     # Fail closed: the marker is written ONLY after a successful purge. If `trivy clean`
     #  is swallowed (e.g. `|| true`) and the marker is written anyway, the next run sees
     #  marker == requested repo, skips the purge, and serves the STALE DB under the new
-    #  pin — silently defeating the reproducibility the pin exists to guarantee. `set -e`
+    #  pin, silently defeating the reproducibility the pin exists to guarantee. `set -e`
     #  aborts the run on a nonzero `trivy clean`, leaving the marker unchanged so the
     #  purge is retried next time. `trivy clean --vuln-db` exits 0 on an empty cache, so
     #  the first run is unaffected.
@@ -98,7 +97,7 @@ if [ "$(cat "$db_ref_marker" 2>/dev/null || true)" != "$TRIVY_DB_REPOSITORY" ]; 
     printf '%s\n' "$TRIVY_DB_REPOSITORY" >"$db_ref_marker"
 fi
 
-# `--include-dev-deps`: match the coverage of the `uv audit` this replaces — gate
+# `--include-dev-deps`: match the coverage of the `uv audit` this replaces: gate
 #  dev/test/docs dependencies too, not just runtime. The advisory that motivated
 #  freezing the DB (`pymdown-extensions`, GHSA-9xwg-3r6f-jcx2) was a docs-group
 #  dep, which trivy suppresses by default.
