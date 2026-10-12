@@ -96,7 +96,9 @@ lint:
     uv run ruff check
     uv run mypy
     uv run pyright
-    uv run codespell
+    # Only the tracked files, so an untracked local directory cannot fail the gate; `uv.lock` holds
+    #  hashes, not prose. `bash` for `pipefail`: the runner's `sh` rejects it (`Illegal option -o pipefail`).
+    bash -o pipefail -c "git ls-files -z -- ':!uv.lock' | xargs -0 --no-run-if-empty uv run codespell"
     npx --yes markdownlint-cli2
 
 # Scan the locked dependency graph for known CVEs against a digest-pinned vulnerability DB
