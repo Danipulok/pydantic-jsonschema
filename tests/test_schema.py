@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from inline_snapshot import snapshot
+from pydantic.experimental.missing_sentinel import MISSING
 
 from pydantic_jsonschema.schema import DataType, Reference, Schema
 
@@ -360,6 +361,7 @@ class TestSchemaArrayKeywords:
                 "prefixItems": [{"type": "string"}, {"type": "integer"}],
             }
         )
+        assert schema.prefix_items is not MISSING
         assert all(isinstance(item, Schema) for item in schema.prefix_items)
         assert schema.model_dump() == snapshot(
             {
@@ -415,6 +417,7 @@ class TestSchemaObjectKeywords:
                 "patternProperties": {"^x-": {"type": "string"}},
             }
         )
+        assert schema.pattern_properties is not MISSING
         assert isinstance(schema.pattern_properties["^x-"], Schema)
         assert schema.model_dump() == snapshot(
             {
@@ -474,6 +477,7 @@ class TestSchemaObjectKeywords:
                 "dependentSchemas": {"credit_card": {"required": ["billing_address"]}},
             }
         )
+        assert schema.dependent_schemas is not MISSING
         assert isinstance(schema.dependent_schemas["credit_card"], Schema)
         assert schema.model_dump() == snapshot(
             {
