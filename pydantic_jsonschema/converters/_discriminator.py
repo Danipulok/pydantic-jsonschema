@@ -5,9 +5,7 @@ promoted to a native Pydantic discriminated union (`Field(discriminator=...)`) i
 probing `OneOf` validator.
 """
 
-# NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
-#  recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
-#  and flags every `is not MISSING` check as a non-overlapping identity comparison.
+# mypy flags every `is not MISSING` check on a `Schema` field; see `_utils.py`.
 # mypy: disable-error-code="comparison-overlap"
 
 from types import NoneType
@@ -49,7 +47,9 @@ def discriminator_property(
         if branch_schema is None or branch_schema.properties is MISSING:
             return None
 
-        for name, tag in _branch_tag_values(branch_schema).items():
+        required = set(unwrap(branch_schema.required, default=[]))
+        tag_values = _branch_tag_values(branch_schema.properties, required=required)
+        for name, tag in tag_values.items():
             tags_by_property.setdefault(name, []).append(tag)
 
     # A discriminator tags every branch (count of tags == branch count)
@@ -85,20 +85,22 @@ def _resolve_branch_schema(
 
 
 def _branch_tag_values(
-    schema: Schema,
+    properties: dict[str, Schema | Reference],
     /,
+    *,
+    required: set[str],
 ) -> dict[str, TagType]:
     """Map each required single-constant property of a branch to its tag value.
 
-    Only scalar constants (`str` / `int` / `bool` / `None`) are eligible tags —
+    Only scalar constants (`str` / `int` / `bool` / `None`) are eligible tags:
     they are the hashable, `Literal`-compatible values Pydantic accepts as discriminators.
 
-    :param schema: Object branch schema.
+    :param properties: The branch's `properties`.
+    :param required: The branch's `required` property names.
     :returns: Mapping of property name to its constant tag value.
     """
-    required: set[str] = set(unwrap(schema.required, default=[]))
     tags: dict[str, TagType] = {}
-    for name, prop in schema.properties.items():
+    for name, prop in properties.items():
         if name not in required or isinstance(prop, Reference):
             continue
 
@@ -109,7 +111,7 @@ def _branch_tag_values(
         else:
             continue
 
-        # NOTE: Only scalar tags are accepted. `discriminator_property` puts these
+        # Only scalar tags are accepted. `discriminator_property` puts these
         #  values in a `set()` to check distinctness across branches, so a non-hashable
         #  `const` (array/object) would crash. `float` is excluded on purpose:
         #  float-equality discrimination is fragile, so such unions fall back to `OneOf`.
