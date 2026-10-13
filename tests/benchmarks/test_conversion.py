@@ -114,11 +114,11 @@ def _annotation_is_int(context: MatchContext, /) -> bool:
 # One rule per matcher kind. Rules are matched against every node the converter walks, so the cost
 #  scales with the rule count rather than with the number of nodes they actually hit, and a
 #  non-empty rule list also switches the model cache to a pointer-scoped key.
-_RULES: Final[list[Rule]] = [
+_RULES: Final[tuple[Rule, ...]] = (
     Rule(ByType(str), After(_strip_upper)),
     Rule(ByPath("/properties/name"), After(_strip_upper)),
     Rule(ByFunc(_annotation_is_int), After(abs)),
-]
+)
 
 
 class TestConversionBenchmarks:

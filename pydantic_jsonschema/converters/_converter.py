@@ -3,7 +3,7 @@
 # mypy flags every `is not MISSING` check on a `Schema` field; see `_utils.py`.
 # mypy: disable-error-code="comparison-overlap"
 
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from types import NoneType
 from typing import (
@@ -101,7 +101,7 @@ class SchemaConverter:
         default_model_name: str = _DEFAULT_MODEL_NAME,
         refs: dict[Ref, type[BaseModel]] | None = None,
         formats: dict[FormatName, FormatType] | None = None,
-        rules: list[Rule] | None = None,
+        rules: Sequence[Rule] | None = None,
     ) -> None:
         """Initialize converter with optional pre-built refs, format types, and loading rules.
 
@@ -115,7 +115,7 @@ class SchemaConverter:
         self._default_model_name: str = default_model_name
         self._refs: dict[Ref, type[BaseModel]] = refs or {}
         self._formats: dict[FormatName, FormatType] = formats or {}
-        self._rules: list[Rule] = rules or []
+        self._rules: Sequence[Rule] = rules or ()
 
         self._defs_cache: dict[Ref, Schema] = {}
         self._def_names: dict[Ref, str] = {}  # Ref -> `$defs` name declaring its schema
@@ -1403,7 +1403,7 @@ def to_model(
     model_name: str | None = None,
     refs: dict[Ref, type[BaseModel]] | None = None,
     formats: dict[FormatName, FormatType] | None = None,
-    rules: list[Rule] | None = None,
+    rules: Sequence[Rule] | None = None,
 ) -> type[BaseModel]:
     """Convert schema to Pydantic model.
 
