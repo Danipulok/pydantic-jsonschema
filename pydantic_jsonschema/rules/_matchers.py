@@ -4,9 +4,9 @@ A matcher answers one question about a schema node the converter is about to tur
 "does this rule apply here?". The node is described by a `MatchContext` (schema, resolved
 annotation, JSON Pointer); the three concrete matchers cover the useful axes:
 
-- `ByType` — match on the resolved Python annotation (`list[str]`, `str`, `datetime`, ...);
-- `ByPath` — match on the node's JSON Pointer (`/properties/created`);
-- `ByFunc` — escape hatch: an arbitrary predicate over the `MatchContext`.
+- `ByType`: match on the resolved Python annotation (`list[str]`, `str`, `datetime`, ...);
+- `ByPath`: match on the node's JSON Pointer (`/properties/created`);
+- `ByFunc`: an escape hatch, an arbitrary predicate over the `MatchContext`.
 
 All matchers are frozen dataclasses, so they compare, hash, and `repr` as plain data. `ByType`
 and `ByPath` hold only data; `ByFunc` holds a callable and is therefore the one matcher that does
@@ -69,7 +69,7 @@ class ByType(Matcher):
     unparameterized generic (`list`, `dict`, `set`) matches every parameterization of itself.
 
     A node whose annotation a `formats` entry replaced carries the format type, so target it with
-    that same type — `ByType(Email)` reaches the email fields, while a bare `ByType(str)` reaches
+    that same type: `ByType(Email)` reaches the email fields, while a bare `ByType(str)` reaches
     only the strings no format touched.
     """
 
@@ -78,9 +78,9 @@ class ByType(Matcher):
     @override
     def matches(self, context: MatchContext, /) -> bool:
         """Return whether the resolved annotation equals `target` or is a parameterization of it."""
-        # NOTE: Every built-in format type is a PEP 695 alias, and a `TypeAliasType` compares by
-        # identity — so without unwrapping, aiming a rule at the very type passed to `formats`
-        # matches nothing at all:
+        # Every built-in format type is a PEP 695 alias, and a `TypeAliasType` compares by
+        #  identity, so without unwrapping, aiming a rule at the very type passed to `formats`
+        #  matches nothing at all:
         #
         #   to_model(schema, formats={"date-time": DateTime},
         #            rules=[Rule(ByType(DateTime), After(to_utc))])
@@ -88,11 +88,11 @@ class ByType(Matcher):
         #   #    `DateTime == datetime.datetime` is False
         target: AnnotationType = unwrap_type_alias(self.target)
 
-        # NOTE: An unparameterized generic never equals what the converter produces — an array is
-        # `list[str]` or `list[Any]`, a typed map is `dict[str, T]` — so under plain equality a
-        # rule built as `Rule(ByType(list), After(dedupe))` would silently match nothing at all.
-        # `Annotated` is safe here: `get_origin(Annotated[str, ...])` is `Annotated`, not `str`,
-        # so a format-substituted node still does not match a bare `ByType(str)`.
+        # An unparameterized generic never equals what the converter produces (an array is
+        #  `list[str]` or `list[Any]`, a typed map is `dict[str, T]`), so under plain equality a
+        #  rule built as `Rule(ByType(list), After(dedupe))` would silently match nothing at all.
+        #  `Annotated` is safe here: `get_origin(Annotated[str, ...])` is `Annotated`, not `str`,
+        #  so a format-substituted node still does not match a bare `ByType(str)`.
         origin: AnnotationType = get_origin(context.annotation)
         if isinstance(target, type) and origin is target:
             return True

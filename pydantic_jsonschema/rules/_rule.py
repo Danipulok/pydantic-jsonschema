@@ -1,7 +1,7 @@
 """`Rule`: one matcher paired with one action.
 
 A rule is the whole unit the converter consumes: *when* (a `Matcher`) and *what/how* (an
-`Action`). The one-action-per-rule constraint is enforced structurally — a `Rule` holds a single
+`Action`). The one-action-per-rule constraint is enforced structurally: a `Rule` holds a single
 `action`, and there is no multi-action form. A load-and-dump round-trip is expressed as two rules
 sharing a matcher.
 """
@@ -16,10 +16,10 @@ __all__ = [
 ]
 
 
-# NOTE: `Rule(matcher, action)` intentionally takes two positional arguments, against the
-# project's "keyword-only after the first parameter" convention. `(matcher, action)` reads as one
-# natural pair, exactly like `Annotated[T, meta]`; every other public rule type takes a single
-# argument. Kept positional by design — see `.ai/configurable-loading.md`.
+# `Rule(matcher, action)` intentionally takes two positional arguments, against the
+#  project's "keyword-only after the first parameter" convention. `(matcher, action)` reads as one
+#  natural pair, exactly like `Annotated[T, meta]`; every other public rule type takes a single
+#  argument. Kept positional by design.
 @dataclass(frozen=True, slots=True)
 class Rule:
     """A single loading rule: apply `action` wherever `matcher` matches."""

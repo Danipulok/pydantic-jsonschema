@@ -149,7 +149,7 @@ class SchemaConverter:
         `ByPath` (and a `ByFunc` reading `context.path`) makes the same shape convert differently
         per declaration site, so the pointer joins the key.
 
-        Reproduce with a shape-only key — two structurally equal inline objects, one rule aimed at
+        Reproduce with a shape-only key: two structurally equal inline objects, one rule aimed at
         the second one's property:
 
             schema = Schema.model_validate({
@@ -167,7 +167,7 @@ class SchemaConverter:
             #    reused the model cached while converting `first`)
 
         :param schema: Schema about to be converted.
-        :returns: Cache key — the schema hash, prefixed with the node's pointer when rules run.
+        :returns: Cache key: the schema hash, prefixed with the node's pointer when rules run.
         """
         schema_hash: SchemaHash = self._hash_schema(schema)
         if not self._rules:
@@ -209,7 +209,7 @@ class SchemaConverter:
 
         :param segment: Path segment to add, in diagnostic form (`properties.name`, `anyOf[0]`).
         :param pointer: Raw JSON Pointer tokens for the same step, one per pointer level. Required
-            wherever the diagnostic segment packs two levels into one string — `properties.name`
+            wherever the diagnostic segment packs two levels into one string: `properties.name`
             is two tokens, and a property literally named `a.b` is still one. Defaults to
             `(segment,)`, which is right for the single-keyword steps (`items`, `not`, `if`).
         """
@@ -633,20 +633,26 @@ class SchemaConverter:
             self._def_names[ref] = resolved.name
             self._building.add(ref)
             try:
-                # A def is converted here, at the top of the document, so its nodes must be
-                # tracked under `$defs/<name>` — otherwise they claim the root's pointers and a
-                # `ByPath` rule aimed at a root property also fires inside every same-named def
-                # property. An alias tracks under the name that declares the body, so a rule on
-                # the target covers the alias too.
-                with self._track_path(
-                    f"{DEFS_KEY}.{resolved.name}",
-                    pointer=(DEFS_KEY, resolved.name),
-                ):
-                    self._convert_nested_schema(resolved.schema)
+                self._convert_def(resolved)
             finally:
                 self._building.discard(ref)
 
         self._rebuild_def_models(defs)
+
+    def _convert_def(self, resolved: ResolvedDef, /) -> None:
+        """Convert a definition's body under its own `$defs/<name>` pointer.
+
+        :param resolved: The definition to convert.
+        """
+        # A def is converted at the top of the document, so without its own pointer its nodes
+        #  claim the root's pointers and a `ByPath` rule aimed at a root property also fires
+        #  inside every same-named def property. An alias tracks under the name that declares
+        #  the body, so a rule on the target covers the alias too.
+        with self._track_path(
+            f"{DEFS_KEY}.{resolved.name}",
+            pointer=(DEFS_KEY, resolved.name),
+        ):
+            self._convert_nested_schema(resolved.schema)
 
     def _rebuild_def_models(
         self,
@@ -696,8 +702,8 @@ class SchemaConverter:
             )
 
         # `_build_model` handles model caching. A definition converts under its own
-        # `$defs/<name>` pointer whichever `$ref` asks for it, so a path-scoped cache still keeps
-        # one model per definition and every `$ref` resolves to that same class.
+        #  `$defs/<name>` pointer whichever `$ref` asks for it, so a path-scoped cache still keeps
+        #  one model per definition and every `$ref` resolves to that same class.
         schema = self._defs_cache[ref]
         with self._pinned_pointer((DEFS_KEY, self._def_names[ref])):
             return self._convert_nested_schema(schema)
@@ -854,13 +860,14 @@ class SchemaConverter:
     def _apply_rules(
         self,
         annotation: AnnotationType,
-        schema: Schema,
         /,
+        *,
+        schema: Schema,
     ) -> AnnotationType:
         """Wrap the annotation with every matching rule's Pydantic metadata.
 
         Each matcher is tested against the core `annotation` (the same value for all rules), and
-        matching actions are layered as nested `Annotated` metadata in rule order — Pydantic
+        matching actions are layered as nested `Annotated` metadata in rule order; Pydantic
         flattens `Annotated[Annotated[T, a], b]` to `Annotated[T, a, b]`.
 
         :param annotation: The node's core annotation (after format substitution).
@@ -888,8 +895,8 @@ class SchemaConverter:
     ) -> AnnotationType:
         """Convert an inline child schema, applying rules at the child's own path.
 
-        For the two child nodes that never become a field or a validated branch of their own — a
-        homogeneous `items` element and a schema-valued `additionalProperties` value — plain
+        For the two child nodes that never become a field or a validated branch of their own (a
+        homogeneous `items` element and a schema-valued `additionalProperties` value), plain
         `_schema_to_annotation` is the whole conversion, so `format` substitution and rules have
         nowhere else to attach. Both run here in the same order as everywhere else (format first,
         so a rule matches the substituted annotation). A `Reference` child carries no schema of
@@ -904,7 +911,7 @@ class SchemaConverter:
             return annotation
 
         annotation = self._apply_format(annotation, schema=schema)
-        return self._apply_rules(annotation, schema)
+        return self._apply_rules(annotation, schema=schema)
 
     @staticmethod
     def _build_model_config(
@@ -942,7 +949,7 @@ class SchemaConverter:
             valid_annotation = annotation
 
         valid_annotation = self._apply_format(valid_annotation, schema=schema)
-        valid_annotation = self._apply_rules(valid_annotation, schema)
+        valid_annotation = self._apply_rules(valid_annotation, schema=schema)
 
         default = get_field_default(schema, field_kind=field_kind)
 
@@ -1091,7 +1098,7 @@ class SchemaConverter:
             return annotation
 
         annotation = self._apply_format(annotation, schema=schema)
-        annotation = self._apply_rules(annotation, schema)
+        annotation = self._apply_rules(annotation, schema=schema)
         kwargs = build_field_kwargs(schema, include_metadata=not union_branch)
 
         if kwargs and not (union_branch and annotation is Any):

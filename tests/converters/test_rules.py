@@ -36,9 +36,10 @@ type FieldValueType = Any
 type Tags = list[str]
 type Timestamps = Tags
 
-# Every type exported from `pydantic_jsonschema.formats`, with the JSON Schema `format` keyword it
-# serves and a value that satisfies it. `test_every_exported_format_type_is_covered` keeps it whole.
-_FORMAT_CASES: Final[list[tuple[str, ByTypeTargetType, str]]] = [
+# Every type exported from `pydantic_jsonschema.formats`, with the JSON Schema `format` keyword
+#  it serves and a value that satisfies it. `test_every_exported_format_type_is_covered` keeps
+#  it whole.
+_FORMAT_CASES: Final[tuple[tuple[str, ByTypeTargetType, str], ...]] = (
     ("date-time", formats.DateTime, "2024-01-15T10:30:00Z"),
     ("time", formats.Time, "10:30:00"),
     ("date", formats.Date, "2024-01-15"),
@@ -58,9 +59,9 @@ _FORMAT_CASES: Final[list[tuple[str, ByTypeTargetType, str]]] = [
     ("uri-template", formats.UriTemplate, "https://example.com/{id}"),
     ("json-pointer", formats.JsonPointer, "/a/b"),
     ("relative-json-pointer", formats.RelativeJsonPointer, "1/a"),
-]
+)
 
-_TAGS_SCHEMA: "SchemaRaw" = {
+_TAGS_SCHEMA: Final["SchemaRaw"] = {
     "type": "object",
     "properties": {
         "tags": {"type": "array", "items": {"type": "string"}},
@@ -83,7 +84,7 @@ def strip_upper(value: str) -> str:
 def reject_empty(value: list[str]) -> list[str]:
     """Reject an empty list, else return it unchanged."""
     if not value:
-        msg = "must not be empty"
+        msg: str = "must not be empty"
         raise ValueError(msg)
     return value
 
@@ -121,7 +122,10 @@ class TestBefore:
             ],
         )
 
-        instance = model(tags="a,b,c", created="x")
+        instance = model(
+            tags="a,b,c",
+            created="x",
+        )
         assert instance.model_dump() == snapshot({"tags": ["a", "b", "c"], "created": "x"})
 
     def test_list_input_passes_through(self) -> None:
@@ -134,7 +138,10 @@ class TestBefore:
             ],
         )
 
-        instance = model(tags=["a", "b"], created="x")
+        instance = model(
+            tags=["a", "b"],
+            created="x",
+        )
         assert instance.model_dump() == snapshot({"tags": ["a", "b"], "created": "x"})
 
 
@@ -151,7 +158,10 @@ class TestAfter:
             ],
         )
 
-        instance = model(tags=[], created="  hi  ")
+        instance = model(
+            tags=[],
+            created="  hi  ",
+        )
         assert instance.model_dump() == snapshot({"tags": [], "created": "HI"})
 
     def test_rejects_invalid_value(self) -> None:
@@ -165,7 +175,10 @@ class TestAfter:
         )
 
         with pytest.raises(ValidationError) as exc_info:
-            model(tags=[], created="x")
+            model(
+                tags=[],
+                created="x",
+            )
 
         assert dump_errors(exc_info.value) == snapshot(
             [
@@ -192,7 +205,10 @@ class TestOverride:
             ],
         )
 
-        instance = model(tags="a,b", created="x")
+        instance = model(
+            tags="a,b",
+            created="x",
+        )
         assert instance.model_dump() == snapshot({"tags": ["a", "b"], "created": "x"})
 
 
@@ -209,7 +225,10 @@ class TestDump:
             ],
         )
 
-        instance = model(tags=["x", "y"], created="z")
+        instance = model(
+            tags=["x", "y"],
+            created="z",
+        )
         assert instance.model_dump() == snapshot({"tags": "x,y", "created": "z"})
 
 
@@ -227,7 +246,10 @@ class TestMatchers:
         )
 
         with pytest.raises(ValidationError) as exc_info:
-            model(tags="a,b,c", created="x")
+            model(
+                tags="a,b,c",
+                created="x",
+            )
 
         assert dump_errors(exc_info.value) == snapshot(
             [
@@ -250,7 +272,10 @@ class TestMatchers:
             ],
         )
 
-        instance = model(tags=[], created="hi")
+        instance = model(
+            tags=[],
+            created="hi",
+        )
         assert instance.model_dump() == snapshot({"tags": [], "created": "HI"})
 
     def test_by_func_predicate(self) -> None:
@@ -263,15 +288,18 @@ class TestMatchers:
             ],
         )
 
-        instance = model(tags=[], created="  hi ")
+        instance = model(
+            tags=[],
+            created="  hi ",
+        )
         assert instance.model_dump() == snapshot({"tags": [], "created": "HI"})
 
 
 class TestByTypeParameterization:
     """`ByType` compares annotations exactly, except that a bare generic covers every parameter.
 
-    The converter never produces an unparameterized annotation — an array is `list[str]` or
-    `list[Any]`, a typed map is `dict[str, T]` — so a bare target that compared by equality would
+    The converter never produces an unparameterized annotation (an array is `list[str]` or
+    `list[Any]`, a typed map is `dict[str, T]`), so a bare target that compared by equality would
     match nothing at all.
     """
 
@@ -309,7 +337,11 @@ class TestByTypeParameterization:
             ],
         )
 
-        instance = model(names=["A", "B"], counts=[1, 2], loose=[True, False])
+        instance = model(
+            names=["A", "B"],
+            counts=[1, 2],
+            loose=[True, False],
+        )
         assert instance.model_dump() == expected
 
     def test_bare_dict_matches_a_typed_map(self) -> None:
@@ -438,7 +470,7 @@ class TestByPathPointers:
     def test_object_root_has_no_annotation_at_the_root_pointer(self) -> None:
         """An object root becomes the model class, so `/` has no annotation to wrap.
 
-        Rules attach where a node turns into an annotation — a field, a validated branch, or an
+        Rules attach where a node turns into an annotation: a field, a validated branch, or an
         inline child. A `RootModel` value is a field (`field_kind="root"`), but an object root is
         not: its properties are the fields. Target those instead.
         """
@@ -459,7 +491,7 @@ class TestByPathPointers:
         assert model(name=" ab ").model_dump() == snapshot({"name": " ab "})
 
     def test_union_branch_index_is_its_own_token(self) -> None:
-        """A branch is `anyOf/0`, not `anyOf[0]` — only the string branch is normalized."""
+        """A branch is `anyOf/0`, not `anyOf[0]`: only the string branch is normalized."""
         schema = Schema.model_validate(
             {
                 "type": "object",
@@ -500,7 +532,10 @@ class TestByPathPointers:
             ],
         )
 
-        instance = model(user={"name": " nested "}, name=" root ")
+        instance = model(
+            user={"name": " nested "},
+            name=" root ",
+        )
         # Only the def's `name` is normalized; the same-named root property is untouched.
         assert instance.model_dump() == snapshot({"user": {"name": "NESTED"}, "name": " root "})
 
@@ -648,7 +683,10 @@ class TestModelCache:
             ],
         )
 
-        instance = model(first={"code": " a "}, second={"code": " b "})
+        instance = model(
+            first={"code": " a "},
+            second={"code": " b "},
+        )
         assert instance.model_dump() == expected
 
     def test_equal_inline_objects_share_a_class_without_rules(self) -> None:
@@ -705,7 +743,10 @@ class TestModelCache:
         author = model.model_fields["author"].annotation
         assert author is model.model_fields["reviewer"].annotation
 
-        instance = model(author={"name": " a "}, reviewer={"name": " b "})
+        instance = model(
+            author={"name": " a "},
+            reviewer={"name": " b "},
+        )
         assert instance.model_dump() == snapshot(
             {"author": {"name": "A"}, "reviewer": {"name": "B"}}
         )
@@ -740,7 +781,10 @@ class TestModelCache:
         user = model.model_fields["user"].annotation
         assert user is model.model_fields["author"].annotation
 
-        instance = model(user={"name": " a "}, author={"name": " b "})
+        instance = model(
+            user={"name": " a "},
+            author={"name": " b "},
+        )
         assert instance.model_dump() == snapshot({"user": {"name": "A"}, "author": {"name": "B"}})
 
     def test_alias_name_is_not_an_addressable_pointer(self) -> None:
@@ -748,7 +792,7 @@ class TestModelCache:
 
         The flip side of the test above. `Author` resolves to `User`'s schema, so the converter
         walks it once under `/$defs/User` and never emits `/$defs/Author`. Aiming a rule at the
-        alias name is therefore a no-op — asserted here so the choice of pointer cannot change
+        alias name is therefore a no-op, asserted here so the choice of pointer cannot change
         unnoticed.
         """
         schema = Schema.model_validate(
@@ -776,7 +820,10 @@ class TestModelCache:
             ],
         )
 
-        instance = model(user={"name": " a "}, author={"name": " b "})
+        instance = model(
+            user={"name": " a "},
+            author={"name": " b "},
+        )
         assert instance.model_dump() == snapshot(
             {"user": {"name": " a "}, "author": {"name": " b "}}
         )
@@ -882,8 +929,8 @@ class TestChildNodes:
         )
         formats: dict[str, Any] = {"custom": Annotated[str, AfterValidator(str.upper)]}
 
-        # `ByType(str)` sees the substituted `Annotated[...]`, so it no longer matches — only the
-        # format runs. Same rule as for a formatted field.
+        # `ByType(str)` sees the substituted `Annotated[...]`, so it no longer matches; only the
+        #  format runs. Same rule as for a formatted field.
         by_type = to_model(
             schema,
             formats=formats,
@@ -936,9 +983,12 @@ class TestRoundTrip:
             ],
         )
 
-        instance = model(tags="x,y", created="z")
+        instance = model(
+            tags="x,y",
+            created="z",
+        )
         # `Before` coerced the CSV string into a list internally; `Dump` re-joins it on output.
-        # `getattr` sidesteps the dynamic model's untyped attribute access.
+        #  `getattr` sidesteps the dynamic model's untyped attribute access.
         assert getattr(instance, "tags") == snapshot(["x", "y"])  # noqa: B009
         assert instance.model_dump() == snapshot({"tags": "x,y", "created": "z"})
 
@@ -951,7 +1001,10 @@ class TestNoRules:
         schema = Schema.model_validate(_TAGS_SCHEMA)
         model = to_model(schema)
 
-        instance = model(tags=["a"], created="c")
+        instance = model(
+            tags=["a"],
+            created="c",
+        )
         assert instance.model_dump() == snapshot({"tags": ["a"], "created": "c"})
 
 
@@ -969,8 +1022,8 @@ class TestRuleObjects:
     def test_repr_is_data(self) -> None:
         """A rule's `repr` shows its matcher and action as data (function address elided)."""
         rule = Rule(ByPath("/properties/created"), After(strip_upper))
-        # NOTE: A function's `repr` carries its non-deterministic memory address, so match only
-        # the stable prefix (`repr(rule) == "..."` would flap across runs).
+        # A function's `repr` carries its non-deterministic memory address, so match only
+        #  the stable prefix (`repr(rule) == "..."` would flap across runs).
         assert repr(rule).startswith(
             "Rule(matcher=ByPath(pointer='/properties/created'), action=After(func=<function "
         )

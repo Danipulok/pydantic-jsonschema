@@ -3,10 +3,10 @@
 An action pairs a callable (the *what*) with a Pydantic slot (the *how*). Each concrete action
 maps to exactly one Pydantic wrapper, so a rule that holds one action performs exactly one thing:
 
-- `Before` -> `BeforeValidator` — coerce raw input before core parsing (e.g. `"a,b,c"` -> list);
-- `After` -> `AfterValidator` — normalize / validate the parsed value;
-- `Override` -> `PlainValidator` — replace core parsing entirely;
-- `Dump` -> `PlainSerializer` — transform the value on serialization (model -> output).
+- `Before` -> `BeforeValidator`: coerce raw input before core parsing (e.g. `"a,b,c"` -> list);
+- `After` -> `AfterValidator`: normalize / validate the parsed value;
+- `Override` -> `PlainValidator`: replace core parsing entirely;
+- `Dump` -> `PlainSerializer`: transform the value on serialization (model -> output).
 
 Actions are frozen dataclasses: they compare, hash, and `repr` as data. Their only non-data field
 is the held callable.

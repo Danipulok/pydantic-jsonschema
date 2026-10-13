@@ -18,7 +18,7 @@ def normalize_sku(value: str) -> str:
 
 
 # A feed exported from a spreadsheet: every column arrives as a string, and `tags`
-# packs several values into one cell.
+#  packs several values into one cell.
 order_schema = Schema.model_validate(
     {
         "type": "object",
@@ -31,8 +31,8 @@ order_schema = Schema.model_validate(
 )
 
 # A rule is a matcher plus one action. `ByType` covers every node of that Python type,
-# `ByPath` targets a single node by its JSON Pointer, and a load-and-dump round-trip is
-# two rules sharing a matcher.
+#  `ByPath` targets a single node by its JSON Pointer, and a load-and-dump round-trip is
+#  two rules sharing a matcher.
 Order = to_model(
     order_schema,
     rules=[
@@ -47,7 +47,7 @@ order = Order(
     tags="sale, clearance",  # Split into a list by the `ByType` rule.
 )
 
-# NOTE: `ruff format` rewrites `#>` to `# >`, breaking `pytest-examples` output markers.
+# `ruff format` rewrites `#>` to `# >`, breaking `pytest-examples` output markers.
 # fmt: off
 print(order.sku)  # type: ignore[attr-defined]
 #> WDG-1234-PRO
