@@ -4,9 +4,13 @@ Rules attach custom loading and dumping behavior to the model `to_model` generat
 type, by path, or by an arbitrary predicate** — without hand-writing the model. Each rule has three
 parts, one object each:
 
-1. **when** — a matcher (`ByType`, `ByPath`, `ByFunc`);
-2. **what** — a callable, held by the action;
-3. **how** — the action kind (`Before`, `After`, `Override`, `Dump`).
+1. **when**: a matcher (`ByType`, `ByPath`, `ByFunc`);
+2. **what**: a callable, held by the action;
+3. **how**: the action kind.
+
+Actions come in two families. *Annotation actions* (`Before`, `After`, `Override`, `Dump`) wrap the
+matched field's annotation. *Model actions* (`ModelBefore`, `ModelAfter`, `ModelWrap`) attach a
+whole-object `model_validator` to the model built for the matched object node, the root included.
 
 One rule performs exactly one action. A load-and-dump round-trip is two rules sharing a matcher.
 
@@ -53,12 +57,72 @@ print(User(tags=["x", "y"]).tags)
 Each action maps to exactly one Pydantic wrapper, so a rule holding one action does exactly one
 thing.
 
+### Annotation Actions
+
+Annotation actions wrap the matched field's annotation.
+
 | Action           | Pydantic wrapper  | When it runs                          |
 |------------------|-------------------|---------------------------------------|
 | `Before(func)`   | `BeforeValidator` | before core parsing, on the raw input |
 | `After(func)`    | `AfterValidator`  | after core parsing, on the value      |
 | `Override(func)` | `PlainValidator`  | replaces core parsing entirely        |
 | `Dump(func)`     | `PlainSerializer` | on serialization (model → output)     |
+
+### Model Actions
+
+Model actions attach a whole-object `model_validator` to the model built for the matched object
+node, the root one or a nested one, whichever model it becomes (a model class, a map `RootModel`,
+an `allOf` combination). This is how an **object root** with properties is reached: it becomes
+the model class itself, and a class carries no annotation for an annotation action to wrap.
+
+Model actions pair with `ByPath` / `ByFunc`. `ByType` never matches a model node: the model class
+does not exist yet when the matcher runs, so the node has no resolved annotation, and
+`MatchContext.is_model` is `True` there. A `$ref`'d definition is matched where it is declared
+(`/$defs/User`), never at a property that refers to it. A nested object with no `properties` (a
+bare `{"type": "object"}` or a map of `additionalProperties`) becomes a `dict` field, not a
+model, so it takes annotation actions and no model action.
+
+| Action              | Pydantic wrapper                 | What `func` receives                    |
+|---------------------|----------------------------------|-----------------------------------------|
+| `ModelBefore(func)` | `model_validator(mode="before")` | the raw input, before field parsing     |
+| `ModelAfter(func)`  | `model_validator(mode="after")`  | the built model (cross-field slot)      |
+| `ModelWrap(func)`   | `model_validator(mode="wrap")`   | the raw input and a `handler` to build  |
+
+```python title="rules_model_after.py"
+from pydantic import BaseModel
+
+from pydantic_jsonschema import Schema, to_model
+from pydantic_jsonschema.rules import ByPath, ModelAfter, Rule
+
+
+def require_end_after_start(model: BaseModel) -> BaseModel:
+    values = model.model_dump()
+    if values["end"] < values["start"]:
+        msg = "end must not precede start"
+        raise ValueError(msg)
+    return model
+
+
+schema = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {"start": {"type": "integer"}, "end": {"type": "integer"}},
+        "required": ["start", "end"],
+    }
+)
+
+Span = to_model(schema, rules=[Rule(ByPath("/"), ModelAfter(require_end_after_start))])
+
+print(Span(start=1, end=5).model_dump())
+#> {'start': 1, 'end': 5}
+
+# `pydantic.ValidationError` subclasses `ValueError`, so it is caught here.
+try:
+    Span(start=5, end=1)
+except ValueError as er:
+    print(type(er).__name__)
+    #> ValidationError
+```
 
 ## Matchers
 
@@ -138,17 +202,19 @@ Every node the converter walks has a pointer, not just top-level properties:
 
 | Node                            | Pointer                                 |
 |---------------------------------|-----------------------------------------|
-| root value of a non-object root | `/`                                     |
+| root                            | `/`                                     |
 | property `code`                 | `/properties/code`                      |
 | element of an array property    | `/properties/tags/items`                |
 | value of a typed map            | `/properties/meta/additionalProperties` |
 | second `anyOf` branch           | `/properties/value/anyOf/1`             |
 | property inside a `$defs` entry | `/$defs/User/properties/name`           |
 
-`/` addresses the root only when the root is not an object. A scalar or array root becomes the
-value of a `RootModel`, and that value has an annotation to wrap. An object root becomes the model
-class itself, and a class carries no annotation — a rule at `/` has nothing to attach to there and
-never fires. Target its properties instead.
+`/` addresses the root whatever the root is; which action family fits depends on what it becomes.
+A non-object root, and an object root with only a schema-valued `additionalProperties`, become a
+`RootModel` whose value has an annotation, so annotation actions apply. Any other object root
+becomes the model class itself, which carries no annotation: an annotation action has nothing to
+wrap there and never fires, so reach it with a model action instead. A model action reaches
+every object root, whichever model it becomes.
 
 ```python title="rules_root_pointer.py"
 from pydantic_jsonschema import Schema, to_model
@@ -180,7 +246,8 @@ Product = to_model(
     rules=[root_rule],
 )
 
-# The object root is a class, not an annotation, so the rule never fires.
+# An annotation action has nothing to wrap on an object root, so it never fires: a model
+# action such as `ModelAfter` is what reaches this root.
 print(repr(Product(code="  ab-1  ").code))
 #> '  ab-1  '
 ```
@@ -221,7 +288,8 @@ print(Product(code="  ab-1  ").code)
 ### `ByFunc`
 
 An escape hatch: match on any predicate over the node's `MatchContext` (its `schema`,
-`annotation`, and `path`).
+`annotation`, `path`, and `is_model`, which is `True` on an object model node whose `annotation`
+is a `None` placeholder).
 
 ```python title="rules_by_func.py"
 from pydantic_jsonschema import Schema, to_model

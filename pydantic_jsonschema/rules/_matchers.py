@@ -35,11 +35,17 @@ type AnnotationType = Any
 
 @dataclass(frozen=True, slots=True)
 class MatchContext:
-    """The node a matcher is asked about: its schema, resolved annotation, and JSON Pointer."""
+    """The node a matcher is asked about: its schema, resolved annotation, and JSON Pointer.
+
+    `is_model` is `True` for an object node about to become a model class, the node a model
+    action attaches to. Its `annotation` is a `None` placeholder, since the class does not exist
+    yet.
+    """
 
     schema: Schema
     annotation: AnnotationType
     path: str
+    is_model: bool = False
 
 
 class SchemaPredicate(Protocol):
@@ -78,6 +84,11 @@ class ByType(Matcher):
     @override
     def matches(self, context: MatchContext, /) -> bool:
         """Return whether the resolved annotation equals `target` or is a parameterization of it."""
+        # A model node has no resolved annotation, only the `None` placeholder, so without this
+        #  `ByType(None)` would match every object model.
+        if context.is_model:
+            return False
+
         # Every built-in format type is a PEP 695 alias, and a `TypeAliasType` compares by
         #  identity, so without unwrapping, aiming a rule at the very type passed to `formats`
         #  matches nothing at all:
