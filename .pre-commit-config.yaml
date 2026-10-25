@@ -30,6 +30,8 @@ repos:
         args: [ --fix=lf ]
       - id: name-tests-test
         args: [ --pytest-test-first ]
+        # `tests/builders/` holds shared values, not tests.
+        exclude: ^tests/builders/
       - id: pretty-format-json
         args: [ --autofix, --indent=4, --no-ensure-ascii, --no-sort-keys ]
       - id: trailing-whitespace

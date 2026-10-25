@@ -9,8 +9,8 @@ from typing import Annotated, Any, cast
 
 import annotated_types
 from pydantic import AfterValidator
-from pydantic.experimental.missing_sentinel import MISSING
 
+from pydantic_jsonschema._compat import MISSING
 from pydantic_jsonschema.schema import Schema
 
 __all__ = [

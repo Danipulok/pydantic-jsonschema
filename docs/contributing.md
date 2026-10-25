@@ -138,8 +138,8 @@ Tests are held to all of the above, without exception; see
 - Mirror the source tree: one source module, one test module, same path under `tests/`.
 - Keep the environment out of tests — no `os.environ`, no `os.getenv`, no `dotenv`. A fixture
   builds the prepared object once and each test takes it as a parameter.
-- Keep `tests/` to tests, fixtures and `conftest.py`. A one-off utility belongs in `scripts/`,
-  exposing a function the test imports.
+- Keep `tests/` to tests, fixtures, `conftest.py` and the shared values in `tests/builders/`. A
+  one-off utility belongs in `scripts/`, exposing a function the test imports.
 
 ## Pull Request Process
 

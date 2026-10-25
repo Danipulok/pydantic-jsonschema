@@ -9,7 +9,7 @@
 
 from typing import Any, Union, cast
 
-from pydantic.experimental.missing_sentinel import MISSING
+from pydantic_jsonschema._compat import MISSING
 
 __all__ = [
     "make_union",

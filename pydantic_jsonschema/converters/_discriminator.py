@@ -10,8 +10,7 @@ probing `OneOf` validator.
 
 from types import NoneType
 
-from pydantic.experimental.missing_sentinel import MISSING
-
+from pydantic_jsonschema._compat import MISSING
 from pydantic_jsonschema.schema import Reference, Schema
 
 from ._utils import unwrap

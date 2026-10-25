@@ -87,8 +87,9 @@ reviews:
         - Nothing reads the environment: no `os.environ`, no `os.getenv`, no `dotenv`. A fixture
           builds the prepared object once and tests take it as a parameter.
         - The test tree mirrors the source tree — one source module, one test module, same path.
-        - `tests/` holds tests, fixtures and `conftest.py` and nothing else. A one-off utility
-          belongs in `scripts/`, exposing a function the test imports.
+        - `tests/` holds tests, fixtures, `conftest.py` and the shared values in `tests/builders/`
+          and nothing else. A one-off utility belongs in `scripts/`, exposing a function the
+          test imports.
         - Prefer parametrized cases with explicit `pytest.param` ids over near-duplicate tests, and
           assert on behavior rather than on implementation details.
 
