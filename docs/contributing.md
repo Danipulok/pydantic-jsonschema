@@ -99,7 +99,8 @@ what it does from the signature.
   coordinates, and `cls`/`self`.
 - **At most one positional parameter**; everything after it is keyword-only, behind `*`. Signatures
   a library fixes for us — a `pydantic` callback, a dunder, an `@overload` or `@override` — are
-  exempt.
+  exempt, and so are test functions and fixtures, whose arguments `pytest` passes by name. A helper
+  in `tests/` is called by us and keeps the rule.
 - **Two or more keyword arguments in a call go one per line**, with a trailing comma.
 - **Catch the narrowest exception that can occur**, and bind it as `er`. A broad catch carries a
   comment saying why the boundary is broad.
