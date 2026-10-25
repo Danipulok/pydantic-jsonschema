@@ -1,13 +1,14 @@
 """Tests for the `not` applicator."""
 
 import pytest
-from inline_snapshot import snapshot
+from inline_snapshot import Is, snapshot
 from pydantic import ValidationError
 
 from pydantic_jsonschema import (
     to_model,
 )
 from pydantic_jsonschema.schema import Schema
+from tests.builders.schemas import NEXT_MODEL_REF
 from tests.conftest import dump_errors
 
 __all__: list[str] = []
@@ -212,7 +213,7 @@ class TestNotJsonSchema:
                 "$defs": {
                     "Model": {
                         "additionalProperties": True,
-                        "properties": {"next": {"$ref": "#/$defs/Model", "title": "Next"}},
+                        "properties": {"next": Is(NEXT_MODEL_REF)},
                         "title": "Model",
                         "type": "object",
                     }

@@ -14,8 +14,8 @@ converter-aware ones (`dependentSchemas` / `patternProperties` / `propertyNames`
 from typing import Any
 
 from pydantic import model_validator
-from pydantic.experimental.missing_sentinel import MISSING
 
+from pydantic_jsonschema._compat import MISSING
 from pydantic_jsonschema.schema import Schema
 
 from ._utils import unwrap

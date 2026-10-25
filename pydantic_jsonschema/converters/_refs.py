@@ -14,8 +14,7 @@ circular, or dangling targets. They are stateless: alias resolution depends only
 from dataclasses import dataclass
 from typing import Final
 
-from pydantic.experimental.missing_sentinel import MISSING
-
+from pydantic_jsonschema._compat import MISSING
 from pydantic_jsonschema.exceptions import SchemaReferenceError
 from pydantic_jsonschema.schema import Reference, Schema
 

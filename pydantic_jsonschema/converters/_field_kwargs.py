@@ -9,8 +9,8 @@ from types import EllipsisType
 from typing import Any, Final, Literal, TypedDict
 
 import annotated_types
-from pydantic.experimental.missing_sentinel import MISSING
 
+from pydantic_jsonschema._compat import MISSING
 from pydantic_jsonschema.schema import DataType, Schema
 
 from ._utils import unwrap

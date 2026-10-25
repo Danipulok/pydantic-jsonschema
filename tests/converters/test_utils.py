@@ -9,8 +9,8 @@ from typing import get_args
 
 import pytest
 from pydantic import JsonValue
-from pydantic.experimental.missing_sentinel import MISSING
 
+from pydantic_jsonschema._compat import MISSING
 from pydantic_jsonschema.converters._utils import make_union, unwrap
 
 __all__: list[str] = []
