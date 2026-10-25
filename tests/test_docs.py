@@ -7,7 +7,7 @@ from typing import Any, Final
 import pytest
 from pytest_examples import CodeExample, EvalExample, find_examples
 
-__all__ = []
+__all__: list[str] = []
 
 # `pytest-examples` has no native `pyproject.toml` support, so source its settings here instead of
 #  hardcoding them: `line-length` / `target-version` / `quote-style` track `[tool.ruff]`, and the

@@ -4,9 +4,9 @@ Core: https://json-schema.org/draft/2020-12/json-schema-core
 Validation: https://json-schema.org/draft/2020-12/json-schema-validation
 """
 
-# NOTE: `pydantic.experimental.missing_sentinel.MISSING` is a `Sentinel` instance,
-#  not a type — mypy rejects `field: X | MISSING` as invalid. Pydantic itself
-#  handles the union correctly at runtime via `from __future__ import annotations`.
+# `MISSING` is a `Sentinel` instance, not a type, so mypy rejects `field: X | MISSING`
+#  as invalid. Pydantic itself handles the union correctly at runtime via
+#  `from __future__ import annotations`.
 # mypy: disable-error-code="valid-type"
 
 from __future__ import annotations as _annotations
@@ -16,7 +16,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
-from pydantic.experimental.missing_sentinel import MISSING
+
+from pydantic_jsonschema._compat import MISSING
 
 __all__ = [
     "DataType",

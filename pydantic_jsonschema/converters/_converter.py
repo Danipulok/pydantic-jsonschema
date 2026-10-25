@@ -28,11 +28,11 @@ from pydantic import (
     TypeAdapter,
     create_model,
 )
-from pydantic.experimental.missing_sentinel import MISSING
 from pydantic.fields import FieldInfo
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 
+from pydantic_jsonschema._compat import MISSING
 from pydantic_jsonschema._utils import sanitize_identifier, unwrap_type_alias
 from pydantic_jsonschema.applicators import (
     Applicator,

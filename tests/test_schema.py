@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from inline_snapshot import snapshot
-from pydantic.experimental.missing_sentinel import MISSING
 
+from pydantic_jsonschema._compat import MISSING
 from pydantic_jsonschema.schema import DataType, Reference, Schema
 
 if TYPE_CHECKING:
