@@ -465,6 +465,57 @@ class TestAllOfObjects:
 
         assert model.model_validate({"a": "1"}).model_dump(exclude_unset=True) == snapshot({"a": 1})
 
+    @pytest.mark.parametrize(
+        ("schema_raw", "payload"),
+        [
+            pytest.param(
+                {"type": "object", "allOf": [{"$ref": "#/$defs/R"}], "maxProperties": 2},
+                {"toolong": 1},
+                id="beside-keyword",
+            ),
+            pytest.param(
+                {
+                    "type": "object",
+                    "allOf": [
+                        {"$ref": "#/$defs/R"},
+                        {"type": "object", "propertyNames": {"minLength": 2}},
+                    ],
+                },
+                {"toolong": 1},
+                id="beside-object-branch-ref-check",
+            ),
+            pytest.param(
+                {
+                    "type": "object",
+                    "allOf": [
+                        {"$ref": "#/$defs/R"},
+                        {"type": "object", "propertyNames": {"minLength": 2}},
+                    ],
+                },
+                {"a": 1},
+                id="beside-object-branch-own-check",
+            ),
+        ],
+    )
+    def test_all_of_keeps_applicators_of_a_ref_model(
+        self,
+        schema_raw: SchemaRaw,
+        payload: dict[str, int],
+    ) -> None:
+        """Test an `allOf` over a model from another conversion keeps every applicator."""
+        referenced = to_model(
+            Schema.model_validate(
+                {"type": "object", "properties": {"a": {}}, "propertyNames": {"maxLength": 1}}
+            )
+        )
+        model = to_model(
+            Schema.model_validate(schema_raw),
+            refs={"#/$defs/R": referenced},
+        )
+
+        with pytest.raises(ValidationError, match="propertyNames"):
+            model.model_validate(payload)
+
     def test_all_of_type_list(self) -> None:
         """Test an `allOf` beside a list `type` converts, and its object branch still applies."""
         schema = Schema.model_validate(
@@ -622,6 +673,58 @@ class TestAllOfObjects:
     ) -> None:
         """Test the applicators of the branch producing the value still run under `AllOf`."""
         model = to_model(Schema.model_validate(schema_raw))
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate(invalid)
+
+        assert [error["msg"] for error in dump_errors(exc_info.value)] == [msg]
+
+    @pytest.mark.parametrize(
+        ("first", "second", "invalid", "msg"),
+        [
+            pytest.param(
+                {"required": ["a"]},
+                {"required": ["b"]},
+                {"a": 1},
+                "Value error, Object must have the properties `b`",
+                id="required",
+            ),
+            pytest.param(
+                {"dependentRequired": {"a": ["x"]}},
+                {"dependentRequired": {"c": ["y"]}},
+                {"c": 1},
+                "Value error, Property `c` requires `y`",
+                id="dependent-required",
+            ),
+            pytest.param(
+                {"minProperties": 1},
+                {"maxProperties": 1},
+                {"a": 1, "b": 2},
+                "Value error, Object must have at most `1` properties",
+                id="property-count",
+            ),
+            pytest.param(
+                {"propertyNames": {"maxLength": 3}},
+                {"propertyNames": {"minLength": 2}},
+                {"a": 1},
+                "Value error, Property name `a` does not satisfy the `propertyNames` schema",
+                id="applicator",
+            ),
+        ],
+    )
+    def test_all_of_checks_every_object_branch(
+        self,
+        *,
+        first: SchemaRaw,
+        second: SchemaRaw,
+        invalid: SchemaRaw,
+        msg: str,
+    ) -> None:
+        """Test the same object keyword on two object branches is checked for both."""
+        schema = Schema.model_validate(
+            {"allOf": [{"type": "object", **first}, {"type": "object", **second}]}
+        )
+        model = to_model(schema)
 
         with pytest.raises(ValidationError) as exc_info:
             model.model_validate(invalid)
@@ -794,6 +897,32 @@ class TestAllOfJsonSchema:
                 "allOf": [
                     {"not": {"const": 1, "type": "integer"}, "title": "Model", "type": "integer"},
                     {"not": {"const": 2, "type": "integer"}},
+                ]
+            }
+        )
+
+    def test_all_of_object_branch_applicators_round_trip(self) -> None:
+        """Test the applicators of every object branch are dumped."""
+        schema = Schema.model_validate(
+            {
+                "allOf": [
+                    {"type": "object", "propertyNames": {"maxLength": 3}},
+                    {"type": "object", "propertyNames": {"minLength": 2}},
+                ]
+            }
+        )
+
+        assert to_model(schema).model_json_schema() == snapshot(
+            {
+                "allOf": [
+                    {
+                        "additionalProperties": True,
+                        "properties": {},
+                        "propertyNames": {"maxLength": 3},
+                        "title": "Model",
+                        "type": "object",
+                    },
+                    {"propertyNames": {"minLength": 2}},
                 ]
             }
         )

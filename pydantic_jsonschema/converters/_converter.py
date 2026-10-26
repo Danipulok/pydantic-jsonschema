@@ -3,8 +3,9 @@
 # mypy flags every `is not MISSING` check on a `Schema` field; see `_utils.py`.
 # mypy: disable-error-code="comparison-overlap"
 
-from collections.abc import Generator, Sequence
+from collections.abc import Generator, Iterator, Sequence
 from contextlib import contextmanager
+from itertools import count
 from types import NoneType
 from typing import (
     Annotated,
@@ -78,6 +79,9 @@ _DEFAULT_MODEL_NAME: Final[str] = "Model"
 _APPLICATORS_ATTRIBUTE: Final[str] = "__pydantic_jsonschema_applicators__"
 # A discriminated union needs at least two members for Pydantic to tag-dispatch.
 _MIN_DISCRIMINATED_UNION_MEMBERS: Final[int] = 2
+# Pydantic keeps one validator per name across bases, and a model from another conversion can
+#  reach this one through `refs`, so a validator name is unique per process.
+_VALIDATOR_NUMBERS: Final[Iterator[int]] = count()
 # Validating `Schema` fields that `_own_keywords_annotation` checks beside `allOf`. `not` and
 #  `if` / `then` / `else` are attached as their own applicators, and anything else (metadata,
 #  `$defs`, extension keywords) validates nothing. An object producing the value keeps only the
@@ -576,7 +580,20 @@ class SchemaConverter:
         if len(base_classes) == 1:
             return base_classes[0]
 
-        created_model = type(model_name, base_classes, {"__module__": __name__})
+        # The dump hook is the first base's, so it reads the applicators of every base from here.
+        applicators: dict[int, ObjectApplicator] = {
+            id(applicator): applicator
+            for base in base_classes
+            for applicator in getattr(base, _APPLICATORS_ATTRIBUTE, ())
+        }
+        created_model = type(
+            model_name,
+            base_classes,
+            {
+                _APPLICATORS_ATTRIBUTE: tuple(applicators.values()),
+                "__module__": __name__,
+            },
+        )
         return cast("type[BaseModel]", created_model)
 
     def _create_object_model(
@@ -637,7 +654,7 @@ class SchemaConverter:
             "_validate_undeclared_required": build_undeclared_required(schema),
         }
         return {
-            name: model_validator(mode="before")(check)
+            f"{name}_{next(_VALIDATOR_NUMBERS)}": model_validator(mode="before")(check)
             for name, check in checks.items()
             if check is not None
         }
@@ -696,18 +713,18 @@ class SchemaConverter:
         #  so it ran three times there, also on a model instance, and a recursive `$ref` to the
         #  model resolved to the schema without it. A `before` model validator runs once per value.
         validators: dict[str, Any] = {
-            f"_applicator_{index}": _applicator_validator(applicator)
-            for index, applicator in enumerate(applicators, start=len(inherited))
+            f"_applicator_{next(_VALIDATOR_NUMBERS)}": _applicator_validator(applicator)
+            for applicator in applicators
         }
 
         # Pydantic calls the hook positionally.
         def get_json_schema(  # noqa: PLR0917
-            _cls: type[BaseModel],
+            cls: type[BaseModel],
             schema: CoreSchema,
             handler: GetJsonSchemaHandler,
         ) -> JsonSchemaValue:
             json_schema = handler(schema)
-            for applicator in combined:
+            for applicator in getattr(cls, _APPLICATORS_ATTRIBUTE):
                 json_schema = merge_keyword(
                     json_schema,
                     keyword=applicator.json_schema_keyword(handler),
