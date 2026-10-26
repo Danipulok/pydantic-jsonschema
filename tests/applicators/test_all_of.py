@@ -265,8 +265,45 @@ class TestAllOf:
             ]
         )
 
-    def test_all_of_root_object_not_runs_once(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Test a root `not` beside an object `allOf` is attached once, by the `allOf` model."""
+    @pytest.mark.parametrize(
+        ("schema_raw", "payload", "checked"),
+        [
+            pytest.param(
+                {
+                    "type": "object",
+                    "properties": {"a": {"type": "integer"}},
+                    "allOf": [{"type": "object", "properties": {"b": {"type": "integer"}}}],
+                    "not": {"const": {"a": 2}},
+                },
+                {"a": 1},
+                {"a": 1},
+                id="root-object",
+            ),
+            pytest.param(
+                {
+                    "type": "object",
+                    "properties": {
+                        "p": {
+                            "allOf": [{"type": "object", "properties": {"a": {"type": "integer"}}}],
+                            "not": {"const": {"a": 2}},
+                        },
+                    },
+                },
+                {"p": {"a": 1}},
+                {"a": 1},
+                id="nested-property",
+            ),
+        ],
+    )
+    def test_all_of_not_runs_once(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        *,
+        schema_raw: SchemaRaw,
+        payload: dict[str, int | dict[str, int]],
+        checked: dict[str, int],
+    ) -> None:
+        """Test a `not` beside an object `allOf` runs once per value, at the root and nested."""
         inputs: list[AnnotationType] = []
         validate = Not.validate
 
@@ -275,19 +312,11 @@ class TestAllOf:
             return validate(self, data)
 
         monkeypatch.setattr(Not, "validate", record)
-        schema = Schema.model_validate(
-            {
-                "type": "object",
-                "properties": {"a": {"type": "integer"}},
-                "allOf": [{"type": "object", "properties": {"b": {"type": "integer"}}}],
-                "not": {"const": {"a": 2}},
-            }
-        )
-        model = to_model(schema)
+        model = to_model(Schema.model_validate(schema_raw))
 
-        model.model_validate({"a": 1})
+        model.model_validate(payload)
 
-        assert inputs == [{"a": 1}]
+        assert inputs == [checked]
 
     def test_all_of_recursive_own_keywords(self) -> None:
         """Test the keywords beside `allOf` in a recursive def resolve its `$ref`."""
@@ -737,13 +766,9 @@ class TestAllOfJsonSchema:
 
         assert model.model_json_schema() == snapshot(
             {
-                "$defs": {
-                    "Model": {
-                        "not": {"const": 1, "type": "integer"},
-                        "title": "Model",
-                        "type": "integer",
-                    }
-                },
-                "allOf": [{"$ref": "#/$defs/Model"}, {"not": {"const": 2, "type": "integer"}}],
+                "allOf": [
+                    {"not": {"const": 1, "type": "integer"}, "title": "Model", "type": "integer"},
+                    {"not": {"const": 2, "type": "integer"}},
+                ]
             }
         )
