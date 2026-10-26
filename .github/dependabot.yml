@@ -22,6 +22,23 @@ updates:
       python-dependencies:
         patterns:
           - "*"
+      # A group without `applies-to` covers version updates only, so every security update
+      #  opened its own PR.
+      #  https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#groups--
+      #  Majors stay out of the group: in a group the highest bump decides, so one major would
+      #  hold every patch fix back from auto-merge.
+      #  https://github.com/dependabot/fetch-metadata/blob/25dd0e34f4fe68f24cc83900b1fe3fe149efef98/src/dependabot/output.ts#L79-L86
+      #  While a group PR is open, a major left out of it gets no PR of its own until that PR
+      #  closes, unless Dependabot runs its `individual_prs_for_semver_excluded_dependencies`
+      #  experiment.
+      #  https://github.com/dependabot/dependabot-core/commit/c96ebb6ae58f869c275e4e1d220d3bc00cd28be9
+      python-dependencies-security:
+        applies-to: security-updates
+        update-types:
+          - minor
+          - patch
+        patterns:
+          - "*"
 
   - package-ecosystem: github-actions
     # `/` scans `.github/workflows/` and a ROOT `action.yml` only, so the composite action at
@@ -42,3 +59,6 @@ updates:
       github-actions:
         patterns:
           - "*"
+      # No security group here: GitHub raises Actions alerts for semver references only, and every
+      #  third-party action in this repository is pinned to a SHA.
+      #  https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alerts
