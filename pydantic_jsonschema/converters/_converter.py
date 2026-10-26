@@ -35,6 +35,7 @@ from pydantic_core import CoreSchema, core_schema
 from pydantic_jsonschema._compat import MISSING
 from pydantic_jsonschema._utils import sanitize_identifier, unwrap_type_alias
 from pydantic_jsonschema.applicators import (
+    AllOf,
     Applicator,
     Contains,
     DependentSchemas,
@@ -55,7 +56,7 @@ from ._field_kwargs import FieldKindType, build_field_kwargs, get_field_default
 from ._metadata import annotate, array_metadata, object_dict_metadata
 from ._object_keywords import build_dependent_required, build_property_count_bounds
 from ._refs import DEFS_KEY, ResolvedDef, escape_pointer_token, get_inline_defs
-from ._utils import make_union, unwrap
+from ._utils import make_union, produces_all_of_model, unwrap
 
 __all__ = [
     "SchemaConverter",
@@ -69,6 +70,48 @@ _DEFAULT_MODEL_NAME: Final[str] = "Model"
 _APPLICATORS_ATTRIBUTE: Final[str] = "__pydantic_jsonschema_applicators__"
 # A discriminated union needs at least two members for Pydantic to tag-dispatch.
 _MIN_DISCRIMINATED_UNION_MEMBERS: Final[int] = 2
+# Validating `Schema` fields that `_own_keywords_annotation` checks beside `allOf`. `not` and
+#  `if` / `then` / `else` are attached as their own applicators, and anything else (metadata,
+#  `$defs`, extension keywords) validates nothing. An object producing the value keeps only the
+#  keywords that apply to an object: a string, number or array keyword ignores it.
+#  https://json-schema.org/draft/2020-12/json-schema-validation#section-6
+_ALL_OF_OBJECT_HOST_FIELDS: Final[frozenset[str]] = frozenset(
+    {
+        "enum",
+        "const",
+        "properties",
+        "additional_properties",
+        "pattern_properties",
+        "property_names",
+        "required",
+        "min_properties",
+        "max_properties",
+        "dependent_required",
+        "dependent_schemas",
+        "any_of",
+        "one_of",
+    }
+)
+_ALL_OF_OWN_FIELDS: Final[frozenset[str]] = _ALL_OF_OBJECT_HOST_FIELDS | {
+    "type",
+    "items",
+    "prefix_items",
+    "contains",
+    "multiple_of",
+    "maximum",
+    "exclusive_maximum",
+    "minimum",
+    "exclusive_minimum",
+    "min_length",
+    "max_length",
+    "pattern",
+    "min_items",
+    "max_items",
+    "unique_items",
+    "max_contains",
+    "min_contains",
+    "format",
+}
 
 # `ARRAY` / `OBJECT` entries are only reachable from multi-type unions
 #  (`{"type": ["object", "string"]}`): single `array` / `object` schemas are handled
@@ -258,16 +301,28 @@ class SchemaConverter:
 
         A root object becomes a plain `BaseModel` (not a `RootModel`), so it bypasses the
         annotation path where these whole-value assertions are otherwise attached. Every other
-        shape (root non-object / dict-root, and all nested values) carries them via its
-        annotation already.
+        shape (root non-object / dict-root, all nested values, and an `allOf` model) carries them
+        already.
 
         :param model: The freshly built root model.
         :param schema: The root schema.
-        :returns: The model, wrapped when it is a root object carrying whole-value assertions.
+        :returns: The model, wrapped when it carries whole-value assertions.
         """
-        if issubclass(model, RootModel):
+        if issubclass(model, RootModel) or schema.all_of is not MISSING:
             return model
 
+        return self._wrap_object_applicators(model, applicators=self._value_assertions(schema))
+
+    def _value_assertions(
+        self,
+        schema: Schema,
+        /,
+    ) -> list[ObjectApplicator]:
+        """Build the whole-value assertions of a schema: `not` and `if` / `then` / `else`.
+
+        :param schema: The schema declaring them.
+        :returns: The applicators, empty when the schema declares neither.
+        """
         applicators: list[ObjectApplicator] = []
         if schema.not_ is not MISSING:
             applicators.append(self._build_not(schema.not_))
@@ -276,7 +331,7 @@ class SchemaConverter:
         if conditional is not None:
             applicators.append(conditional)
 
-        return self._wrap_object_applicators(model, applicators=applicators)
+        return applicators
 
     def _register[ApplicatorT: Applicator](
         self,
@@ -360,34 +415,142 @@ class SchemaConverter:
         :param model_name: Name for the generated model.
         :returns: Pydantic model class.
         """
-        base_classes = self._get_base_classes(schema)
+        if schema.all_of is not MISSING:
+            return self._create_all_of_model(schema, model_name=model_name)
 
         # Non-object types -> `RootModel`.
         if schema.type != DataType.OBJECT:
-            # `allOf` base already wraps the value (e.g. a string `RootModel`).
-            if schema.all_of is not MISSING and base_classes:
-                return base_classes[0]
             return self._create_root_model(schema, model_name=model_name)
 
         # Root object without `properties` but with schema-valued `additionalProperties`
         #  -> `RootModel[dict[str, ...]]`, so values are validated the same way as in
         #  nested objects (a plain `BaseModel` with `extra="allow"` would not check them).
-        if (
-            schema.properties is MISSING
-            and schema.all_of is MISSING
-            and isinstance(schema.additional_properties, (Schema, Reference))
+        if schema.properties is MISSING and isinstance(
+            schema.additional_properties,
+            (Schema, Reference),
         ):
             return self._create_root_model(schema, model_name=model_name)
-
-        # `allOf` without own properties -> combined base class
-        if schema.all_of is not MISSING and schema.properties is MISSING:
-            return self._combine_base_classes(base_classes, model_name=model_name)
 
         return self._create_object_model(
             schema,
             model_name=model_name,
-            base_classes=base_classes,
+            base_classes=(BaseModel,),
         )
+
+    def _create_all_of_model(
+        self,
+        schema: Schema,
+        /,
+        *,
+        model_name: str,
+    ) -> type[BaseModel]:
+        """Build the model for a schema declaring `allOf`.
+
+        Object branches combine natively, as bases of one model. Every other branch, and the
+        keywords beside `allOf`, are checked against the raw input by an `AllOf` applicator, while
+        one model produces the value: the schema's own object model when it declares
+        `properties`, the combined object branches when every branch is one, else the first
+        branch. `not` and `if` / `then` / `else` are attached to that model too, so it carries
+        every keyword of the schema wherever it is used.
+
+        :param schema: Schema declaring `allOf`.
+        :param model_name: Name for the generated model.
+        :returns: Pydantic model class.
+        """
+        branches = dict(enumerate(self._get_base_classes(schema, model_name=model_name)))
+        assertions = self._value_assertions(schema)
+        object_bases = {
+            index: base for index, base in branches.items() if not issubclass(base, RootModel)
+        }
+        # Two branches can be one model (a repeated `$ref`), and `type()` rejects a repeated base.
+        object_base_classes = tuple(dict.fromkeys(object_bases.values()))
+        only_objects: bool = len(object_bases) == len(branches) and (
+            schema.type is MISSING or schema.type == DataType.OBJECT
+        )
+
+        if schema.properties is not MISSING and (schema.type == DataType.OBJECT or only_objects):
+            model = self._create_object_model(
+                schema,
+                model_name=model_name,
+                base_classes=object_base_classes or (BaseModel,),
+            )
+            checked = {index: base for index, base in branches.items() if index not in object_bases}
+            return self._wrap_all_of(
+                model,
+                branches=checked,
+                own=None,
+                assertions=assertions,
+            )
+
+        if only_objects:
+            model = self._combine_base_classes(object_base_classes, model_name=model_name)
+            return self._wrap_all_of(
+                model,
+                branches={},
+                own=self._own_keywords_annotation(schema, object_host=True),
+                assertions=assertions,
+            )
+
+        first, *rest = branches
+        return self._wrap_all_of(
+            branches[first],
+            branches={index: branches[index] for index in rest},
+            own=self._own_keywords_annotation(schema, object_host=False),
+            assertions=assertions,
+        )
+
+    def _own_keywords_annotation(
+        self,
+        schema: Schema,
+        /,
+        *,
+        object_host: bool,
+    ) -> AnnotationType | None:
+        """Build the annotation checking the validating keywords declared beside `allOf`.
+
+        :param schema: Schema declaring `allOf`.
+        :param object_host: Whether an object model produces the value, which makes the keywords
+            object keywords whatever the schema's `type` says.
+        :returns: The annotation, or `None` when no validating keyword sits beside `allOf`.
+        """
+        fields = _ALL_OF_OBJECT_HOST_FIELDS if object_host else _ALL_OF_OWN_FIELDS
+        own = Schema().model_copy(update={name: getattr(schema, name) for name in fields})
+        if own == Schema():
+            return None
+
+        if object_host:
+            own = own.model_copy(update={"type": DataType.OBJECT})
+
+        annotation = self._apply_format(self._schema_to_annotation(own), schema=own)
+        return Annotated[annotation, Field(**build_field_kwargs(own, include_metadata=False))]
+
+    def _wrap_all_of(
+        self,
+        model: type[BaseModel],
+        /,
+        *,
+        branches: dict[int, type[BaseModel]],
+        own: AnnotationType | None,
+        assertions: list[ObjectApplicator],
+    ) -> type[BaseModel]:
+        """Attach an `AllOf` applicator checking the branches the model does not produce.
+
+        :param model: The model producing the value.
+        :param branches: `allOf` branch models keyed by their index.
+        :param own: The annotation checking the keywords beside `allOf`, if any.
+        :param assertions: The schema's `not` / `if` applicators.
+        :returns: The model, wrapped when anything is left to check.
+        """
+        checked: dict[str, AnnotationType] = {
+            f"`allOf[{index}]`": branch for index, branch in branches.items()
+        }
+        if own is not None:
+            checked["the keywords beside `allOf`"] = own
+
+        applicators: list[ObjectApplicator] = (
+            [self._register(AllOf(branches=checked))] if checked else []
+        )
+        return self._wrap_object_applicators(model, applicators=[*applicators, *assertions])
 
     @staticmethod
     def _combine_base_classes(
@@ -537,7 +700,11 @@ class SchemaConverter:
         ) -> JsonSchemaValue:
             json_schema = handler(schema)
             for applicator in combined:
-                json_schema.update(applicator.json_schema_keyword(handler))
+                json_schema = _merge_keyword(
+                    json_schema,
+                    keyword=applicator.json_schema_keyword(handler),
+                    handler=handler,
+                )
             return json_schema
 
         wrapped = type(
@@ -723,25 +890,46 @@ class SchemaConverter:
         self,
         schema: Schema,
         /,
+        *,
+        model_name: str,
     ) -> tuple[type[BaseModel], ...]:
         """Get base classes from `allOf` composition.
 
         :param schema: Schema to extract base classes from.
+        :param model_name: Name of the `allOf` model, which an untitled branch is named after.
         :returns: Tuple of base classes.
         """
-        if schema.all_of is MISSING:
-            return (BaseModel,)
-
+        all_of: list[Schema | Reference] = unwrap(schema.all_of, default=[])
         base_models = []
-        for index, sub_schema in enumerate(schema.all_of):
+        for index, sub_schema in enumerate(all_of):
+            # The first branch may produce the value, so it keeps the `allOf` model's name; the
+            #  others would all dump as `Model` under mangled `$defs` keys.
+            branch_name = f"{model_name}AllOf{index}" if index else model_name
             with self._track_path(f"allOf[{index}]", pointer=("allOf", str(index))):
-                if isinstance(sub_schema, Reference):
-                    model = self._get_model(sub_schema.ref)
-                else:
-                    model = self._convert_nested_schema(sub_schema)
-                base_models.append(model)
+                base_models.append(self._all_of_branch_model(sub_schema, model_name=branch_name))
 
         return tuple(base_models)
+
+    def _all_of_branch_model(
+        self,
+        sub_schema: Schema | Reference,
+        /,
+        *,
+        model_name: str,
+    ) -> type[BaseModel]:
+        """Convert one `allOf` branch to a model.
+
+        :param sub_schema: The branch schema or reference.
+        :param model_name: Name for an untitled inline branch.
+        :returns: The branch model.
+        """
+        if isinstance(sub_schema, Reference):
+            return self._get_model(sub_schema.ref)
+
+        return self._convert_nested_schema(
+            sub_schema,
+            model_name=None if sub_schema.title is not MISSING else model_name,
+        )
 
     def _create_root_model(
         self,
@@ -1023,14 +1211,13 @@ class SchemaConverter:
             )
 
         # `not` and `if` / `then` / `else` are checked against the raw value before the host type,
-        #  attached as `Annotated` wrap-validator metadata (the path used for every shape that has a
-        #  host annotation; root object models take the `before`-validator path instead).
-        if schema.not_ is not MISSING:
-            annotation = cast("type", Annotated[annotation, self._build_not(schema.not_)])
+        #  attached as `Annotated` wrap-validator metadata (the path used for every shape that has
+        #  a host annotation; root object and `allOf` models take the `before`-validator path).
+        if produces_all_of_model(schema):
+            return annotation
 
-        conditional = self._build_conditional(schema)
-        if conditional is not None:
-            annotation = cast("type", Annotated[annotation, conditional])
+        for assertion in self._value_assertions(schema):
+            annotation = cast("type", Annotated[annotation, assertion])
 
         return annotation
 
@@ -1405,6 +1592,34 @@ class SchemaConverter:
                 return annotate(dict_annotation, metadata=object_dict_metadata(schema))
 
         return annotate(dict[str, Any], metadata=object_dict_metadata(schema))
+
+
+def _merge_keyword(
+    json_schema: JsonSchemaValue,
+    /,
+    *,
+    keyword: JsonSchemaValue,
+    handler: GetJsonSchemaHandler,
+) -> JsonSchemaValue:
+    """Add an applicator's keyword fragment to a model's JSON Schema without overwriting.
+
+    A model wrapped twice can emit the same keyword twice (an inner and an outer `not`), either
+    beside it or in the definition its `$ref` points to; the later fragment then goes under
+    `allOf`, which keeps both in force.
+
+    :param json_schema: The model's JSON Schema.
+    :param keyword: The fragment one applicator emits.
+    :param handler: The handler of the in-progress generation, resolving a `$ref`.
+    :returns: The JSON Schema carrying the fragment.
+    """
+    present: set[str] = json_schema.keys() | handler.resolve_ref_schema(json_schema).keys()
+    if keyword.keys().isdisjoint(present):
+        return {**json_schema, **keyword}
+
+    if keyword.keys() == {"allOf"} and "allOf" in json_schema:
+        return {**json_schema, "allOf": [*json_schema["allOf"], *keyword["allOf"]]}
+
+    return {"allOf": [json_schema, keyword]}
 
 
 def to_model(

@@ -10,9 +10,11 @@
 from typing import Any, Union, cast
 
 from pydantic_jsonschema._compat import MISSING
+from pydantic_jsonschema.schema import Schema
 
 __all__ = [
     "make_union",
+    "produces_all_of_model",
     "unwrap",
 ]
 
@@ -42,3 +44,17 @@ def make_union(args: list[Any], /) -> type:
     :returns: The `Union[...]` annotation.
     """
     return cast("type", Union[tuple(args)])  # noqa: UP007
+
+
+def produces_all_of_model(schema: Schema, /) -> bool:
+    """Return whether the schema converts to its `allOf` model, which checks its other keywords.
+
+    `enum` / `const`, then `anyOf` / `oneOf`, take precedence over `allOf` for the annotation, and
+    then no `allOf` model is built.
+
+    :param schema: Schema to inspect.
+    :returns: `True` when `allOf` produces the annotation.
+    """
+    return schema.all_of is not MISSING and all(
+        keyword is MISSING for keyword in (schema.enum, schema.const, schema.any_of, schema.one_of)
+    )
