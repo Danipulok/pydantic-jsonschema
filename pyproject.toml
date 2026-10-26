@@ -242,6 +242,9 @@ max-positional-args = 1
 "tests/applicators/test_dependent_schemas.py" = [
     "E501",     # Long lines in `inline_snapshot` literals (Pydantic error messages)
 ]
+"tests/applicators/test_object_keywords.py" = [
+    "E501",     # Long lines in `inline_snapshot` literals (Pydantic error messages)
+]
 "tests/applicators/test_pattern_properties.py" = [
     "E501",     # Long lines in `inline_snapshot` literals (Pydantic error messages)
 ]
