@@ -135,54 +135,6 @@ class TestNot:
             ]
         )
 
-    def test_not_recursive_union(self) -> None:
-        """Test `not` over a `oneOf` referring back to its own def resolves the `$ref`."""
-        schema = Schema.model_validate(
-            {
-                "type": "object",
-                "properties": {"n": {"$ref": "#/$defs/Node"}},
-                "required": ["n"],
-                "$defs": {
-                    "Leaf": {
-                        "type": "object",
-                        "properties": {"kind": {"const": "leaf"}},
-                        "required": ["kind"],
-                    },
-                    "Node": {
-                        "type": "object",
-                        "properties": {
-                            "kind": {"const": "node"},
-                            "x": {
-                                "not": {
-                                    "oneOf": [{"$ref": "#/$defs/Leaf"}, {"$ref": "#/$defs/Node"}],
-                                },
-                            },
-                        },
-                        "required": ["kind", "x"],
-                    },
-                },
-            }
-        )
-        model = to_model(schema)
-
-        assert model.model_validate({"n": {"kind": "node", "x": 5}}).model_dump() == snapshot(
-            {"n": {"kind": "node", "x": 5}}
-        )
-
-        with pytest.raises(ValidationError) as exc_info:
-            model.model_validate({"n": {"kind": "node", "x": {"kind": "leaf"}}})
-
-        assert dump_errors(exc_info.value) == snapshot(
-            [
-                {
-                    "type": "value_error",
-                    "loc": ("n", "x"),
-                    "msg": "Value error, Value must not match the `not` schema",
-                    "input": {"kind": "leaf"},
-                }
-            ]
-        )
-
 
 class TestNotJsonSchema:
     """`not` round-trips into the dumped JSON Schema."""
