@@ -8,7 +8,7 @@ from pydantic_jsonschema import (
     to_model,
 )
 from pydantic_jsonschema.schema import Schema
-from tests.conftest import dump_errors
+from tests.conftest import SchemaRaw, dump_errors
 
 __all__: list[str] = []
 
@@ -161,3 +161,41 @@ class TestDependentRequired:
         # Non-mapping input passes through and is rejected by type validation.
         with pytest.raises(ValidationError):
             model.model_validate("not a mapping")
+
+
+class TestUndeclaredRequired:
+    """Tests for `required` names that `properties` does not declare."""
+
+    @pytest.mark.parametrize(
+        "schema_raw",
+        [
+            pytest.param(
+                {"type": "object", "properties": {"x": {}}, "required": ["x", "y"]},
+                id="model",
+            ),
+            pytest.param({"type": "object", "required": ["x", "y"]}, id="dict-root"),
+        ],
+    )
+    def test_undeclared_required(self, schema_raw: SchemaRaw) -> None:
+        """Test an undeclared `required` name must be present in the input mapping."""
+        model = to_model(Schema.model_validate(schema_raw))
+
+        assert model.model_validate({"x": 1, "y": 2}).model_dump() == snapshot({"x": 1, "y": 2})
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"x": 1})
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": (),
+                    "msg": "Value error, Object is missing required `y`",
+                    "input": {"x": 1},
+                }
+            ]
+        )
+
+        # Non-mapping input passes through and is rejected by type validation.
+        with pytest.raises(ValidationError):
+            model.model_validate(5)

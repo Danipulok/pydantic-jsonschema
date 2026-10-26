@@ -23,6 +23,7 @@ from ._utils import unwrap
 __all__ = [
     "build_dependent_required",
     "build_property_count_bounds",
+    "build_undeclared_required",
 ]
 
 type PythonType = Any
@@ -92,3 +93,33 @@ def build_dependent_required(schema: Schema, /) -> dict[str, PythonType]:
         return data
 
     return {"_validate_dependent_required": model_validator(mode="before")(_check)}
+
+
+def build_undeclared_required(schema: Schema, /) -> dict[str, PythonType]:
+    """Require each `required` name that `properties` does not declare in the raw mapping.
+
+    A declared name is already a required field; an undeclared one has no field to make required,
+    so it is checked on the raw input mapping keys (validation §6.5.3).
+
+    :param schema: Object schema.
+    :returns: A `__validators__` mapping (empty when every required name is declared).
+    """
+    declared: dict[str, PythonType] = unwrap(schema.properties, default={})
+    undeclared = [name for name in unwrap(schema.required, default=[]) if name not in declared]
+    if not undeclared:
+        return {}
+
+    def _check(data: PythonType) -> PythonType:
+        # Non-mapping input is left for the normal type validation to reject.
+        if not isinstance(data, dict):
+            return data
+
+        missing = [name for name in undeclared if name not in data]
+        if missing:
+            missing_list = "`, `".join(missing)
+            msg = f"Object is missing required `{missing_list}`"
+            raise ValueError(msg)
+
+        return data
+
+    return {"_validate_undeclared_required": model_validator(mode="before")(_check)}

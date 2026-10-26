@@ -53,7 +53,11 @@ from pydantic_jsonschema.schema import DataType, Reference, Schema
 from ._discriminator import discriminator_property
 from ._field_kwargs import FieldKindType, build_field_kwargs, get_field_default
 from ._metadata import annotate, array_metadata, object_dict_metadata
-from ._object_keywords import build_dependent_required, build_property_count_bounds
+from ._object_keywords import (
+    build_dependent_required,
+    build_property_count_bounds,
+    build_undeclared_required,
+)
 from ._refs import DEFS_KEY, ResolvedDef, escape_pointer_token, get_inline_defs
 from ._utils import make_union, unwrap
 
@@ -451,9 +455,10 @@ class SchemaConverter:
         """Collect the `model_validator`s for an object model's non-applicator keywords.
 
         Covers object keywords with no subschema (`minProperties` / `maxProperties` /
-        `dependentRequired`). Subschema-bearing keywords (`propertyNames` / `patternProperties` /
-        `dependentSchemas`) are object applicators, applied via `_wrap_object_applicators` so they
-        also round-trip into `model_json_schema()`.
+        `dependentRequired` / a `required` name `properties` does not declare). Subschema-bearing
+        keywords (`propertyNames` / `patternProperties` / `dependentSchemas`) are object
+        applicators, applied via `_wrap_object_applicators` so they also round-trip into
+        `model_json_schema()`.
 
         :param schema: Object schema to read keywords from.
         :returns: A `create_model(__validators__=...)` mapping (empty when no keyword applies).
@@ -461,6 +466,7 @@ class SchemaConverter:
         return {
             **build_property_count_bounds(schema),
             **build_dependent_required(schema),
+            **build_undeclared_required(schema),
         }
 
     def _build_object_applicators(
