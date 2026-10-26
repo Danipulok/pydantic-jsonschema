@@ -54,7 +54,15 @@ from pydantic_jsonschema.schema import DataType, Reference, Schema
 from ._discriminator import discriminator_property
 from ._field_kwargs import FieldKindType, build_field_kwargs, get_field_default
 from ._metadata import annotate, array_metadata, object_dict_metadata
-from ._object_keywords import build_dependent_required, build_property_count_bounds
+from ._object_keywords import (
+    DictKeywords,
+    ObjectCheck,
+    build_dependent_required,
+    build_property_count_bounds,
+    build_undeclared_required,
+    merge_keyword,
+    strip_dict_keywords,
+)
 from ._refs import DEFS_KEY, ResolvedDef, escape_pointer_token, get_inline_defs
 from ._utils import make_union, produces_all_of_model, unwrap
 
@@ -616,16 +624,22 @@ class SchemaConverter:
         """Collect the `model_validator`s for an object model's non-applicator keywords.
 
         Covers object keywords with no subschema (`minProperties` / `maxProperties` /
-        `dependentRequired`). Subschema-bearing keywords (`propertyNames` / `patternProperties` /
-        `dependentSchemas`) are object applicators, applied via `_wrap_object_applicators` so they
-        also round-trip into `model_json_schema()`.
+        `dependentRequired` / `required` of an undeclared property). Subschema-bearing keywords
+        (`propertyNames` / `patternProperties` / `dependentSchemas`) are object applicators,
+        applied via `_wrap_object_applicators` so they also round-trip into `model_json_schema()`.
 
         :param schema: Object schema to read keywords from.
         :returns: A `create_model(__validators__=...)` mapping (empty when no keyword applies).
         """
+        checks: dict[str, ObjectCheck | None] = {
+            "_validate_property_count": build_property_count_bounds(schema),
+            "_validate_dependent_required": build_dependent_required(schema),
+            "_validate_undeclared_required": build_undeclared_required(schema),
+        }
         return {
-            **build_property_count_bounds(schema),
-            **build_dependent_required(schema),
+            name: model_validator(mode="before")(check)
+            for name, check in checks.items()
+            if check is not None
         }
 
     def _build_object_applicators(
@@ -694,10 +708,9 @@ class SchemaConverter:
         ) -> JsonSchemaValue:
             json_schema = handler(schema)
             for applicator in combined:
-                json_schema = _merge_keyword(
+                json_schema = merge_keyword(
                     json_schema,
                     keyword=applicator.json_schema_keyword(handler),
-                    handler=handler,
                 )
             return json_schema
 
@@ -1072,7 +1085,7 @@ class SchemaConverter:
 
         context = MatchContext(
             schema=schema,
-            annotation=annotation,
+            annotation=strip_dict_keywords(annotation),
             path=self._current_pointer(),
         )
         result: AnnotationType = annotation
@@ -1582,10 +1595,47 @@ class SchemaConverter:
         if isinstance(schema.additional_properties, (Schema, Reference)):
             with self._track_path("additionalProperties"):
                 value_annotation = self._child_annotation(schema.additional_properties)
-                dict_annotation = dict[str, value_annotation]  # type: ignore[valid-type]
-                return annotate(dict_annotation, metadata=object_dict_metadata(schema))
 
-        return annotate(dict[str, Any], metadata=object_dict_metadata(schema))
+            dict_annotation = dict[str, value_annotation]  # type: ignore[valid-type]
+            return self._object_dict_annotation(dict_annotation, schema=schema)
+
+        return self._object_dict_annotation(dict[str, Any], schema=schema)
+
+    def _object_dict_annotation(
+        self,
+        annotation: type,
+        /,
+        *,
+        schema: Schema,
+    ) -> type:
+        """Annotate an object's `dict[str, ...]` mapping with the object keywords it carries.
+
+        :param annotation: The `dict[str, ...]` annotation.
+        :param schema: Object schema without `properties`.
+        :returns: The annotation with its length bounds and a `DictKeywords` when any other
+            object keyword is set.
+        """
+        metadata: list[Any] = object_dict_metadata(schema)
+
+        checks = [
+            check
+            for check in (build_dependent_required(schema), build_undeclared_required(schema))
+            if check is not None
+        ]
+        applicators = self._build_object_applicators(schema)
+        keywords = schema.model_dump(
+            include={"required", "dependent_required"},
+            exclude_unset=True,
+        )
+        if checks or applicators:
+            dict_keywords = DictKeywords(
+                checks=checks,
+                applicators=applicators,
+                keywords=keywords,
+            )
+            metadata.append(dict_keywords)
+
+        return annotate(annotation, metadata=metadata)
 
 
 # `model_validator` returns a `PydanticDescriptorProxy`, which only `pydantic._internal` exports.
@@ -1601,34 +1651,6 @@ def _applicator_validator(applicator: ObjectApplicator, /) -> Any:  # noqa: ANN4
         return applicator.validate(data)
 
     return model_validator(mode="before")(_check)
-
-
-def _merge_keyword(
-    json_schema: JsonSchemaValue,
-    /,
-    *,
-    keyword: JsonSchemaValue,
-    handler: GetJsonSchemaHandler,
-) -> JsonSchemaValue:
-    """Add an applicator's keyword fragment to a model's JSON Schema without overwriting.
-
-    A model wrapped twice can emit the same keyword twice (an inner and an outer `not`), either
-    beside it or in the definition its `$ref` points to; the later fragment then goes under
-    `allOf`, which keeps both in force.
-
-    :param json_schema: The model's JSON Schema.
-    :param keyword: The fragment one applicator emits.
-    :param handler: The handler of the in-progress generation, resolving a `$ref`.
-    :returns: The JSON Schema carrying the fragment.
-    """
-    present: set[str] = json_schema.keys() | handler.resolve_ref_schema(json_schema).keys()
-    if keyword.keys().isdisjoint(present):
-        return {**json_schema, **keyword}
-
-    if keyword.keys() == {"allOf"} and "allOf" in json_schema:
-        return {**json_schema, "allOf": [*json_schema["allOf"], *keyword["allOf"]]}
-
-    return {"allOf": [json_schema, keyword]}
 
 
 def to_model(

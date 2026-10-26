@@ -104,6 +104,17 @@ def sorted_keys[ValueType](value: dict[str, ValueType]) -> dict[str, ValueType]:
     return dict(sorted(value.items()))
 
 
+def key_to_map(value: str | dict[str, str]) -> dict[str, str]:
+    """Turn a bare key into a one-entry map, marking that a `ByType` target reached the map."""
+    return {value: value} if isinstance(value, str) else value
+
+
+def reject_value(value: str) -> str:
+    """Reject every value, marking that a rule reached the node."""
+    msg: str = f"rule rejected {value!r}"
+    raise ValueError(msg)
+
+
 def annotation_is_str(context: MatchContext, /) -> bool:
     """Predicate: match when the resolved annotation is exactly `str`."""
     return context.annotation is str
@@ -364,6 +375,33 @@ class TestByTypeParameterization:
 
         instance = model(meta={"b": "2", "a": "1"})
         assert instance.model_dump() == snapshot({"meta": {"a": "1", "b": "2"}})
+
+    @pytest.mark.parametrize(
+        "keyword",
+        [
+            pytest.param({"required": ["k"]}, id="required"),
+            pytest.param({"dependentRequired": {"k": ["k"]}}, id="dependent-required"),
+            pytest.param({"propertyNames": {"maxLength": 1}}, id="property-names"),
+        ],
+    )
+    def test_bare_dict_matches_a_checked_map(self, keyword: dict[str, Any]) -> None:
+        """An object keyword checked on the map leaves it matchable as a `dict`."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"meta": {"type": "object", **keyword}},
+                "required": ["meta"],
+            }
+        )
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByType(dict), Before(key_to_map)),
+            ],
+        )
+
+        instance = model(meta="k")
+        assert instance.model_dump() == snapshot({"meta": {"k": "k"}})
 
 
 class TestByTypeFormatTypes:
@@ -915,6 +953,46 @@ class TestChildNodes:
         )
 
         assert model(**payload).model_dump() == expected
+
+    @pytest.mark.parametrize(
+        "additional_properties",
+        [
+            pytest.param(
+                {},
+                id="no-additional-properties",
+            ),
+            pytest.param(
+                {"additionalProperties": {"type": "string"}},
+                id="additional-properties-schema",
+            ),
+        ],
+    )
+    def test_pattern_properties_keep_their_path(
+        self,
+        additional_properties: dict[str, Any],
+    ) -> None:
+        """A map's `patternProperties` subschema keeps its pointer beside `additionalProperties`."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {
+                    "meta": {
+                        "type": "object",
+                        "patternProperties": {"^x": {"type": "string"}},
+                        **additional_properties,
+                    }
+                },
+            }
+        )
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByPath("/properties/meta/patternProperties/^x"), After(reject_value)),
+            ],
+        )
+
+        with pytest.raises(ValidationError, match="patternProperties"):
+            model(meta={"xa": "s"})
 
     def test_format_substitution_runs_before_rules(self) -> None:
         """A formatted child is matched on the substituted annotation, and rules wrap it after."""

@@ -169,7 +169,9 @@ Object conversion depends on where the schema appears.
 
 For a property schema, plain `{"type": "object"}` means the value must be a JSON object, so the
 field becomes `dict[str, Any]`. It is not `Any`, because non-object values like strings, numbers,
-arrays, and `null` are rejected.
+arrays, and `null` are rejected. The `required`, `dependentRequired`, `dependentSchemas`,
+`propertyNames` and `patternProperties` of an object without `properties` are checked on that
+`dict`, also when `additionalProperties` is a schema.
 
 ### Objects
 
