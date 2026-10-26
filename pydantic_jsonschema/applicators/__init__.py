@@ -9,13 +9,15 @@ The classes here cover the applicators that have no native Pydantic equivalent a
 validated by hand, each against a `TypeAdapter`-wrapped subschema:
 
 - in-place applicators (apply to the whole instance): `Not` (`not`), `OneOf` (`oneOf`),
+  `AllOf` (the `allOf` branches not combined as an object model, and the keywords beside it),
   `IfThenElse` (`if`/`then`/`else`), `DependentSchemas` (`dependentSchemas`);
 - child applicators (apply to items / property values / names): `Contains` (`contains`),
   `PrefixItems` (`prefixItems`), `PatternProperties` (`patternProperties`),
   `PropertyNames` (`propertyNames`).
 
-The remaining applicators — `allOf` / `anyOf` / `properties` / `items` / `additionalProperties` —
-are *not* here: the converter expresses them natively as Pydantic unions, inheritance, and fields.
+The remaining applicators (`allOf` over object models / `anyOf` / `properties` / `items` /
+`additionalProperties`) are *not* here: the converter expresses them natively as Pydantic
+unions, inheritance, and fields.
 
 Why not "validators" or "markers": "validator" is too broad (it collides with the package's
 format validators and field constraints) and says nothing about *applying a subschema*;
@@ -30,6 +32,7 @@ The converter collects them and calls `bind_namespace` once conversion finishes.
 [spec]: https://json-schema.org/draft/2020-12/json-schema-core#section-10
 """
 
+from ._all_of import AllOf
 from ._base import AnnotationApplicator, Applicator, ObjectApplicator
 from ._contains import Contains
 from ._dependent_schemas import DependentSchemas
@@ -41,6 +44,7 @@ from ._prefix_items import PrefixItems
 from ._property_names import PropertyNames
 
 __all__ = [
+    "AllOf",
     "AnnotationApplicator",
     "Applicator",
     "Contains",

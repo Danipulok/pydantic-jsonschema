@@ -70,15 +70,19 @@ class Applicator:
         branch: AnnotationType,
         /,
     ) -> TypeAdapter[AnnotationType]:
-        """Build a `TypeAdapter` for a subschema, resolving a `ForwardRef` against the namespace.
+        """Build a `TypeAdapter` for a subschema, resolving its `ForwardRef`s against the namespace.
 
-        :param branch: A subschema annotation, possibly a `ForwardRef`.
+        :param branch: A subschema annotation, possibly a `ForwardRef` or one nesting it.
         :returns: A `TypeAdapter` for the resolved subschema.
         """
         resolved: AnnotationType = (
             self._namespace[branch.__forward_arg__] if isinstance(branch, ForwardRef) else branch
         )
-        return TypeAdapter(resolved)
+
+        adapter = TypeAdapter(resolved)
+        adapter.rebuild(_types_namespace=self._namespace)
+
+        return adapter
 
     @staticmethod
     def _branch_schema(

@@ -94,7 +94,7 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | `{"const": "active"}`                        | single-value `Literal[...]`                 | `Literal["active"]`                 |
 | `anyOf`                                      | union annotation                            | `str` or `int`                      |
 | `oneOf`                                      | discriminated or exactly-one-branch union   | tagged union or ambiguous rejected  |
-| `allOf`                                      | generated model inheritance or nested model | combined Pydantic model             |
+| `allOf`                                      | object branches inherited, others `AllOf`   | combined model, branches checked    |
 | nested object property                       | nested generated model                      | `post.author.name`                  |
 | property with `$ref: "#/$defs/Person"`       | model generated from `$defs.Person`         | shared `Person` field type          |
 | `$ref` passed through `refs`                 | existing Pydantic model                     | existing `Address` class            |
@@ -143,6 +143,8 @@ but do not affect the generated model.
 - `not` is only as precise as the converter's coverage of its subschema. A subschema that maps to
   `Any` (an empty schema, or `required` without `type` / `properties`) matches every value, so
   `not` then rejects everything.
+- In an `allOf` that is not over object models, the first branch produces the value and the other
+  branches only check the input, so their coercion (`"5"` to `5`) does not shape the value.
 - `patternProperties` validates the values of matching property names, but combined with
   `additionalProperties: false` a pattern-matched extra key is still rejected by `extra="forbid"`
   (the generated model cannot express "allow keys matching this regex").
