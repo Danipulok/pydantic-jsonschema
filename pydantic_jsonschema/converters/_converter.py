@@ -22,15 +22,15 @@ from pydantic import (
     BeforeValidator,
     ConfigDict,
     Field,
-    GetCoreSchemaHandler,
     GetJsonSchemaHandler,
     RootModel,
     TypeAdapter,
     create_model,
+    model_validator,
 )
 from pydantic.fields import FieldInfo
 from pydantic.json_schema import JsonSchemaValue
-from pydantic_core import CoreSchema, core_schema
+from pydantic_core import CoreSchema
 
 from pydantic_jsonschema._compat import MISSING
 from pydantic_jsonschema._utils import sanitize_identifier, unwrap_type_alias
@@ -655,18 +655,18 @@ class SchemaConverter:
     ) -> type[BaseModel]:
         """Subclass an object model so its applicators validate and round-trip into JSON Schema.
 
-        Each applicator runs as a `before` validator on the raw mapping and re-emits its keyword
-        via `json_schema_keyword`, both delegated from the subclass's Pydantic hooks. A `ForwardRef`
-        subschema resolves lazily once `bind_namespace` runs, so both hooks fire after binding.
+        Each applicator runs as a `before` model validator on the raw mapping, and the subclass's
+        `__get_pydantic_json_schema__` re-emits its keyword via `json_schema_keyword`. A
+        `ForwardRef` subschema resolves lazily once `bind_namespace` runs, so both fire after
+        binding.
 
         Why a *subclass* and not `Annotated[model, *applicators]`: object applicators apply to the
-        whole object, so Pydantic must see their hooks on the model itself. `to_model` returns this
+        whole object, so Pydantic must see them on the model itself. `to_model` returns this
         model as a class the caller instantiates (`User(...)` / `User.model_validate(...)`); an
         `Annotated[...]` is not a class and cannot be returned as the root model. A nested object
         (used as a field type) could instead carry the applicators as `Annotated` and skip the
-        subclass, but subclassing covers root and nested through one path. The classmethod hooks are
-        Pydantic's own extension points; subclassing is merely where they get defined for a model
-        built at runtime by `create_model` (which has no place to declare them otherwise).
+        subclass, but subclassing covers root and nested through one path, and gives a rewrapped
+        model's applicators a place to accumulate.
 
         :param model: The freshly built object model.
         :param applicators: Object applicators to attach (the model is returned as-is when empty).
@@ -675,24 +675,18 @@ class SchemaConverter:
         if not applicators:
             return model
 
-        # `handler(source)` builds the plain model schema and never calls the parent's hook, so a
-        #  model wrapped again applies the applicators it inherits as well as its own.
-        combined: tuple[ObjectApplicator, ...] = (
-            *getattr(model, _APPLICATORS_ATTRIBUTE, ()),
-            *applicators,
-        )
+        inherited: tuple[ObjectApplicator, ...] = getattr(model, _APPLICATORS_ATTRIBUTE, ())
+        combined: tuple[ObjectApplicator, ...] = (*inherited, *applicators)
 
-        # Pydantic calls both hooks positionally.
-        def get_core_schema(  # noqa: PLR0917
-            _cls: type[BaseModel],
-            source: AnnotationType,
-            handler: GetCoreSchemaHandler,
-        ) -> CoreSchema:
-            schema = handler(source)
-            for applicator in combined:
-                schema = core_schema.no_info_before_validator_function(applicator.validate, schema)
-            return schema
+        # A `__get_pydantic_core_schema__` override is reapplied where the model is a field type,
+        #  so it ran three times there, also on a model instance, and a recursive `$ref` to the
+        #  model resolved to the schema without it. A `before` model validator runs once per value.
+        validators: dict[str, Any] = {
+            f"_applicator_{index}": _applicator_validator(applicator)
+            for index, applicator in enumerate(applicators, start=len(inherited))
+        }
 
+        # Pydantic calls the hook positionally.
         def get_json_schema(  # noqa: PLR0917
             _cls: type[BaseModel],
             schema: CoreSchema,
@@ -711,7 +705,7 @@ class SchemaConverter:
             model.__name__,
             (model,),
             {
-                "__get_pydantic_core_schema__": classmethod(get_core_schema),
+                **validators,
                 "__get_pydantic_json_schema__": classmethod(get_json_schema),
                 _APPLICATORS_ATTRIBUTE: combined,
                 "__module__": __name__,
@@ -1592,6 +1586,21 @@ class SchemaConverter:
                 return annotate(dict_annotation, metadata=object_dict_metadata(schema))
 
         return annotate(dict[str, Any], metadata=object_dict_metadata(schema))
+
+
+# `model_validator` returns a `PydanticDescriptorProxy`, which only `pydantic._internal` exports.
+#  https://github.com/pydantic/pydantic/blob/b2212c787fb5c73386dc770681ec49cd09da8e73/pydantic/functional_validators.py#L659-L665
+def _applicator_validator(applicator: ObjectApplicator, /) -> Any:  # noqa: ANN401
+    """Run an object applicator as a `before` model validator on the raw input.
+
+    :param applicator: The applicator to run.
+    :returns: The `model_validator` descriptor for the model's namespace.
+    """
+
+    def _check(data: AnnotationType) -> AnnotationType:
+        return applicator.validate(data)
+
+    return model_validator(mode="before")(_check)
 
 
 def _merge_keyword(

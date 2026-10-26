@@ -10,6 +10,7 @@ from pydantic_jsonschema import (
     SchemaConverter,
     to_model,
 )
+from pydantic_jsonschema.applicators import PropertyNames
 from pydantic_jsonschema.exceptions import SchemaConversionError
 from pydantic_jsonschema.schema import Schema
 from tests.conftest import SchemaRaw, dump_errors
@@ -217,8 +218,112 @@ class TestBasicConversion:
         )
 
 
-class TestRewrappedObjectApplicators:
-    """Tests for a model wrapped with object applicators twice."""
+class TestObjectApplicators:
+    """Tests for the subclass that attaches object applicators to a model."""
+
+    def test_instance_passes_back(self) -> None:
+        """Test a model instance is accepted where its model is expected."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {
+                    "p": {
+                        "allOf": [{"type": "object", "properties": {"a": {"type": "integer"}}}],
+                        "minProperties": 1,
+                    },
+                },
+            }
+        )
+        model = to_model(schema)
+        instance = model.model_validate({"p": {"a": 1}})
+
+        assert model.model_validate(instance).model_dump() == {"p": {"a": 1}}
+        assert model.model_validate({"p": vars(instance)["p"]}).model_dump() == {"p": {"a": 1}}
+
+    @pytest.mark.parametrize(
+        ("schema_raw", "value"),
+        [
+            pytest.param(
+                {"type": "object", "properties": {"p": {"$ref": "#/$defs/P"}}},
+                {"p": {"a": 1}},
+                id="property",
+            ),
+            pytest.param(
+                {"type": "array", "items": {"$ref": "#/$defs/P"}},
+                [{"a": 1}],
+                id="item",
+            ),
+        ],
+    )
+    def test_nested_applicator_runs_once(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        *,
+        schema_raw: SchemaRaw,
+        value: Any,  # noqa: ANN401
+    ) -> None:
+        """Test the applicator of a model used as a nested type runs once per value."""
+        inputs: list[Any] = []
+        validate = PropertyNames.validate
+
+        def record(self: PropertyNames, data: Any, /) -> Any:  # noqa: ANN401
+            inputs.append(data)
+            return validate(self, data)
+
+        monkeypatch.setattr(PropertyNames, "validate", record)
+        schema = Schema.model_validate(
+            {
+                **schema_raw,
+                "$defs": {
+                    "P": {
+                        "type": "object",
+                        "properties": {"a": {"type": "integer"}},
+                        "propertyNames": {"maxLength": 1},
+                    },
+                },
+            }
+        )
+        model = to_model(schema)
+
+        model.model_validate(value)
+
+        assert inputs == [{"a": 1}]
+
+    def test_recursive_applicator_checks_every_level(self) -> None:
+        """Test the applicator of a recursive model checks the value one level down."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"n": {"$ref": "#/$defs/N"}},
+                "required": ["n"],
+                "$defs": {
+                    "N": {
+                        "type": "object",
+                        "properties": {"c": {"type": "array", "items": {"$ref": "#/$defs/N"}}},
+                        "required": ["c"],
+                        "propertyNames": {"maxLength": 1},
+                    },
+                },
+            }
+        )
+        model = to_model(schema)
+
+        valid: dict[str, Any] = {"n": {"c": [{"c": []}]}}
+        assert model.model_validate(valid).model_dump() == valid
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"n": {"c": [{"c": [], "bb": 0}]}})
+
+        assert dump_errors(exc_info.value) == [
+            {
+                "type": "value_error",
+                "loc": ("n", "c", 0),
+                "msg": (
+                    "Value error, Property name `bb` does not satisfy the `propertyNames` schema"
+                ),
+                "input": {"c": [], "bb": 0},
+            }
+        ]
 
     @pytest.mark.parametrize(
         "assertion",
