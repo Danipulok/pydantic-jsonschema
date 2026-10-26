@@ -173,7 +173,15 @@ class TestUndeclaredRequired:
                 {"type": "object", "properties": {"x": {}}, "required": ["x", "y"]},
                 id="model",
             ),
-            pytest.param({"type": "object", "required": ["x", "y"]}, id="dict-root"),
+            pytest.param({"type": "object", "required": ["x", "y"]}, id="root-without-properties"),
+            pytest.param(
+                {
+                    "type": "object",
+                    "additionalProperties": {"type": "integer"},
+                    "required": ["x", "y"],
+                },
+                id="dict-root",
+            ),
         ],
     )
     def test_undeclared_required(self, schema_raw: SchemaRaw) -> None:

@@ -14,6 +14,7 @@ from typing import (
     Literal,
     TypeAliasType,
     cast,
+    get_args,
     get_origin,
 )
 
@@ -41,6 +42,7 @@ from pydantic_jsonschema.applicators import (
     IfThenElse,
     Not,
     ObjectApplicator,
+    ObjectKeywords,
     OneOf,
     PatternProperties,
     PrefixItems,
@@ -86,6 +88,28 @@ _DATA_TYPE_ANNOTATION_MAPPING: Final[dict[DataType, type]] = {
     DataType.ARRAY: list[Any],
     DataType.OBJECT: dict[str, Any],
 }
+
+# Object keywords (`Schema` field names). An untyped schema carrying any of them still applies
+#  them to object instances; a `dict[str, ...]` object expresses only the property counts and
+#  `additionalProperties`, so the rest need an object model check.
+_OBJECT_KEYWORDS: Final[tuple[str, ...]] = (
+    "properties",
+    "additional_properties",
+    "pattern_properties",
+    "property_names",
+    "required",
+    "min_properties",
+    "max_properties",
+    "dependent_required",
+    "dependent_schemas",
+)
+_MODEL_ONLY_OBJECT_KEYWORDS: Final[tuple[str, ...]] = (
+    "pattern_properties",
+    "property_names",
+    "required",
+    "dependent_required",
+    "dependent_schemas",
+)
 
 # Type aliases
 type Ref = str  # Reference path like "#/$defs/User"
@@ -886,7 +910,7 @@ class SchemaConverter:
 
         context = MatchContext(
             schema=schema,
-            annotation=annotation,
+            annotation=_without_object_keywords(annotation),
             path=self._current_pointer(),
         )
         result: AnnotationType = annotation
@@ -1108,7 +1132,7 @@ class SchemaConverter:
         annotation = self._apply_rules(annotation, schema=schema)
         kwargs = build_field_kwargs(schema, include_metadata=not union_branch)
 
-        if kwargs and not (union_branch and annotation is Any):
+        if kwargs and not (union_branch and _is_untyped(annotation)):
             annotation = cast("type", Annotated[annotation, Field(**kwargs)])
         return annotation
 
@@ -1288,6 +1312,20 @@ class SchemaConverter:
             union_args = [_DATA_TYPE_ANNOTATION_MAPPING[data_type] for data_type in schema.type]
             return make_union(union_args)
 
+        if _declares_any(schema, keywords=_OBJECT_KEYWORDS) and _fields_convert(schema):
+            update: dict[str, Any] = {"type": DataType.OBJECT, "defs": MISSING}
+
+            # The `dict` host would type pattern-matched values by `additionalProperties` too,
+            #  rejecting valid input, so only `patternProperties` checks them.
+            if schema.pattern_properties is not MISSING:
+                update["additional_properties"] = MISSING
+
+            object_schema = schema.model_copy(update=update)
+            object_keywords = self._register(
+                ObjectKeywords(branch=self._object_annotation(object_schema)),
+            )
+            return cast("type", Annotated[Any, object_keywords])
+
         # `Any` is a valid annotation but is not a `type`, so `pyright` rejects it under the
         #  `-> type` return; the same `Any`-as-annotation pattern recurs below for `item_type`.
         return Any  # pyright: ignore[reportReturnType]
@@ -1394,13 +1432,69 @@ class SchemaConverter:
         if schema.additional_properties is False:
             return self._convert_nested_schema(schema)
 
+        metadata: list[PythonType] = object_dict_metadata(schema)
+        if _declares_any(schema, keywords=_MODEL_ONLY_OBJECT_KEYWORDS):
+            model = self._create_object_model(
+                schema,
+                model_name=sanitize_identifier(unwrap(schema.title, default=""))
+                or self._default_model_name,
+                base_classes=(BaseModel,),
+            )
+            object_keywords = self._register(ObjectKeywords(branch=model))
+            metadata.append(object_keywords)
+
         if isinstance(schema.additional_properties, (Schema, Reference)):
             with self._track_path("additionalProperties"):
                 value_annotation = self._child_annotation(schema.additional_properties)
                 dict_annotation = dict[str, value_annotation]  # type: ignore[valid-type]
-                return annotate(dict_annotation, metadata=object_dict_metadata(schema))
+                return annotate(dict_annotation, metadata=metadata)
 
-        return annotate(dict[str, Any], metadata=object_dict_metadata(schema))
+        return annotate(dict[str, Any], metadata=metadata)
+
+
+def _without_object_keywords(annotation: AnnotationType, /) -> AnnotationType:
+    """Drop `ObjectKeywords` metadata, so a rule matches the node by its host type."""
+    if get_origin(annotation) is not Annotated:
+        return annotation
+
+    host, *metadata = get_args(annotation)
+    kept = [item for item in metadata if not isinstance(item, ObjectKeywords)]
+    return annotate(host, metadata=kept)
+
+
+def _is_untyped(annotation: AnnotationType, /) -> bool:
+    """Tell whether an annotation is `Any`, bare or carrying only `ObjectKeywords`."""
+    if get_origin(annotation) is not Annotated:
+        return annotation is Any
+
+    host, *metadata = get_args(annotation)
+    return host is Any and all(isinstance(item, ObjectKeywords) for item in metadata)
+
+
+def _fields_convert(schema: Schema, /) -> bool:
+    """Tell whether every `properties` name can become a field of a generated model.
+
+    Pydantic refuses a leading underscore and some `BaseModel` members, and warns on the rest, so
+    an untyped schema naming either keeps converting to `Any`, as it did before object keywords
+    applied to it.
+    """
+    names: dict[str, Schema | Reference] = unwrap(schema.properties, default={})
+    return not any(name.startswith("_") or hasattr(BaseModel, name) for name in names)
+
+
+def _declares_any(
+    schema: Schema,
+    /,
+    *,
+    keywords: tuple[str, ...],
+) -> bool:
+    """Return whether the schema sets any of the keywords.
+
+    :param schema: Schema to inspect.
+    :param keywords: `Schema` field names.
+    :returns: `True` when at least one of them is set.
+    """
+    return any(getattr(schema, keyword) is not MISSING for keyword in keywords)
 
 
 def to_model(
