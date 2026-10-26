@@ -65,6 +65,8 @@ __all__ = [
 
 # Default model name
 _DEFAULT_MODEL_NAME: Final[str] = "Model"
+# Class attribute where `_wrap_object_applicators` records every applicator a model carries.
+_APPLICATORS_ATTRIBUTE: Final[str] = "__pydantic_jsonschema_applicators__"
 # A discriminated union needs at least two members for Pydantic to tag-dispatch.
 _MIN_DISCRIMINATED_UNION_MEMBERS: Final[int] = 2
 
@@ -510,6 +512,13 @@ class SchemaConverter:
         if not applicators:
             return model
 
+        # `handler(source)` builds the plain model schema and never calls the parent's hook, so a
+        #  model wrapped again applies the applicators it inherits as well as its own.
+        combined: tuple[ObjectApplicator, ...] = (
+            *getattr(model, _APPLICATORS_ATTRIBUTE, ()),
+            *applicators,
+        )
+
         # Pydantic calls both hooks positionally.
         def get_core_schema(  # noqa: PLR0917
             _cls: type[BaseModel],
@@ -517,7 +526,7 @@ class SchemaConverter:
             handler: GetCoreSchemaHandler,
         ) -> CoreSchema:
             schema = handler(source)
-            for applicator in applicators:
+            for applicator in combined:
                 schema = core_schema.no_info_before_validator_function(applicator.validate, schema)
             return schema
 
@@ -527,7 +536,7 @@ class SchemaConverter:
             handler: GetJsonSchemaHandler,
         ) -> JsonSchemaValue:
             json_schema = handler(schema)
-            for applicator in applicators:
+            for applicator in combined:
                 json_schema.update(applicator.json_schema_keyword(handler))
             return json_schema
 
@@ -537,6 +546,7 @@ class SchemaConverter:
             {
                 "__get_pydantic_core_schema__": classmethod(get_core_schema),
                 "__get_pydantic_json_schema__": classmethod(get_json_schema),
+                _APPLICATORS_ATTRIBUTE: combined,
                 "__module__": __name__,
             },
         )
