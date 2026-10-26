@@ -1,7 +1,5 @@
 """Tests for `$ref` / `$defs` reference resolution."""
 
-from typing import TYPE_CHECKING
-
 import pytest
 from inline_snapshot import snapshot
 from pydantic import BaseModel, ValidationError
@@ -12,9 +10,7 @@ from pydantic_jsonschema import (
 )
 from pydantic_jsonschema.exceptions import SchemaConversionError, SchemaReferenceError
 from pydantic_jsonschema.schema import Schema
-
-if TYPE_CHECKING:
-    from tests.conftest import SchemaRaw
+from tests.conftest import SchemaRaw
 
 __all__: list[str] = []
 
@@ -173,13 +169,21 @@ class TestReferences:
             }
         )
 
-    def test_invalid_reference_error(self) -> None:
+    @pytest.mark.parametrize(
+        "field_schema",
+        [
+            pytest.param({"$ref": "#/$defs/DoesNotExist"}, id="property"),
+            pytest.param(
+                {"anyOf": [{"$ref": "#/$defs/DoesNotExist"}, {"type": "null"}]},
+                id="any-of",
+            ),
+        ],
+    )
+    def test_invalid_reference_error(self, field_schema: SchemaRaw) -> None:
         """Test invalid reference raises error."""
         schema_raw: SchemaRaw = {
             "type": "object",
-            "properties": {
-                "field": {"$ref": "#/$defs/DoesNotExist"},
-            },
+            "properties": {"field": field_schema},
             "required": ["field"],
         }
         schema = Schema.model_validate(schema_raw)
@@ -405,6 +409,19 @@ class TestReferences:
                 "home": {"street": "Main St"},
             }
         )
+
+    def test_reference_field_takes_def_metadata(self) -> None:
+        """Test a `$ref` property takes its field metadata from the def it points at."""
+        schema = Schema.model_validate(
+            {
+                "$defs": {"N": {"type": "integer", "description": "count"}},
+                "type": "object",
+                "properties": {"n": {"$ref": "#/$defs/N"}},
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_fields["n"].description == "count"
 
     def test_defs_alias_chain(self) -> None:
         """Test `$defs` alias chain resolving through multiple references."""
@@ -707,3 +724,160 @@ class TestRecursiveReferences:
 
         instance = model(head={"value": 1, "child": {"value": 2}})
         assert instance.model_dump() == snapshot({"head": {"value": 1, "child": {"value": 2}}})
+
+    def test_alias_before_recursive_target(self) -> None:
+        """An alias declared before its recursive target resolves to the target's one model."""
+        schema = Schema.model_validate(
+            {
+                "$defs": {
+                    "A": {"$ref": "#/$defs/B"},
+                    "B": {
+                        "type": "object",
+                        "properties": {"next": {"$ref": "#/$defs/B"}},
+                    },
+                },
+                "type": "object",
+                "properties": {"a": {"$ref": "#/$defs/A"}, "b": {"$ref": "#/$defs/B"}},
+                "required": ["a", "b"],
+            }
+        )
+        model = to_model(schema)
+
+        instance = model.model_validate({"a": {"next": {}}, "b": {}})
+
+        assert {type(instance.a), type(instance.a.next), type(instance.b)} == {type(instance.b)}  # type: ignore[attr-defined]
+
+    @pytest.mark.parametrize(
+        ("defs", "valid", "invalid"),
+        [
+            pytest.param(
+                {
+                    "A": {
+                        "type": "object",
+                        "properties": {"b": {"$ref": "#/$defs/B"}},
+                        "required": ["b"],
+                    },
+                    "B": {"type": "integer"},
+                },
+                {"b": 1},
+                {"b": "x"},
+                id="property",
+            ),
+            pytest.param(
+                {
+                    "A": {"allOf": [{"$ref": "#/$defs/B"}]},
+                    "B": {
+                        "type": "object",
+                        "properties": {"b": {"type": "integer"}},
+                        "required": ["b"],
+                    },
+                },
+                {"b": 1},
+                {"b": "x"},
+                id="all-of",
+            ),
+            pytest.param(
+                {
+                    "A": {
+                        "type": "object",
+                        "properties": {"b": {"$ref": "#/$defs/B"}},
+                        "required": ["b"],
+                    },
+                    "B": {
+                        "type": "object",
+                        "properties": {
+                            "next": {"$ref": "#/$defs/B"},
+                            "value": {"type": "integer"},
+                        },
+                        "required": ["value"],
+                    },
+                },
+                {"b": {"value": 1, "next": {"value": 2}}},
+                {"b": {"value": "x"}},
+                id="self-referential",
+            ),
+            pytest.param(
+                {
+                    "A": {"properties": {"b": {"$ref": "#/$defs/B"}}, "required": ["b"]},
+                    "B": {"properties": {"a": {"$ref": "#/$defs/A"}}, "required": ["value"]},
+                },
+                {"b": {"value": 1, "a": {"b": {"value": 2}}}},
+                {"b": {}},
+                id="untyped-mutual",
+            ),
+        ],
+    )
+    def test_ref_to_later_def(
+        self,
+        defs: dict[str, SchemaRaw],
+        valid: SchemaRaw,
+        invalid: SchemaRaw,
+    ) -> None:
+        """A `$ref` resolves to a def declared after the def that refers to it."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"a": {"$ref": "#/$defs/A"}},
+                "required": ["a"],
+                "$defs": defs,
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"a": valid}).model_dump(exclude_unset=True) == {"a": valid}
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"a": invalid})
+
+        assert [error["loc"][:2] for error in exc_info.value.errors()] == [("a", "b")]
+
+    @pytest.mark.parametrize(
+        "branch",
+        [
+            pytest.param({"additionalProperties": False}, id="closed"),
+            pytest.param({"properties": {"b": {"type": "string"}}}, id="shadowed"),
+        ],
+    )
+    @pytest.mark.parametrize(
+        "branch_name",
+        [
+            pytest.param("A", id="before"),
+            pytest.param("Z", id="after"),
+        ],
+    )
+    def test_recursive_all_of_branch_def_in_any_order(
+        self,
+        *,
+        branch: SchemaRaw,
+        branch_name: str,
+    ) -> None:
+        """An `allOf` branch checked on its own works, and dumps, wherever its def sorts."""
+        branch_properties: SchemaRaw = branch.get("properties", {})
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"t": {"$ref": "#/$defs/T"}},
+                "required": ["t"],
+                "$defs": {
+                    "B": {"type": "object", "properties": {"b": {"type": "integer"}}},
+                    "T": {"allOf": [{"$ref": f"#/$defs/{branch_name}"}, {"$ref": "#/$defs/B"}]},
+                    branch_name: {
+                        **branch,
+                        "type": "object",
+                        "properties": {
+                            **branch_properties,
+                            "c": {"type": "array", "items": {"$ref": "#/$defs/T"}},
+                        },
+                    },
+                },
+            }
+        )
+        model = to_model(schema)
+        reloaded = to_model(Schema.model_validate(model.model_json_schema()))
+
+        valid: SchemaRaw = {"t": {"c": [{"c": []}]}}
+        for current in (model, reloaded):
+            assert current.model_validate(valid).model_dump(exclude_unset=True) == valid
+
+            with pytest.raises(ValidationError):
+                current.model_validate({"t": {"c": [{"b": 1}]}})
