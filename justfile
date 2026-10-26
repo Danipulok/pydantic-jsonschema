@@ -181,24 +181,38 @@ test-fix-snapshots:
 
 # Test the dependency FLOOR: lowest Python + lowest direct deps our bounds allow.
 #  `--resolution lowest-direct` re-resolves direct deps to their declared minimums (e.g.
-#  `pydantic>=2.13.0` -> `2.13.0`), proving the floor actually resolves and passes. Isolated env
-#  (never touches `.venv`); no coverage gate.
+#  `pydantic>=2.13.0` -> `2.13.0`), proving the floor actually resolves and passes. No coverage
+#  gate.
+#
+# `--isolated` runs in a fresh environment and resolves without writing `uv.lock`, which a plain
+#  `uv run` rewrites with the floor versions.
+#  https://github.com/astral-sh/uv/blob/329bf9448afd9f9088d14a4d57fbc61eb454f117/crates/uv-project-commands/src/run.rs#L716-L725
+#  The recipe compares `uv.lock` before and after the run rather than against `HEAD`, so an
+#  uncommitted lock edit does not fail it.
 #
 # NOTE: `UV_NO_SYNC`/`UV_FROZEN` are forced off here — this recipe MUST sync a throwaway env and MUST
 #  re-resolve, both of which conflict with the CI-wide defaults. With `UV_FROZEN=true` it would
 #  silently install the *locked* versions instead of the floor, making the test meaningless.
 [doc("Test the dependency floor (oldest Python, lowest direct deps)")]
 test-floor:
-    UV_NO_SYNC=false UV_FROZEN=false UV_PROJECT_ENVIRONMENT=.venv-floor uv run --python {{python_floor}} --resolution lowest-direct --no-default-groups --group test pytest
+    #!/usr/bin/env bash
+    set -euo pipefail
+    lock="$(git hash-object uv.lock)"
+    UV_NO_SYNC=false UV_FROZEN=false uv run --isolated --python {{python_floor}} --resolution lowest-direct --no-default-groups --group test pytest
+    [ "$(git hash-object uv.lock)" = "$lock" ] || { echo "test-floor rewrote uv.lock" >&2; exit 1; }
 
 # Test the dependency CEILING: newest supported Python + highest resolvable deps.
 #  `--upgrade` ignores the lockfile pins and re-resolves to the latest allowed versions (within
 #  `tool.uv.exclude-newer` in `pyproject.toml`), catching breakage from a new dependency release
 #  before it reaches the lockfile.
-#  Isolated env; no coverage gate. See `test-floor` for why the CI-wide flags are cleared.
+#  No coverage gate. See `test-floor` for `--isolated` and for why the CI-wide flags are cleared.
 [doc("Test the dependency ceiling (newest supported Python, highest deps)")]
 test-ceil:
-    UV_NO_SYNC=false UV_FROZEN=false UV_PROJECT_ENVIRONMENT=.venv-ceil uv run --python {{python_ceil}} --upgrade --no-default-groups --group test pytest
+    #!/usr/bin/env bash
+    set -euo pipefail
+    lock="$(git hash-object uv.lock)"
+    UV_NO_SYNC=false UV_FROZEN=false uv run --isolated --python {{python_ceil}} --upgrade --no-default-groups --group test pytest
+    [ "$(git hash-object uv.lock)" = "$lock" ] || { echo "test-ceil rewrote uv.lock" >&2; exit 1; }
 
 # Run the `CodSpeed` benchmarks (`-m benchmark` overrides the suite-wide `not benchmark`). Locally
 #  this measures wall-clock; in CI the `CodSpeedHQ/action` wraps it and records stable measurements.
@@ -385,8 +399,8 @@ clean:
     rm -rf htmlcov
     rm -rf site
     rm -rf sbom
-    # Remove throwaway envs (`.venv312`-`.venv315`, `.venv-floor`, `.venv-ceil`) but keep the
-    #  main `.venv` so a clean doesn't force a full re-sync of the working environment.
+    # Remove throwaway envs (`.venv312`-`.venv315`) but keep the main `.venv` so a clean doesn't
+    #  force a full re-sync of the working environment.
     find . -maxdepth 1 -type d -name ".venv*" ! -name ".venv" -exec rm -rf {} +
     find . -type d -name __pycache__ -exec rm -rf {} +
     find . -type f -name "*.pyc" -delete
