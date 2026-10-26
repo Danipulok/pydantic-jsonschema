@@ -1,6 +1,6 @@
 """Tests for core JSON Schema to Pydantic model conversion."""
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pytest
 from inline_snapshot import snapshot
@@ -12,9 +12,7 @@ from pydantic_jsonschema import (
 )
 from pydantic_jsonschema.exceptions import SchemaConversionError
 from pydantic_jsonschema.schema import Schema
-
-if TYPE_CHECKING:
-    from tests.conftest import SchemaRaw
+from tests.conftest import SchemaRaw, dump_errors
 
 __all__: list[str] = []
 
@@ -217,6 +215,46 @@ class TestBasicConversion:
                 "data": [1, "two", 3.0, True, None],
             }
         )
+
+
+class TestRewrappedObjectApplicators:
+    """Tests for a model wrapped with object applicators twice."""
+
+    @pytest.mark.parametrize(
+        "assertion",
+        [
+            pytest.param({"not": {"type": "object", "minProperties": 3}}, id="not"),
+            pytest.param({"if": {"const": 1}, "then": {"const": 2}}, id="if"),
+        ],
+    )
+    def test_root_assertion_keeps_object_applicators(self, assertion: SchemaRaw) -> None:
+        """Test a root `not` / `if` keeps the object applicators of the model it wraps."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"a": {}},
+                "propertyNames": {"maxLength": 1},
+                **assertion,
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"a": 1}).model_dump() == {"a": 1}
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"a": 1, "Toolong": 1})
+
+        assert dump_errors(exc_info.value) == [
+            {
+                "type": "value_error",
+                "loc": (),
+                "msg": (
+                    "Value error, Property name `Toolong` does not satisfy"
+                    " the `propertyNames` schema"
+                ),
+                "input": {"a": 1, "Toolong": 1},
+            }
+        ]
 
 
 class TestRootModels:
