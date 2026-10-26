@@ -85,7 +85,7 @@ lint = [
     "mypy>=1.17.1",
     "pre-commit>=4.0.0",
     "pyright[nodejs]>=1.1.409",
-    "ruff>=0.12.10",
+    "ruff>=0.16.0",  # `PLR0917` is stable from `0.16.0`; earlier, `ALL` skips it
 ]
 test = [
     "pytest>=8.0.0",
@@ -222,9 +222,22 @@ ignore = [
     "CPY001",   # Missing copyright notice at top of file
 ]
 
+# At most one positional parameter, per `docs/contributing.md`.
+[tool.ruff.lint.pylint]
+max-positional-args = 1
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"typing.NamedTuple" = { msg = "Use `@dataclass(frozen=True)`: a `NamedTuple` unpacks and indexes, so callers come to depend on the field order." }
+"collections.namedtuple" = { msg = "Use `@dataclass(frozen=True)`: a `namedtuple` unpacks and indexes, so callers come to depend on the field order." }
+# `SIM105` suggests `suppress` for `try`/`except: pass`; take neither, log the error instead.
+"contextlib.suppress" = { msg = "Catch with `try`/`except` and log the error: a suppressed error leaves no log line." }
+
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [
     "S101",     # Use of `assert` detected
+    # `pytest` passes test and fixture arguments by name; helpers keep the rule by review, per
+    #  `docs/contributing.md`.
+    "PLR0917",  # Too many positional arguments
 ]
 "tests/applicators/test_dependent_schemas.py" = [
     "E501",     # Long lines in `inline_snapshot` literals (Pydantic error messages)

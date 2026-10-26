@@ -136,8 +136,9 @@ class AnnotationApplicator(Applicator, ABC):
     during validation, and `__get_pydantic_json_schema__` re-emits it on `model_json_schema()`.
     """
 
+    # Pydantic calls both hooks positionally.
     @abstractmethod
-    def __get_pydantic_core_schema__(
+    def __get_pydantic_core_schema__(  # noqa: PLR0917
         self,
         source_type: AnnotationType,
         handler: GetCoreSchemaHandler,
@@ -145,7 +146,7 @@ class AnnotationApplicator(Applicator, ABC):
         """Build the core schema wrapping the host type with this applicator's check."""
 
     @abstractmethod
-    def __get_pydantic_json_schema__(
+    def __get_pydantic_json_schema__(  # noqa: PLR0917
         self,
         schema: CoreSchema,
         handler: GetJsonSchemaHandler,

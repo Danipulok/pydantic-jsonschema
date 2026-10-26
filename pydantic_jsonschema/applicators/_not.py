@@ -108,7 +108,8 @@ class Not(AnnotationApplicator, ObjectApplicator):
             self._adapter = self._build_adapter(self._branch)
         return self._adapter
 
-    def _validate(
+    # Pydantic calls a wrap validator positionally.
+    def _validate(  # noqa: PLR0917
         self,
         value: AnnotationType,
         handler: core_schema.ValidatorFunctionWrapHandler,
