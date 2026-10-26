@@ -108,9 +108,9 @@ lint:
 scan-deps:
     scripts/trivy_scan.sh fs
 
-# Audit GitHub Actions workflows for security issues (`zizmor`)
+# Audit GitHub Actions workflows, composite actions and the Dependabot config for security issues (`zizmor`)
 audit-workflows:
-    uv run zizmor --offline .github/workflows/
+    uv run zizmor --offline .github/
 
 # Generate a CycloneDX SBOM of the runtime dependency tree into `sbom/`. On-demand convenience only —
 #  deliberately NOT wired into releases: the published wheel's `Requires-Dist` already declares deps,
