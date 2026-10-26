@@ -1,4 +1,6 @@
-"""Tests for object-keyword validators (`minProperties` / `dependentRequired`)."""
+"""Tests for object-keyword validators (`minProperties` / `dependentRequired` / `required`)."""
+
+from typing import Any
 
 import pytest
 from inline_snapshot import snapshot
@@ -8,7 +10,7 @@ from pydantic_jsonschema import (
     to_model,
 )
 from pydantic_jsonschema.schema import Schema
-from tests.conftest import dump_errors
+from tests.conftest import SchemaRaw, dump_errors
 
 __all__: list[str] = []
 
@@ -161,3 +163,198 @@ class TestDependentRequired:
         # Non-mapping input passes through and is rejected by type validation.
         with pytest.raises(ValidationError):
             model.model_validate("not a mapping")
+
+
+class TestUndeclaredRequired:
+    """Tests for `required` naming a property that `properties` does not declare."""
+
+    @pytest.mark.parametrize(
+        ("schema_raw", "valid", "invalid"),
+        [
+            pytest.param(
+                {"type": "object", "properties": {"a": {}}, "required": ["b"]},
+                {"b": 1},
+                {"a": 1},
+                id="root",
+            ),
+            pytest.param(
+                {
+                    "type": "object",
+                    "properties": {
+                        "p": {"type": "object", "properties": {"a": {}}, "required": ["b"]},
+                    },
+                    "required": ["p"],
+                },
+                {"p": {"b": 1}},
+                {"p": {"a": 1}},
+                id="nested",
+            ),
+        ],
+    )
+    def test_undeclared_required(
+        self,
+        *,
+        schema_raw: SchemaRaw,
+        valid: dict[str, Any],
+        invalid: dict[str, Any],
+    ) -> None:
+        """Test an undeclared required property must be present."""
+        model = to_model(Schema.model_validate(schema_raw))
+
+        assert model.model_validate(valid).model_dump(exclude_unset=True) == valid
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate(invalid)
+
+        assert [error["msg"] for error in exc_info.value.errors()] == [
+            "Value error, Object must have the properties `b`"
+        ]
+
+        # Non-mapping input passes through and is rejected by type validation.
+        with pytest.raises(ValidationError):
+            model.model_validate("not a mapping")
+
+
+class TestObjectWithoutProperties:
+    """Tests for the keywords of an object with no `properties`."""
+
+    @pytest.mark.parametrize(
+        ("keywords", "valid", "invalid"),
+        [
+            pytest.param({"required": ["a"]}, {"a": 1}, {"b": 1}, id="required"),
+            pytest.param(
+                {"dependentRequired": {"a": ["b"]}},
+                {"a": 1, "b": 2},
+                {"a": 1},
+                id="dependent-required",
+            ),
+            pytest.param({"propertyNames": {"maxLength": 1}}, {"a": 1}, {"ab": 1}, id="names"),
+            pytest.param(
+                {"patternProperties": {"^x": {"type": "integer", "minimum": 2}}},
+                {"x1": 2},
+                {"x1": 1},
+                id="pattern-properties",
+            ),
+            pytest.param(
+                {"dependentSchemas": {"a": {"type": "object", "required": ["b"]}}},
+                {"a": 1, "b": 2},
+                {"a": 1},
+                id="dependent-schemas",
+            ),
+        ],
+    )
+    @pytest.mark.parametrize(
+        "values",
+        [
+            pytest.param({}, id="any-values"),
+            pytest.param({"additionalProperties": {"type": "integer"}}, id="schema-values"),
+        ],
+    )
+    def test_nested_object_keyword(
+        self,
+        *,
+        keywords: SchemaRaw,
+        valid: dict[str, Any],
+        invalid: dict[str, Any],
+        values: SchemaRaw,
+    ) -> None:
+        """Test a nested object with no `properties` checks its object keywords and stays a dict."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"p": {"type": "object", **values, **keywords}},
+                "required": ["p"],
+            }
+        )
+        model = to_model(schema)
+
+        instance = model.model_validate({"p": valid})
+        assert type(vars(instance)["p"]) is dict
+        assert instance.model_dump() == {"p": valid}
+
+        with pytest.raises(ValidationError):
+            model.model_validate({"p": invalid})
+
+    def test_root_object_keyword(self) -> None:
+        """Test a root object with schema-valued `additionalProperties` checks `required`."""
+        schema = Schema.model_validate(
+            {"type": "object", "additionalProperties": {"type": "integer"}, "required": ["a"]}
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"a": 1}).model_dump() == {"a": 1}
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"b": 1})
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": (),
+                    "msg": "Value error, Object must have the properties `a`",
+                    "input": {"b": 1},
+                }
+            ]
+        )
+
+    def test_non_mapping_input(self) -> None:
+        """Test the checks leave a non-mapping input to the `dict` validation."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"p": {"type": "object", "required": ["a"]}},
+                "required": ["p"],
+            }
+        )
+        model = to_model(schema)
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"p": 5})
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "dict_type",
+                    "loc": ("p",),
+                    "msg": "Input should be a valid dictionary",
+                    "input": 5,
+                }
+            ]
+        )
+
+    def test_dump_carries_keywords(self) -> None:
+        """Test `model_json_schema()` emits the object keywords of the dict mapping."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {
+                    "p": {
+                        "type": "object",
+                        "required": ["a"],
+                        "dependentRequired": {"a": ["b"]},
+                        "propertyNames": {"maxLength": 1},
+                    }
+                },
+                "required": ["p"],
+            }
+        )
+
+        assert to_model(schema).model_json_schema() == snapshot(
+            {
+                "additionalProperties": True,
+                "properties": {
+                    "p": {
+                        "additionalProperties": True,
+                        "dependentRequired": {"a": ["b"]},
+                        "propertyNames": {"maxLength": 1},
+                        "required": ["a"],
+                        "title": "P",
+                        "type": "object",
+                    }
+                },
+                "required": ["p"],
+                "title": "Model",
+                "type": "object",
+            }
+        )

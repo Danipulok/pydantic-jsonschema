@@ -482,6 +482,31 @@ class TestAllOfObjects:
         with pytest.raises(ValidationError):
             model.model_validate(None)
 
+    def test_all_of_one_of_required_branch(self) -> None:
+        """Test a `oneOf` of typed `required` branches beside object branches matches one."""
+        schema = Schema.model_validate(
+            {
+                "allOf": [
+                    {"type": "object", "properties": {"k": {}}},
+                    {
+                        "oneOf": [
+                            {"type": "object", "required": ["a"]},
+                            {"type": "object", "required": ["b"]},
+                        ]
+                    },
+                ]
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"a": 1}).model_dump() == snapshot({"a": 1})
+
+        with pytest.raises(ValidationError):
+            model.model_validate({"a": 1, "b": 1})
+
+        with pytest.raises(ValidationError):
+            model.model_validate({})
+
     def test_all_of_untyped_properties_over_object_branches(self) -> None:
         """Test an untyped schema with `properties` over object branches builds one object model."""
         schema = Schema.model_validate(
