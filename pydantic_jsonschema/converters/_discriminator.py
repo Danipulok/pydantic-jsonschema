@@ -11,7 +11,7 @@ probing `OneOf` validator.
 from types import NoneType
 
 from pydantic_jsonschema._compat import MISSING
-from pydantic_jsonschema.schema import Reference, Schema
+from pydantic_jsonschema.schema import DataType, Reference, Schema
 
 from ._utils import unwrap
 
@@ -43,7 +43,12 @@ def discriminator_property(
     tags_by_property: dict[str, list[TagType]] = {}
     for branch in one_of_schemas:
         branch_schema = _resolve_branch_schema(branch, defs_cache=defs_cache)
-        if branch_schema is None or branch_schema.properties is MISSING:
+        # An untyped branch converts to `Any`, which Pydantic rejects as a tagged variant.
+        if (
+            branch_schema is None
+            or branch_schema.type != DataType.OBJECT
+            or branch_schema.properties is MISSING
+        ):
             return None
 
         required = set(unwrap(branch_schema.required, default=[]))

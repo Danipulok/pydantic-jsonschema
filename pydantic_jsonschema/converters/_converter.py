@@ -656,19 +656,46 @@ class SchemaConverter:
         """
         defs = get_inline_defs(schema)
 
-        # Convert each def with its ref marked in-progress, so a body that references the def
-        #  currently being built (a recursive / mutual `$ref`) defers to a `ForwardRef` instead
-        #  of recursing forever. `_rebuild_def_models` binds those refs once every model exists.
+        # Every def is known before any is converted, so a `$ref` to a def declared later resolves.
         for ref, resolved in defs.items():
             self._defs_cache[ref] = resolved.schema
             self._def_names[ref] = resolved.name
-            self._building.add(ref)
-            try:
+
+        for ref, resolved in defs.items():
+            with self._building_def(ref):
                 self._convert_def(resolved)
-            finally:
-                self._building.discard(ref)
 
         self._rebuild_def_models(defs)
+
+    @contextmanager
+    def _building_def(
+        self,
+        ref: Ref,
+        /,
+    ) -> Generator[None]:
+        """Mark a def in progress for the duration of the block.
+
+        A body that references a def still being built (a recursive / mutual `$ref`) defers to a
+        `ForwardRef` instead of recursing forever. `_rebuild_def_models` binds those refs once
+        every model exists.
+
+        :param ref: The def being converted.
+        """
+        target = self._building_key(ref)
+        self._building.add(target)
+        try:
+            yield
+        finally:
+            self._building.discard(target)
+
+    def _building_key(self, ref: Ref, /) -> Ref:
+        """Key a def by the definition holding its body, so an alias shares its target's mark."""
+        name = self._def_names.get(ref)
+        return ref if name is None else f"#/{DEFS_KEY}/{name}"
+
+    def _is_building(self, ref: Ref, /) -> bool:
+        """Tell whether the def a ref points at is still being built."""
+        return self._building_key(ref) in self._building
 
     def _convert_def(self, resolved: ResolvedDef, /) -> None:
         """Convert a definition's body under its own `$defs/<name>` pointer.
@@ -736,7 +763,7 @@ class SchemaConverter:
         #  `$defs/<name>` pointer whichever `$ref` asks for it, so a path-scoped cache still keeps
         #  one model per definition and every `$ref` resolves to that same class.
         schema = self._defs_cache[ref]
-        with self._pinned_pointer((DEFS_KEY, self._def_names[ref])):
+        with self._building_def(ref), self._pinned_pointer((DEFS_KEY, self._def_names[ref])):
             return self._convert_nested_schema(schema)
 
     def _get_base_classes(
@@ -802,33 +829,33 @@ class SchemaConverter:
 
         for field_name, field_schema in properties.items():
             with self._track_path(f"properties.{field_name}", pointer=("properties", field_name)):
-                annotation: AnnotationType | None = None
-                schema_for_field: Schema
-
-                if isinstance(field_schema, Reference):
-                    # Defer a recursive / mutual ref (its target def is still building) to a
-                    #  `ForwardRef`, bound later by `_rebuild_def_models`. Otherwise resolve
-                    #  eagerly, so an unknown `$ref` still raises here instead of silently
-                    #  deferring.
-                    if field_schema.ref in self._building:
-                        annotation = ForwardRef(sanitize_identifier(field_schema.ref))
-                    else:
-                        annotation = self._get_model(field_schema.ref)
-                    # A local `$ref` carries its own field metadata in `$defs`; an unknown
-                    #  ref (external / pre-built) contributes none, so fall back to an empty schema.
-                    schema_for_field = self._defs_cache.get(field_schema.ref, Schema())
-                else:
-                    schema_for_field = field_schema
-
-                field = self._schema_to_field(
-                    schema_for_field,
+                field = self._property_field(
+                    field_schema,
                     field_kind="required" if field_name in required_names else "optional",
-                    annotation=annotation,
                 )
 
                 fields[field_name] = (field.annotation, field)
 
         return fields
+
+    def _property_field(
+        self,
+        field_schema: Reference | Schema,
+        /,
+        *,
+        field_kind: FieldKindType,
+    ) -> FieldInfo:
+        """Convert one `properties` entry to a field."""
+        if not isinstance(field_schema, Reference):
+            return self._schema_to_field(field_schema, field_kind=field_kind)
+
+        # A local `$ref` carries its own field metadata in `$defs`; an unknown ref (external /
+        #  pre-built) contributes none, so fall back to an empty schema.
+        return self._schema_to_field(
+            self._defs_cache.get(field_schema.ref, Schema()),
+            field_kind=field_kind,
+            annotation=self._reference_annotation(field_schema),
+        )
 
     def _apply_format(
         self,
@@ -1199,13 +1226,10 @@ class SchemaConverter:
         # A ref to a def whose model is still being built (a recursive or mutual `$ref`)
         #  must defer: returning its half-built model would recurse forever. The `ForwardRef`
         #  is bound once every def model exists (`_rebuild_def_models` / `_bind_forward_refs`).
-        if reference.ref in self._building:
+        if self._is_building(reference.ref):
             return ForwardRef(sanitize_identifier(reference.ref))
 
-        if reference.ref in self._refs or reference.ref in self._defs_cache:
-            return self._get_model(reference.ref)
-
-        return ForwardRef(sanitize_identifier(reference.ref))
+        return self._get_model(reference.ref)
 
     @staticmethod
     def _literal_annotation(
@@ -1277,13 +1301,7 @@ class SchemaConverter:
         union_args = self._union_args(one_of_schemas, kind="oneOf")
         discriminator = discriminator_property(one_of_schemas, defs_cache=self._defs_cache)
 
-        # A discriminated union needs >= 2 concrete members to introspect the tag field.
-        #  Unresolved `ForwardRef` branches keep the `OneOf` lazy path.
-        if (
-            discriminator is not None
-            and len(union_args) >= _MIN_DISCRIMINATED_UNION_MEMBERS
-            and not any(isinstance(member, ForwardRef) for member in union_args)
-        ):
+        if discriminator is not None and len(union_args) >= _MIN_DISCRIMINATED_UNION_MEMBERS:
             discriminated = Annotated[make_union(union_args), Field(discriminator=discriminator)]  # type: ignore[valid-type]
             return cast("type", discriminated)
 
