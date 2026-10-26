@@ -1,5 +1,6 @@
 """Tests for the `allOf` applicator."""
 
+from typing import Final
 from uuid import UUID
 
 import pytest
@@ -16,39 +17,53 @@ from tests.conftest import SchemaRaw, dump_errors
 
 __all__: list[str] = []
 
+_OBJECT: Final[SchemaRaw] = {"type": "object"}
+_OBJECT_X: Final[SchemaRaw] = {"type": "object", "properties": {"x": {"type": "integer"}}}
+_ARRAY: Final[SchemaRaw] = {"type": "array"}
+_NUMBER: Final[SchemaRaw] = {"type": "number"}
+_STRING: Final[SchemaRaw] = {"type": "string"}
+_REQUIRED_B: Final[SchemaRaw] = {"type": "object", "required": ["b"]}
+_REQUIRED_C: Final[SchemaRaw] = {"type": "object", "required": ["c"]}
+_BESIDE: Final[str] = "Value does not match the keywords beside `allOf`"
+_NOT: Final[str] = "Value must not match the `not` schema"
+
 
 class TestAllOf:
     """Tests for `allOf` enforcement beyond the branch that produces the value."""
 
     @pytest.mark.parametrize(
-        ("schema_raw", "valid", "invalid", "label"),
+        ("schema_raw", "valid", "invalid", "loc", "msg"),
         [
             pytest.param(
                 {"type": "string", "allOf": [{"minLength": 2}, {"maxLength": 3}]},
                 "abc",
                 "abcd",
-                "`allOf[1]`",
+                (),
+                "Value does not match `allOf[1]`",
                 id="string-branches",
             ),
             pytest.param(
                 {"type": "string", "maxLength": 3, "allOf": [{"minLength": 2}]},
                 "abc",
                 "abcd",
-                "the keywords beside `allOf`",
+                (),
+                _BESIDE,
                 id="string-own-keyword",
             ),
             pytest.param(
                 {"allOf": [{"type": "integer"}, {"minimum": 5}]},
                 7,
                 1,
-                "`allOf[1]`",
+                (),
+                "Value does not match `allOf[1]`",
                 id="untyped-scalar-branches",
             ),
             pytest.param(
                 {"type": "object", "allOf": [{"minProperties": 1}]},
                 {"a": 1},
                 5,
-                "the keywords beside `allOf`",
+                (),
+                _BESIDE,
                 id="object-type-over-untyped-branch",
             ),
             pytest.param(
@@ -61,17 +76,104 @@ class TestAllOf:
                 },
                 7,
                 7.5,
-                "the keywords beside `allOf`",
+                (),
+                _BESIDE,
                 id="ref-branch",
+            ),
+            pytest.param(
+                {
+                    "type": "object",
+                    "properties": {"a": {"type": "integer"}},
+                    "allOf": [{"type": "object", "additionalProperties": {"type": "integer"}}],
+                },
+                {"a": 1},
+                {"a": 1, "b": "x"},
+                (),
+                "Value does not match `allOf[0]`",
+                id="object-properties-over-untyped-branch",
+            ),
+            pytest.param(
+                {"allOf": [{"type": "string"}], "not": {"const": "x"}},
+                "y",
+                "x",
+                (),
+                _NOT,
+                id="root-not",
+            ),
+            pytest.param(
+                {
+                    "type": "object",
+                    "properties": {"s": {"allOf": [{"type": "string"}, {"maxLength": 2}]}},
+                    "required": ["s"],
+                },
+                {"s": "ab"},
+                {"s": "abc"},
+                ("s",),
+                "Value does not match `allOf[1]`",
+                id="property",
+            ),
+            pytest.param(
+                {
+                    "type": "object",
+                    "properties": {"s": {"allOf": [{"type": "string"}], "maxLength": 2}},
+                    "required": ["s"],
+                },
+                {"s": "ab"},
+                {"s": "abc"},
+                ("s",),
+                _BESIDE,
+                id="property-own-keyword",
+            ),
+            pytest.param(
+                {
+                    "type": "object",
+                    "properties": {"s": {"$ref": "#/$defs/S"}},
+                    "required": ["s"],
+                    "$defs": {"S": {"allOf": [{"type": "string"}], "maxLength": 2}},
+                },
+                {"s": "ab"},
+                {"s": "abc"},
+                ("s",),
+                _BESIDE,
+                id="ref-own-keyword",
+            ),
+            pytest.param(
+                {
+                    "type": "object",
+                    "properties": {
+                        "s": {"anyOf": [{"allOf": [{"type": "string"}], "maxLength": 2}]},
+                    },
+                    "required": ["s"],
+                },
+                {"s": "ab"},
+                {"s": "abc"},
+                ("s",),
+                _BESIDE,
+                id="any-of-branch-own-keyword",
+            ),
+            pytest.param(
+                {
+                    "type": "object",
+                    "properties": {"s": {"$ref": "#/$defs/S"}},
+                    "required": ["s"],
+                    "$defs": {"S": {"allOf": [{"type": "string"}], "not": {"const": "x"}}},
+                },
+                {"s": "y"},
+                {"s": "x"},
+                ("s",),
+                _NOT,
+                id="ref-not",
             ),
         ],
     )
     def test_all_of_value(
         self,
+        *,
         schema_raw: SchemaRaw,
         valid: AnnotationType,
         invalid: AnnotationType,
-        label: str,
+        loc: tuple[str, ...],
+        msg: str,
     ) -> None:
         """Test a value produced by one branch is checked against the rest of the schema."""
         model = to_model(Schema.model_validate(schema_raw))
@@ -84,38 +186,11 @@ class TestAllOf:
         assert dump_errors(exc_info.value) == [
             {
                 "type": "value_error",
-                "loc": (),
-                "msg": f"Value error, Value does not match {label}",
-                "input": invalid,
+                "loc": loc,
+                "msg": f"Value error, {msg}",
+                "input": invalid[loc[0]] if loc else invalid,
             }
         ]
-
-    def test_all_of_field(self) -> None:
-        """Test a property `allOf` checks every branch."""
-        schema = Schema.model_validate(
-            {
-                "type": "object",
-                "properties": {"a": {"allOf": [{"type": "string"}, {"maxLength": 1}]}},
-                "required": ["a"],
-            }
-        )
-        model = to_model(schema)
-
-        assert model.model_validate({"a": "x"}).model_dump() == snapshot({"a": "x"})
-
-        with pytest.raises(ValidationError) as exc_info:
-            model.model_validate({"a": "xy"})
-
-        assert dump_errors(exc_info.value) == snapshot(
-            [
-                {
-                    "type": "value_error",
-                    "loc": ("a",),
-                    "msg": "Value error, Value does not match `allOf[1]`",
-                    "input": "xy",
-                }
-            ]
-        )
 
     def test_all_of_untyped_bound_skips_other_types(self) -> None:
         """Test a branch bound without `type` passes a value it does not apply to."""
@@ -170,100 +245,6 @@ class TestAllOf:
             model.model_validate(value)
 
         assert [error["msg"] for error in dump_errors(exc_info.value)] == [msg]
-
-    @pytest.mark.parametrize(
-        "schema_raw",
-        [
-            pytest.param(
-                {
-                    "type": "object",
-                    "properties": {"s": {"allOf": [{"type": "string"}], "maxLength": 2}},
-                    "required": ["s"],
-                },
-                id="property",
-            ),
-            pytest.param(
-                {
-                    "type": "object",
-                    "properties": {"s": {"$ref": "#/$defs/S"}},
-                    "required": ["s"],
-                    "$defs": {"S": {"allOf": [{"type": "string"}], "maxLength": 2}},
-                },
-                id="ref",
-            ),
-            pytest.param(
-                {
-                    "type": "object",
-                    "properties": {
-                        "s": {"anyOf": [{"allOf": [{"type": "string"}], "maxLength": 2}]},
-                    },
-                    "required": ["s"],
-                },
-                id="any-of-branch",
-            ),
-        ],
-    )
-    def test_all_of_nested_own_keyword(self, schema_raw: SchemaRaw) -> None:
-        """Test a keyword beside a nested `allOf` is checked once, by the `allOf` model."""
-        model = to_model(Schema.model_validate(schema_raw))
-
-        assert model.model_validate({"s": "ab"}).model_dump() == {"s": "ab"}
-
-        with pytest.raises(ValidationError) as exc_info:
-            model.model_validate({"s": "abc"})
-
-        assert [error["msg"] for error in dump_errors(exc_info.value)] == [
-            "Value error, Value does not match the keywords beside `allOf`"
-        ]
-
-    def test_all_of_ref_not(self) -> None:
-        """Test a `not` beside `allOf` in a `$defs` entry is checked where a `$ref` uses it."""
-        schema = Schema.model_validate(
-            {
-                "type": "object",
-                "properties": {"s": {"$ref": "#/$defs/S"}},
-                "required": ["s"],
-                "$defs": {"S": {"allOf": [{"type": "string"}], "not": {"const": "x"}}},
-            }
-        )
-        model = to_model(schema)
-
-        assert model.model_validate({"s": "y"}).model_dump() == snapshot({"s": "y"})
-
-        with pytest.raises(ValidationError) as exc_info:
-            model.model_validate({"s": "x"})
-
-        assert dump_errors(exc_info.value) == snapshot(
-            [
-                {
-                    "type": "value_error",
-                    "loc": ("s",),
-                    "msg": "Value error, Value must not match the `not` schema",
-                    "input": "x",
-                }
-            ]
-        )
-
-    def test_all_of_root_not(self) -> None:
-        """Test a root `not` beside a non-object `allOf` is checked."""
-        schema = Schema.model_validate({"allOf": [{"type": "string"}], "not": {"const": "x"}})
-        model = to_model(schema)
-
-        assert model.model_validate("y").model_dump() == snapshot("y")
-
-        with pytest.raises(ValidationError) as exc_info:
-            model.model_validate("x")
-
-        assert dump_errors(exc_info.value) == snapshot(
-            [
-                {
-                    "type": "value_error",
-                    "loc": (),
-                    "msg": "Value error, Value must not match the `not` schema",
-                    "input": "x",
-                }
-            ]
-        )
 
     @pytest.mark.parametrize(
         ("schema_raw", "payload", "checked"),
@@ -572,31 +553,169 @@ class TestAllOfObjects:
         assert model.model_validate({"x": "1", "y": "2"}).model_dump() == snapshot({"x": 1, "y": 2})
 
     @pytest.mark.parametrize(
-        ("own", "invalid"),
+        ("branch", "own", "valid", "invalid"),
         [
-            pytest.param({"minProperties": 2}, {"x": 1}, id="min-properties"),
-            pytest.param({"additionalProperties": False}, {"x": 1}, id="additional-properties"),
-            pytest.param({"type": "object", "maxProperties": 0}, {"x": 1}, id="typed"),
+            pytest.param(_OBJECT, {"enum": [{"a": 1}]}, {"a": 1}, {"a": 2}, id="enum"),
+            pytest.param(_OBJECT, {"const": {"a": 1}}, {"a": 1}, {"a": 2}, id="const"),
+            pytest.param(
+                _OBJECT,
+                {"properties": {"a": {"type": "integer"}}},
+                {"a": 1},
+                {"a": "s"},
+                id="properties",
+            ),
+            pytest.param(
+                _OBJECT,
+                {"patternProperties": {"^x": {"type": "integer"}}},
+                {"x1": 1},
+                {"x1": "s"},
+                id="pattern-properties",
+            ),
+            pytest.param(
+                _OBJECT,
+                {"propertyNames": {"maxLength": 1}},
+                {"a": 1},
+                {"ab": 1},
+                id="property-names",
+            ),
+            pytest.param(_OBJECT, {"required": ["b"]}, {"b": 1}, {"a": 1}, id="required"),
+            pytest.param(
+                _OBJECT_X,
+                {"minProperties": 2},
+                {"x": 1, "y": 1},
+                {"x": 1},
+                id="min-properties",
+            ),
+            pytest.param(_OBJECT_X, {"maxProperties": 0}, {}, {"x": 1}, id="max-properties"),
+            pytest.param(
+                _OBJECT_X,
+                {"additionalProperties": False},
+                {},
+                {"x": 1},
+                id="no-additional",
+            ),
+            pytest.param(
+                _OBJECT,
+                {"dependentRequired": {"a": ["b"]}},
+                {"a": 1, "b": 1},
+                {"a": 1},
+                id="dependent-required",
+            ),
+            pytest.param(
+                _OBJECT,
+                {"dependentSchemas": {"a": {"type": "object", "required": ["b"]}}},
+                {"a": 1, "b": 1},
+                {"a": 1},
+                id="dependent-schemas",
+            ),
+            pytest.param(
+                _OBJECT,
+                {"anyOf": [_REQUIRED_B, _REQUIRED_C]},
+                {"b": 1},
+                {"a": 1},
+                id="any-of",
+            ),
+            pytest.param(
+                _OBJECT,
+                {"oneOf": [_REQUIRED_B, _REQUIRED_C]},
+                {"b": 1},
+                {"b": 1, "c": 1},
+                id="one-of",
+            ),
+            pytest.param(
+                _ARRAY,
+                {"type": "array", "items": {"type": "integer"}},
+                [1],
+                ["s"],
+                id="items",
+            ),
+            pytest.param(
+                _ARRAY,
+                {"type": "array", "prefixItems": [{"type": "integer"}]},
+                [1],
+                ["s"],
+                id="prefix-items",
+            ),
+            pytest.param(
+                _ARRAY,
+                {"type": "array", "contains": {"type": "integer"}},
+                [1],
+                ["s"],
+                id="contains",
+            ),
+            pytest.param(
+                _ARRAY,
+                {"type": "array", "contains": {"type": "integer"}, "maxContains": 1},
+                [1],
+                [1, 2],
+                id="max-contains",
+            ),
+            pytest.param(
+                _ARRAY,
+                {"type": "array", "contains": {"type": "integer"}, "minContains": 2},
+                [1, 2],
+                [1],
+                id="min-contains",
+            ),
+            pytest.param(_ARRAY, {"type": "array", "minItems": 1}, [1], [], id="min-items"),
+            pytest.param(_ARRAY, {"type": "array", "maxItems": 1}, [1], [1, 2], id="max-items"),
+            pytest.param(
+                _ARRAY,
+                {"type": "array", "uniqueItems": True},
+                [1, 2],
+                [1, 1],
+                id="unique-items",
+            ),
+            pytest.param(_NUMBER, {"multipleOf": 2}, 4, 3, id="multiple-of"),
+            pytest.param(_NUMBER, {"maximum": 1}, 1, 2, id="maximum"),
+            pytest.param(_NUMBER, {"exclusiveMaximum": 1}, 0, 1, id="exclusive-maximum"),
+            pytest.param(_NUMBER, {"minimum": 1}, 1, 0, id="minimum"),
+            pytest.param(_NUMBER, {"exclusiveMinimum": 1}, 2, 1, id="exclusive-minimum"),
+            pytest.param(_STRING, {"minLength": 2}, "ab", "a", id="min-length"),
+            pytest.param(_STRING, {"maxLength": 1}, "a", "ab", id="max-length"),
+            pytest.param(_STRING, {"pattern": "^a"}, "a", "b", id="pattern"),
         ],
     )
-    def test_all_of_object_own_keywords(self, own: SchemaRaw, invalid: SchemaRaw) -> None:
-        """Test the object keywords beside an object `allOf` are checked."""
-        schema = Schema.model_validate(
-            {"allOf": [{"type": "object", "properties": {"x": {"type": "integer"}}}], **own}
-        )
-        model = to_model(schema)
+    def test_all_of_checks_every_keyword_beside_it(
+        self,
+        *,
+        branch: SchemaRaw,
+        own: SchemaRaw,
+        valid: AnnotationType,
+        invalid: AnnotationType,
+    ) -> None:
+        """Test each validating keyword beside `allOf` is checked."""
+        model = to_model(Schema.model_validate({"allOf": [branch], **own}))
 
-        with pytest.raises(ValidationError) as exc_info:
+        assert model.model_validate(valid).model_dump() == valid
+
+        with pytest.raises(ValidationError):
             model.model_validate(invalid)
 
-        assert dump_errors(exc_info.value) == [
-            {
-                "type": "value_error",
-                "loc": (),
-                "msg": "Value error, Value does not match the keywords beside `allOf`",
-                "input": invalid,
-            }
-        ]
+    @pytest.mark.parametrize(
+        "property_schema",
+        [
+            pytest.param(
+                {
+                    "oneOf": [{"type": "string"}, {"type": "integer"}],
+                    "allOf": [{"type": "string"}],
+                    "maxLength": 2,
+                },
+                id="one-of",
+            ),
+            pytest.param(
+                {"const": "abc", "allOf": [{"type": "string"}], "maxLength": 2},
+                id="const",
+            ),
+        ],
+    )
+    def test_all_of_property_keywords_beside_producer(self, *, property_schema: SchemaRaw) -> None:
+        """Test a property whose `oneOf` or `const` produces the value still checks `maxLength`."""
+        schema = Schema.model_validate({"type": "object", "properties": {"s": property_schema}})
+        model = to_model(schema)
+
+        with pytest.raises(ValidationError):
+            model.model_validate({"s": "abc"})
 
     @pytest.mark.parametrize(
         "own",
@@ -611,33 +730,6 @@ class TestAllOfObjects:
         model = to_model(Schema.model_validate({"allOf": [{"type": "object"}], **own}))
 
         assert model.model_validate({"a": 1, "b": 2}).model_dump() == {"a": 1, "b": 2}
-
-    def test_all_of_object_properties_over_untyped_branch(self) -> None:
-        """Test an object with `properties` converts when an `allOf` branch is not an object."""
-        schema = Schema.model_validate(
-            {
-                "type": "object",
-                "properties": {"a": {"type": "integer"}},
-                "allOf": [{"type": "object", "additionalProperties": {"type": "integer"}}],
-            }
-        )
-        model = to_model(schema)
-
-        assert model.model_validate({"a": 1}).model_dump() == snapshot({"a": 1})
-
-        with pytest.raises(ValidationError) as exc_info:
-            model.model_validate({"a": 1, "b": "x"})
-
-        assert dump_errors(exc_info.value) == snapshot(
-            [
-                {
-                    "type": "value_error",
-                    "loc": (),
-                    "msg": "Value error, Value does not match `allOf[0]`",
-                    "input": {"a": 1, "b": "x"},
-                }
-            ]
-        )
 
     @pytest.mark.parametrize(
         ("schema_raw", "invalid", "msg"),
