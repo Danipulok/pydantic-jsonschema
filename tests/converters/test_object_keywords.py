@@ -45,7 +45,7 @@ class TestPropertyCount:
 
         # Non-mapping input passes through the count validator and is rejected by type validation.
         with pytest.raises(ValidationError):
-            model.model_validate("not a mapping")
+            model.model_validate(5)
 
     def test_max_properties_counts_extra_keys(self) -> None:
         """Test `maxProperties` counts `extra` keys, not only declared fields."""
@@ -160,7 +160,7 @@ class TestDependentRequired:
 
         # Non-mapping input passes through and is rejected by type validation.
         with pytest.raises(ValidationError):
-            model.model_validate("not a mapping")
+            model.model_validate(5)
 
 
 class TestUndeclaredRequired:
