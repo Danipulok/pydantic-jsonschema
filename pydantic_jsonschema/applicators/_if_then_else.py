@@ -128,7 +128,8 @@ class IfThenElse(AnnotationApplicator, ObjectApplicator):
         )
         raise ValueError(msg)
 
-    def _validate(
+    # Pydantic calls a wrap validator positionally.
+    def _validate(  # noqa: PLR0917
         self,
         value: AnnotationType,
         handler: core_schema.ValidatorFunctionWrapHandler,

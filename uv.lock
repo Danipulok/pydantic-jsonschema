@@ -1799,7 +1799,7 @@ dev = [
     { name = "pytest-codspeed", specifier = ">=5.0.0" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
     { name = "pytest-examples", specifier = ">=0.0.18" },
-    { name = "ruff", specifier = ">=0.12.10" },
+    { name = "ruff", specifier = ">=0.16.0" },
     { name = "twine", specifier = ">=6.1.0" },
     { name = "zizmor", specifier = ">=1.29.0" },
 ]
@@ -1817,7 +1817,7 @@ lint = [
     { name = "mypy", specifier = ">=1.17.1" },
     { name = "pre-commit", specifier = ">=4.0.0" },
     { name = "pyright", extras = ["nodejs"], specifier = ">=1.1.409" },
-    { name = "ruff", specifier = ">=0.12.10" },
+    { name = "ruff", specifier = ">=0.16.0" },
 ]
 release = [
     { name = "git-cliff", specifier = ">=2.0.0" },

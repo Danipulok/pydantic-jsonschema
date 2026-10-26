@@ -79,6 +79,13 @@ it passes, the mechanical half of the style is satisfied and no reviewer will ar
 - Use `Sphinx`-style docstrings for public APIs (`:param:`, `:returns:`, `:raises:`).
 - Keep `mypy` strict mode passing.
 - Keep tests explicit about generated model behavior, validation errors, references, and formats.
+- Take at most one positional parameter; everything after it is keyword-only, behind `*`. `ruff`
+  enforces it as `PLR0917` outside `tests/`, where `pytest` passes test and fixture arguments by
+  name; a helper in `tests/` is called by us and keeps the rule. A signature Python or `pydantic`
+  calls positionally (a dunder such as `__exit__`, a `pydantic` hook) takes `# noqa: PLR0917` with
+  a comment saying so; `ruff` already skips `@override` methods and `@overload` stubs.
+- Use a frozen `dataclass`, never a `NamedTuple`, and log a caught error instead of
+  `contextlib.suppress`. `ruff` bans both as `TID251`, and its message says why.
 
 ### Conventions the linters cannot check
 
@@ -97,9 +104,6 @@ what it does from the signature.
 - **Full names everywhere.** No abbreviations and no single letters, in any scope. The exceptions
   are `_`, `er` for exception variables, `i`/`j`/`k` for matrix indices, `x`/`y`/`z` for geometric
   coordinates, and `cls`/`self`.
-- **At most one positional parameter**; everything after it is keyword-only, behind `*`. Signatures
-  a library fixes for us — a `pydantic` callback, a dunder, an `@overload` or `@override` — are
-  exempt.
 - **Two or more keyword arguments in a call go one per line**, with a trailing comma.
 - **Catch the narrowest exception that can occur**, and bind it as `er`. A broad catch carries a
   comment saying why the boundary is broad.
@@ -114,7 +118,7 @@ what it does from the signature.
   a union — with a comment saying why. Callbacks use a `Protocol` with `__call__`, not `Callable`,
   which loses the parameter names.
 - **Structures have field names.** No anonymous tuples in signatures, and a `dict` in a signature
-  is a missing `dataclass`, `NamedTuple`, model or `TypedDict`. Raw dicts belong at the boundary.
+  is a missing `dataclass`, model or `TypedDict`. Raw dicts belong at the boundary.
 - **Type aliases use the `type` statement and carry a `Type` suffix** — `type IdType = UUID`.
 - **`import datetime as dt`**, never `from datetime import datetime` — the module and the class
   share a name, and the alias keeps every reference unambiguous.

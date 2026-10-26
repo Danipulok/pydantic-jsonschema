@@ -510,7 +510,8 @@ class SchemaConverter:
         if not applicators:
             return model
 
-        def get_core_schema(
+        # Pydantic calls both hooks positionally.
+        def get_core_schema(  # noqa: PLR0917
             _cls: type[BaseModel],
             source: AnnotationType,
             handler: GetCoreSchemaHandler,
@@ -520,7 +521,7 @@ class SchemaConverter:
                 schema = core_schema.no_info_before_validator_function(applicator.validate, schema)
             return schema
 
-        def get_json_schema(
+        def get_json_schema(  # noqa: PLR0917
             _cls: type[BaseModel],
             schema: CoreSchema,
             handler: GetJsonSchemaHandler,

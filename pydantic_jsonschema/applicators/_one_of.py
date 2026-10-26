@@ -78,7 +78,8 @@ class OneOf(AnnotationApplicator):
             self._adapters = [self._build_adapter(branch) for branch in self._branches]
         return self._adapters
 
-    def _validate(
+    # Pydantic calls a wrap validator positionally.
+    def _validate(  # noqa: PLR0917
         self,
         value: AnnotationType,
         handler: core_schema.ValidatorFunctionWrapHandler,
