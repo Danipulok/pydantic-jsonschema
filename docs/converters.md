@@ -145,6 +145,8 @@ but do not affect the generated model.
   `not` then rejects everything.
 - In an `allOf` that is not over object models, the first branch produces the value and the other
   branches only check the input, so their coercion (`"5"` to `5`) does not shape the value.
+- An object `allOf` branch with `additionalProperties: false` is inherited and also checked on its
+  own, since the combined model keeps one `extra` setting.
 - `patternProperties` validates the values of matching property names, but combined with
   `additionalProperties: false` a pattern-matched extra key is still rejected by `extra="forbid"`
   (the generated model cannot express "allow keys matching this regex").

@@ -28,7 +28,7 @@ them directly on your own Pydantic models.
 | --- | --- | --- |
 | `not` | `Not` | the whole instance (it must *not* match) |
 | `oneOf` | `OneOf` | the whole instance (exactly one branch matches) |
-| `allOf` | `AllOf` | the whole instance, for branches not inherited and keywords beside `allOf` |
+| `allOf` | `AllOf` | the whole instance, for branches not inherited, closed object branches and keywords beside `allOf` |
 | `if` / `then` / `else` | `IfThenElse` | the whole instance, conditionally |
 | `dependentSchemas` | `DependentSchemas` | the whole instance, when a property is present |
 | `contains` | `Contains` | array items (at least / at most N match) |
