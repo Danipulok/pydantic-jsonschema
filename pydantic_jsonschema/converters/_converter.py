@@ -490,6 +490,7 @@ class SchemaConverter:
             for index, base in object_bases.items()
             if base.model_config.get("extra") == "forbid"
         }
+        shadowed = _shadowed_branches(object_bases, own=unwrap(schema.properties, default={}))
         only_objects: bool = len(object_bases) == len(branches) and (
             schema.type is MISSING or schema.type == DataType.OBJECT
         )
@@ -503,7 +504,7 @@ class SchemaConverter:
             checked = {
                 index: base
                 for index, base in branches.items()
-                if index not in object_bases or index in closed
+                if index not in object_bases or index in closed or index in shadowed
             }
             return self._wrap_all_of(
                 model,
@@ -517,7 +518,9 @@ class SchemaConverter:
             return self._wrap_all_of(
                 model,
                 branches={
-                    index: branches[index] for index in closed if branches[index] is not model
+                    index: branches[index]
+                    for index in sorted(closed | shadowed)
+                    if branches[index] is not model
                 },
                 own=self._own_keywords_annotation(schema, object_host=True),
                 assertions=assertions,
@@ -1687,6 +1690,38 @@ def _build_object_keywords(schema: Schema, /) -> ObjectKeywords | None:
         checks=checks,
         keywords=keywords,
     )
+
+
+def _shadowed_branches(
+    object_bases: dict[int, type[BaseModel]],
+    /,
+    *,
+    own: dict[str, Any],
+) -> set[int]:
+    """Find the object `allOf` branches with a field that another declaration replaces.
+
+    The combined model keeps one field per name, the own property's or the first base's, so the
+    `type` and `required` of a branch's replaced field are checked by checking that branch on its
+    own.
+
+    :param object_bases: Object branch models keyed by their index.
+    :param own: The properties declared beside `allOf`.
+    :returns: The indexes of the branches to check on their own.
+    """
+    names = {
+        index: {field.alias or name for name, field in base.model_fields.items()}
+        for index, base in object_bases.items()
+    }
+    return {
+        index
+        for index, base in object_bases.items()
+        if names[index] & own.keys()
+        or any(
+            names[index] & names[other]
+            for other, other_base in object_bases.items()
+            if not issubclass(base, other_base) and not issubclass(other_base, base)
+        )
+    }
 
 
 def _model_applicators(model: type[BaseModel], /) -> tuple[ObjectApplicator, ...]:

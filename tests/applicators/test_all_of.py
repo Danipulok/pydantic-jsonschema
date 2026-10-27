@@ -614,6 +614,68 @@ class TestAllOfObjects:
         assert [error["msg"] for error in dump_errors(exc_info.value)] == [msg]
 
     @pytest.mark.parametrize(
+        ("schema_raw", "valid", "invalid"),
+        [
+            pytest.param(
+                {
+                    "allOf": [{"type": "object", "properties": {"b": {}}, "required": ["b"]}],
+                    "properties": {"b": {}},
+                },
+                {"b": 1},
+                {},
+                id="own-drops-required",
+            ),
+            pytest.param(
+                {
+                    "allOf": [{"type": "object", "properties": {"b": {"type": "string"}}}],
+                    "properties": {"b": {}},
+                },
+                {"b": "s"},
+                {"b": 1},
+                id="own-drops-type",
+            ),
+            pytest.param(
+                {
+                    "allOf": [
+                        _OPEN_B,
+                        {"type": "object", "properties": {"b": {}}, "required": ["b"]},
+                    ]
+                },
+                {"b": 1},
+                {},
+                id="branch-drops-required",
+            ),
+            pytest.param(
+                {
+                    "allOf": [
+                        {"type": "object", "properties": {"b": {"type": "string"}}},
+                        {"type": "object", "properties": {"b": {"maxLength": 1}}},
+                    ],
+                },
+                {"b": "s"},
+                {"b": "ss"},
+                id="branch-drops-type",
+            ),
+        ],
+    )
+    def test_all_of_shadowed_object_branch(
+        self,
+        *,
+        schema_raw: SchemaRaw,
+        valid: dict[str, Any],
+        invalid: dict[str, Any],
+    ) -> None:
+        """Test a branch whose field another declaration replaces still checks that field."""
+        model = to_model(Schema.model_validate(schema_raw))
+        dumped = to_model(Schema.model_validate(model.model_json_schema()))
+
+        for checked in (model, dumped):
+            assert checked.model_validate(valid).model_dump(exclude_unset=True) == valid
+
+            with pytest.raises(ValidationError):
+                checked.model_validate(invalid)
+
+    @pytest.mark.parametrize(
         ("branch", "own", "valid", "invalid"),
         [
             pytest.param(_OBJECT, {"enum": [{"a": 1}]}, {"a": 1}, {"a": 2}, id="enum"),
