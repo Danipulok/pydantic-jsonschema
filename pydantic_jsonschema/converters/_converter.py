@@ -482,6 +482,14 @@ class SchemaConverter:
             for base in unique_bases
             if not any(other is not base and issubclass(other, base) for other in unique_bases)
         )
+        # The combined model keeps one `extra` setting, the last base's, so a branch closing its
+        #  extra keys is also checked on its own: `allOf: [A, B]` with `A` closed accepted
+        #  `{"a": 1, "c": 1}`.
+        closed = {
+            index
+            for index, base in object_bases.items()
+            if base.model_config.get("extra") == "forbid"
+        }
         only_objects: bool = len(object_bases) == len(branches) and (
             schema.type is MISSING or schema.type == DataType.OBJECT
         )
@@ -492,7 +500,11 @@ class SchemaConverter:
                 model_name=model_name,
                 base_classes=object_base_classes or (BaseModel,),
             )
-            checked = {index: base for index, base in branches.items() if index not in object_bases}
+            checked = {
+                index: base
+                for index, base in branches.items()
+                if index not in object_bases or index in closed
+            }
             return self._wrap_all_of(
                 model,
                 branches=checked,
@@ -504,7 +516,9 @@ class SchemaConverter:
             model = self._combine_base_classes(object_base_classes, model_name=model_name)
             return self._wrap_all_of(
                 model,
-                branches={},
+                branches={
+                    index: branches[index] for index in closed if branches[index] is not model
+                },
                 own=self._own_keywords_annotation(schema, object_host=True),
                 assertions=assertions,
             )

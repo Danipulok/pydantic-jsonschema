@@ -24,6 +24,12 @@ _NUMBER: Final[SchemaRaw] = {"type": "number"}
 _STRING: Final[SchemaRaw] = {"type": "string"}
 _REQUIRED_B: Final[SchemaRaw] = {"type": "object", "required": ["b"]}
 _REQUIRED_C: Final[SchemaRaw] = {"type": "object", "required": ["c"]}
+_CLOSED_A: Final[SchemaRaw] = {
+    "type": "object",
+    "properties": {"a": {}},
+    "additionalProperties": False,
+}
+_OPEN_B: Final[SchemaRaw] = {"type": "object", "properties": {"b": {}}}
 _EXTENDS_A: Final[SchemaRaw] = {"allOf": [{"$ref": "#/$defs/A"}], "required": ["a"]}
 _INTEGER_A: Final[SchemaRaw] = {"type": "object", "properties": {"a": {"type": "integer"}}}
 _BESIDE: Final[str] = "Value does not match the keywords beside `allOf`"
@@ -570,6 +576,42 @@ class TestAllOfObjects:
         model = to_model(schema)
 
         assert model.model_validate({"x": "1", "y": "2"}).model_dump() == snapshot({"x": 1, "y": 2})
+
+    @pytest.mark.parametrize(
+        ("schema_raw", "msg"),
+        [
+            pytest.param(
+                {"allOf": [_CLOSED_A, _OPEN_B]},
+                "Value error, Value does not match `allOf[0]`",
+                id="closed-first",
+            ),
+            pytest.param(
+                {"type": "object", "allOf": [_OPEN_B, _CLOSED_A]},
+                "Value error, Value does not match `allOf[1]`",
+                id="closed-last",
+            ),
+            pytest.param(
+                {"type": "object", "properties": {"b": {}}, "allOf": [_CLOSED_A]},
+                "Value error, Value does not match `allOf[0]`",
+                id="beside-properties",
+            ),
+            pytest.param(
+                {"allOf": [_CLOSED_A]},
+                "Extra inputs are not permitted",
+                id="closed-only",
+            ),
+        ],
+    )
+    def test_all_of_closed_object_branch(self, *, schema_raw: SchemaRaw, msg: str) -> None:
+        """Test a branch with `additionalProperties: false` rejects the keys of the rest."""
+        model = to_model(Schema.model_validate(schema_raw))
+
+        assert model.model_validate({"a": 1}).model_dump(exclude_unset=True) == {"a": 1}
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"a": 1, "b": 1})
+
+        assert [error["msg"] for error in dump_errors(exc_info.value)] == [msg]
 
     @pytest.mark.parametrize(
         ("branch", "own", "valid", "invalid"),
