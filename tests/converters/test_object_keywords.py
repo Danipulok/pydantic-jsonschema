@@ -323,6 +323,63 @@ class TestObjectWithoutProperties:
             ]
         )
 
+    @pytest.mark.parametrize(
+        ("value", "dumped"),
+        [
+            pytest.param({"$ref": "#/$defs/T"}, {"$ref": "#/$defs/Model"}, id="ref"),
+            pytest.param(
+                {"type": "array", "items": {"$ref": "#/$defs/T"}},
+                {"items": {"$ref": "#/$defs/Model"}, "type": "array"},
+                id="list",
+            ),
+            pytest.param(
+                {"anyOf": [{"$ref": "#/$defs/T"}, {"type": "null"}]},
+                {"anyOf": [{"$ref": "#/$defs/Model"}, {"type": "null"}]},
+                id="optional",
+            ),
+        ],
+    )
+    def test_dump_recursive_keyword(self, *, value: SchemaRaw, dumped: SchemaRaw) -> None:
+        """Test a keyword whose value reaches back to the enclosing def dumps a `$ref` to it."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"t": {"$ref": "#/$defs/T"}},
+                "required": ["t"],
+                "$defs": {
+                    "T": {
+                        "type": "object",
+                        "properties": {
+                            "m": {"type": "object", "patternProperties": {"^x": value}},
+                        },
+                    },
+                },
+            }
+        )
+
+        assert to_model(schema).model_json_schema() == {
+            "$defs": {
+                "Model": {
+                    "additionalProperties": True,
+                    "properties": {
+                        "m": {
+                            "additionalProperties": True,
+                            "patternProperties": {"^x": dumped},
+                            "title": "M",
+                            "type": "object",
+                        }
+                    },
+                    "title": "Model",
+                    "type": "object",
+                }
+            },
+            "additionalProperties": True,
+            "properties": {"t": {"$ref": "#/$defs/Model"}},
+            "required": ["t"],
+            "title": "Model",
+            "type": "object",
+        }
+
     def test_dump_carries_keywords(self) -> None:
         """Test `model_json_schema()` emits the object keywords of the dict mapping."""
         schema = Schema.model_validate(
