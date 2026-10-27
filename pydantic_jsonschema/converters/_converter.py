@@ -531,6 +531,22 @@ class SchemaConverter:
             assertions=assertions,
         )
 
+    def _first_branch_type(
+        self,
+        schema: Schema,
+        /,
+    ) -> DataType | MISSING:
+        """Get the single `type` of the first `allOf` branch, which produces the value.
+
+        :param schema: Schema declaring `allOf`.
+        :returns: The branch's `type` when it declares exactly one, else `MISSING`.
+        """
+        [producer, *_] = unwrap(schema.all_of, default=[])
+        if isinstance(producer, Reference):
+            producer = self._defs_cache.get(producer.ref, Schema())
+
+        return producer.type if isinstance(producer.type, DataType) else MISSING
+
     def _own_keywords_annotation(
         self,
         schema: Schema,
@@ -550,8 +566,12 @@ class SchemaConverter:
         if own == Schema():
             return None
 
+        # Without a `type`, `items`, `maxItems` or `required` converted to `Any` and checked
+        #  nothing, so they take the type of the value they check.
         if object_host:
             own = own.model_copy(update={"type": DataType.OBJECT})
+        elif own.type is MISSING:
+            own = own.model_copy(update={"type": self._first_branch_type(schema)})
 
         annotation = self._apply_format(self._schema_to_annotation(own), schema=own)
         return Annotated[annotation, Field(**build_field_kwargs(own, include_metadata=False))]
