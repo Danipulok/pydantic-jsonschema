@@ -1093,3 +1093,35 @@ class TestAllOfJsonSchema:
                 ]
             }
         )
+
+    def test_all_of_object_branch_applicators_beside_properties_round_trip(self) -> None:
+        """Test the applicators of every object branch are dumped beside own `properties`."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"c": {}},
+                "allOf": [
+                    {"type": "object", "properties": {"a": {}}, "propertyNames": {"minLength": 1}},
+                    {"type": "object", "properties": {"b": {}}, "propertyNames": {"maxLength": 2}},
+                ],
+            }
+        )
+
+        assert to_model(schema).model_json_schema() == snapshot(
+            {
+                "allOf": [
+                    {
+                        "additionalProperties": True,
+                        "properties": {
+                            "b": {"title": "B"},
+                            "a": {"title": "A"},
+                            "c": {"title": "C"},
+                        },
+                        "propertyNames": {"minLength": 1},
+                        "title": "Model",
+                        "type": "object",
+                    },
+                    {"propertyNames": {"maxLength": 2}},
+                ]
+            }
+        )

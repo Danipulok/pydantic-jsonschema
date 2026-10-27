@@ -620,20 +620,7 @@ class SchemaConverter:
         if len(base_classes) == 1:
             return base_classes[0]
 
-        # The dump hook is the first base's, so it reads the applicators of every base from here.
-        applicators: dict[int, ObjectApplicator] = {
-            id(applicator): applicator
-            for base in base_classes
-            for applicator in getattr(base, _APPLICATORS_ATTRIBUTE, ())
-        }
-        created_model = type(
-            model_name,
-            base_classes,
-            {
-                _APPLICATORS_ATTRIBUTE: tuple(applicators.values()),
-                "__module__": __name__,
-            },
-        )
+        created_model = type(model_name, base_classes, {"__module__": __name__})
         return cast("type[BaseModel]", created_model)
 
     def _create_object_model(
@@ -746,8 +733,7 @@ class SchemaConverter:
         if not applicators:
             return model
 
-        inherited: tuple[ObjectApplicator, ...] = getattr(model, _APPLICATORS_ATTRIBUTE, ())
-        combined: tuple[ObjectApplicator, ...] = (*inherited, *applicators)
+        combined: tuple[ObjectApplicator, ...] = (*_model_applicators(model), *applicators)
 
         # A `__get_pydantic_core_schema__` override is reapplied where the model is a field type,
         #  so it ran three times there, also on a model instance, and a recursive `$ref` to the
@@ -764,7 +750,7 @@ class SchemaConverter:
             handler: GetJsonSchemaHandler,
         ) -> JsonSchemaValue:
             json_schema = handler(schema)
-            for applicator in getattr(cls, _APPLICATORS_ATTRIBUTE):
+            for applicator in _model_applicators(cls):
                 json_schema = merge_keyword(
                     json_schema,
                     keyword=applicator.json_schema_keyword(handler),
@@ -1693,6 +1679,16 @@ class SchemaConverter:
             metadata.append(dict_keywords)
 
         return annotate(annotation, metadata=metadata)
+
+
+def _model_applicators(model: type[BaseModel], /) -> tuple[ObjectApplicator, ...]:
+    """Collect the object applicators of a model and of every base, in MRO order."""
+    applicators: dict[int, ObjectApplicator] = {
+        id(applicator): applicator
+        for klass in model.__mro__
+        for applicator in vars(klass).get(_APPLICATORS_ATTRIBUTE, ())
+    }
+    return tuple(applicators.values())
 
 
 # `model_validator` returns a `PydanticDescriptorProxy`, which only `pydantic._internal` exports.
