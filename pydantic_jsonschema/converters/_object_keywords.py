@@ -1,9 +1,9 @@
-"""Stateless object-keyword checks, and the metadata that runs them on a `dict`.
+"""Stateless object-keyword checks, and the applicator and metadata that run them.
 
 Each builder turns one object-level keyword into a check of the raw input mapping (`None` when the
 keyword is absent). These keywords need no subschema conversion, so they are plain functions; the
 converter-aware ones (`dependentSchemas` / `patternProperties` / `propertyNames`) stay on the
-`SchemaConverter`. A model runs the checks as `before` model validators; an object mapped to
+`SchemaConverter`. A model runs the checks through `ObjectKeywords`, an object mapped to
 `dict[str, ...]` runs them, and its object applicators, through `DictKeywords`.
 """
 
@@ -13,7 +13,7 @@ converter-aware ones (`dependentSchemas` / `patternProperties` / `propertyNames`
 # mypy: disable-error-code="comparison-overlap"
 
 from collections.abc import Sequence
-from typing import Annotated, Any, Protocol, get_args, get_origin
+from typing import Annotated, Any, Protocol, get_args, get_origin, override
 
 from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler
 from pydantic.json_schema import JsonSchemaValue
@@ -28,6 +28,7 @@ from ._utils import unwrap
 __all__ = [
     "DictKeywords",
     "ObjectCheck",
+    "ObjectKeywords",
     "build_dependent_required",
     "build_property_count_bounds",
     "build_undeclared_required",
@@ -140,6 +141,46 @@ def build_undeclared_required(schema: Schema, /) -> ObjectCheck | None:
     return _check
 
 
+class ObjectKeywords(ObjectApplicator):
+    """Run the object keyword checks of a model and emit those keywords into its JSON Schema.
+
+    A model's JSON Schema carries only the `required` of its fields, so `minProperties`,
+    `maxProperties`, `dependentRequired` and a `required` property with no field are emitted here.
+    """
+
+    def __init__(
+        self,
+        *,
+        checks: Sequence[ObjectCheck],
+        keywords: JsonSchemaValue,
+    ) -> None:
+        """Store what to run and emit.
+
+        :param checks: Checks of the raw mapping.
+        :param keywords: The keywords the checks enforce.
+        """
+        super().__init__()
+        self._checks: tuple[ObjectCheck, ...] = tuple(checks)
+        self._keywords: JsonSchemaValue = keywords
+
+    @override
+    def validate(self, data: PythonType, /) -> PythonType:
+        """Run every check on the raw mapping."""
+        for check in self._checks:
+            data = check(data)
+
+        return data
+
+    @override
+    def json_schema_keyword(
+        self,
+        handler: GetJsonSchemaHandler,
+        /,
+    ) -> JsonSchemaValue:
+        """Return the keywords the checks enforce."""
+        return self._keywords
+
+
 class DictKeywords:
     """`Annotated` metadata running object keyword checks and applicators on a `dict` mapping.
 
@@ -214,8 +255,13 @@ def merge_keyword(
     :param keyword: The fragment to add.
     :returns: The JSON Schema carrying the fragment.
     """
-    if keyword.keys().isdisjoint(json_schema.keys()):
+    overlap: set[str] = keyword.keys() & json_schema.keys()
+    if not overlap:
         return {**json_schema, **keyword}
+
+    if overlap == {"required"}:
+        added = [name for name in keyword["required"] if name not in json_schema["required"]]
+        return {**json_schema, **keyword, "required": [*json_schema["required"], *added]}
 
     if keyword.keys() == {"allOf"} and "allOf" in json_schema:
         return {**json_schema, "allOf": [*json_schema["allOf"], *keyword["allOf"]]}

@@ -57,7 +57,7 @@ from ._field_kwargs import FieldKindType, build_field_kwargs, get_field_default
 from ._metadata import annotate, array_metadata, object_dict_metadata
 from ._object_keywords import (
     DictKeywords,
-    ObjectCheck,
+    ObjectKeywords,
     build_dependent_required,
     build_property_count_bounds,
     build_undeclared_required,
@@ -640,8 +640,12 @@ class SchemaConverter:
         """
         fields = self._build_fields(schema)
         model_config = self._build_model_config(schema)
-        validators = self._build_object_validators(schema)
+
         applicators = self._build_object_applicators(schema)
+        object_keywords = _build_object_keywords(schema)
+
+        if object_keywords is not None:
+            applicators.append(object_keywords)
 
         # For some reason, `create_model` "accepts" `fields` values as `tuple[str, Any]`,
         #  when in reality it accepts `tuple[type, FieldInfo]`. Neither `mypy` nor `pyright` can
@@ -652,39 +656,12 @@ class SchemaConverter:
             __doc__=unwrap(schema.description, default=None),
             __base__=base_classes,
             __module__=__name__,
-            __validators__=validators,
             **fields,  # pyright: ignore[reportArgumentType]
         )
         return self._wrap_object_applicators(
             cast("type[BaseModel]", created_model),
             applicators=applicators,
         )
-
-    def _build_object_validators(
-        self,
-        schema: Schema,
-        /,
-    ) -> dict[str, PythonType]:
-        """Collect the `model_validator`s for an object model's non-applicator keywords.
-
-        Covers object keywords with no subschema (`minProperties` / `maxProperties` /
-        `dependentRequired` / `required` of an undeclared property). Subschema-bearing keywords
-        (`propertyNames` / `patternProperties` / `dependentSchemas`) are object applicators,
-        applied via `_wrap_object_applicators` so they also round-trip into `model_json_schema()`.
-
-        :param schema: Object schema to read keywords from.
-        :returns: A `create_model(__validators__=...)` mapping (empty when no keyword applies).
-        """
-        checks: dict[str, ObjectCheck | None] = {
-            "_validate_property_count": build_property_count_bounds(schema),
-            "_validate_dependent_required": build_dependent_required(schema),
-            "_validate_undeclared_required": build_undeclared_required(schema),
-        }
-        return {
-            f"{name}_{next(_VALIDATOR_NUMBERS)}": model_validator(mode="before")(check)
-            for name, check in checks.items()
-            if check is not None
-        }
 
     def _build_object_applicators(
         self,
@@ -1679,6 +1656,37 @@ class SchemaConverter:
             metadata.append(dict_keywords)
 
         return annotate(annotation, metadata=metadata)
+
+
+def _build_object_keywords(schema: Schema, /) -> ObjectKeywords | None:
+    """Build the check of an object model's keywords that no field or subschema carries.
+
+    :param schema: Object schema with `properties`.
+    :returns: The `minProperties` / `maxProperties` / `dependentRequired` / undeclared `required`
+        check, or `None` when none is set.
+    """
+    builders = (
+        build_property_count_bounds(schema),
+        build_dependent_required(schema),
+        build_undeclared_required(schema),
+    )
+    checks = [check for check in builders if check is not None]
+    if not checks:
+        return None
+
+    declared: dict[str, Any] = unwrap(schema.properties, default={})
+    keywords = schema.model_dump(
+        include={"min_properties", "max_properties", "dependent_required"},
+        exclude_unset=True,
+    )
+    undeclared = [name for name in unwrap(schema.required, default=[]) if name not in declared]
+    if undeclared:
+        keywords["required"] = undeclared
+
+    return ObjectKeywords(
+        checks=checks,
+        keywords=keywords,
+    )
 
 
 def _model_applicators(model: type[BaseModel], /) -> tuple[ObjectApplicator, ...]:
