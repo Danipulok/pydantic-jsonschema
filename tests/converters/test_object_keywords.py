@@ -415,3 +415,78 @@ class TestObjectWithoutProperties:
                 "type": "object",
             }
         )
+
+
+class TestModelKeywordsDump:
+    """Tests for the object keywords of a model that no field carries."""
+
+    @pytest.mark.parametrize(
+        ("keywords", "valid", "invalid"),
+        [
+            pytest.param(
+                {"required": ["r", "z"]},
+                {"r": 1, "z": 1},
+                {"r": 1},
+                id="required",
+            ),
+            pytest.param(
+                {"minProperties": 2},
+                {"r": 1, "z": 1},
+                {"r": 1},
+                id="min-properties",
+            ),
+            pytest.param(
+                {"maxProperties": 1},
+                {"r": 1},
+                {"r": 1, "z": 1},
+                id="max-properties",
+            ),
+            pytest.param(
+                {"dependentRequired": {"r": ["z"]}},
+                {"r": 1, "z": 1},
+                {"r": 1},
+                id="dependent-required",
+            ),
+        ],
+    )
+    def test_keyword_round_trip(
+        self,
+        *,
+        keywords: SchemaRaw,
+        valid: dict[str, Any],
+        invalid: dict[str, Any],
+    ) -> None:
+        """Test the keyword dumps, so the dumped schema checks it too."""
+        schema = Schema.model_validate(
+            {"type": "object", "properties": {"r": {"type": "integer"}}, **keywords}
+        )
+        model = to_model(schema)
+        dumped = to_model(Schema.model_validate(model.model_json_schema()))
+
+        for checked in (model, dumped):
+            assert checked.model_validate(valid).model_dump(exclude_unset=True) == valid
+
+            with pytest.raises(ValidationError):
+                checked.model_validate(invalid)
+
+    def test_dump_merges_required(self) -> None:
+        """Test an undeclared `required` property joins the `required` of the fields."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"r": {"type": "integer"}},
+                "required": ["r", "z"],
+                "maxProperties": 2,
+            }
+        )
+
+        assert to_model(schema).model_json_schema() == snapshot(
+            {
+                "additionalProperties": True,
+                "maxProperties": 2,
+                "properties": {"r": {"title": "R", "type": "integer"}},
+                "required": ["r", "z"],
+                "title": "Model",
+                "type": "object",
+            }
+        )
