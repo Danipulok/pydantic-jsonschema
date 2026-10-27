@@ -474,8 +474,14 @@ class SchemaConverter:
         object_bases = {
             index: base for index, base in branches.items() if not issubclass(base, RootModel)
         }
-        # Two branches can be one model (a repeated `$ref`), and `type()` rejects a repeated base.
-        object_base_classes = tuple(dict.fromkeys(object_bases.values()))
+        # Two branches can be one model (a repeated `$ref`), or one can extend another
+        #  (`allOf: [X, Y]` with `Y` an `allOf` over `X`); `type()` rejects both as bases.
+        unique_bases = tuple(dict.fromkeys(object_bases.values()))
+        object_base_classes = tuple(
+            base
+            for base in unique_bases
+            if not any(other is not base and issubclass(other, base) for other in unique_bases)
+        )
         only_objects: bool = len(object_bases) == len(branches) and (
             schema.type is MISSING or schema.type == DataType.OBJECT
         )

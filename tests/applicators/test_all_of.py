@@ -24,6 +24,8 @@ _NUMBER: Final[SchemaRaw] = {"type": "number"}
 _STRING: Final[SchemaRaw] = {"type": "string"}
 _REQUIRED_B: Final[SchemaRaw] = {"type": "object", "required": ["b"]}
 _REQUIRED_C: Final[SchemaRaw] = {"type": "object", "required": ["c"]}
+_EXTENDS_A: Final[SchemaRaw] = {"allOf": [{"$ref": "#/$defs/A"}], "required": ["a"]}
+_INTEGER_A: Final[SchemaRaw] = {"type": "object", "properties": {"a": {"type": "integer"}}}
 _BESIDE: Final[str] = "Value does not match the keywords beside `allOf`"
 _NOT: Final[str] = "Value must not match the `not` schema"
 
@@ -438,10 +440,27 @@ class TestAllOfObjects:
                 },
                 id="inline-beside-properties",
             ),
+            pytest.param(
+                {
+                    "allOf": [{"$ref": "#/$defs/A"}, {"$ref": "#/$defs/B"}],
+                    "$defs": {"A": _INTEGER_A, "B": _EXTENDS_A},
+                },
+                id="extended-ref",
+            ),
+            pytest.param(
+                {
+                    "allOf": [
+                        {"$ref": "#/$defs/A"},
+                        {**_EXTENDS_A, "type": "object", "properties": {"b": {}}},
+                    ],
+                    "$defs": {"A": _INTEGER_A},
+                },
+                id="extended-beside-properties",
+            ),
         ],
     )
-    def test_all_of_repeated_object_branch(self, schema_raw: SchemaRaw) -> None:
-        """Test an object branch repeated in `allOf` converts to one base."""
+    def test_all_of_shared_object_branch(self, schema_raw: SchemaRaw) -> None:
+        """Test an object branch repeated or extended by another `allOf` branch is one base."""
         model = to_model(Schema.model_validate(schema_raw))
 
         assert model.model_validate({"a": "1"}).model_dump(exclude_unset=True) == snapshot({"a": 1})
