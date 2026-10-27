@@ -28,6 +28,7 @@ them directly on your own Pydantic models.
 | --- | --- | --- |
 | `not` | `Not` | the whole instance (it must *not* match) |
 | `oneOf` | `OneOf` | the whole instance (exactly one branch matches) |
+| `allOf` | `AllOf` | the whole instance, for branches not inherited, closed object branches and keywords beside `allOf` |
 | `if` / `then` / `else` | `IfThenElse` | the whole instance, conditionally |
 | `dependentSchemas` | `DependentSchemas` | the whole instance, when a property is present |
 | `contains` | `Contains` | array items (at least / at most N match) |
@@ -35,14 +36,14 @@ them directly on your own Pydantic models.
 | `patternProperties` | `PatternProperties` | property values whose name matches a regex |
 | `propertyNames` | `PropertyNames` | every property name |
 
-The first four are *in-place* applicators (they apply to the whole instance); the last four are
+The first five are *in-place* applicators (they apply to the whole instance); the last four are
 *child* applicators (they apply to items, property values, or names).
 
 ## What is not here
 
-`allOf`, `anyOf`, `properties`, `items`, and `additionalProperties` are applicators too, but each
-has a native Pydantic equivalent — inheritance, `Union`, and model fields — so the converter
-expresses them directly instead of through a class here. See the
+`anyOf`, `properties`, `items`, `additionalProperties`, and `allOf` over object models are
+applicators too, but each has a native Pydantic equivalent — inheritance, `Union`, and model
+fields — so the converter expresses them directly instead of through a class here. See the
 [conversion map](converters.md#conversion-map).
 
 ## How they work
