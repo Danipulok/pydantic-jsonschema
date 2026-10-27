@@ -147,7 +147,9 @@ but do not affect the generated model.
   branches only check the input, so their coercion (`"5"` to `5`) does not shape the value.
   Keywords beside such an `allOf` take the first branch's `type` when they declare none.
 - An object `allOf` branch with `additionalProperties: false` is inherited and also checked on its
-  own, since the combined model keeps one `extra` setting.
+  own, since the combined model keeps one `extra` setting. So is a branch with a property that
+  another branch or the schema's own `properties` declares again, since the model keeps one field
+  per name.
 - `patternProperties` validates the values of matching property names, but combined with
   `additionalProperties: false` a pattern-matched extra key is still rejected by `extra="forbid"`
   (the generated model cannot express "allow keys matching this regex").
