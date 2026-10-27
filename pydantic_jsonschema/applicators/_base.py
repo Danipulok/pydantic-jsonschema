@@ -17,7 +17,8 @@ kind must implement:
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, ForwardRef
+from contextvars import ContextVar
+from typing import Any, Final, ForwardRef
 
 from pydantic import (
     BaseModel,
@@ -38,6 +39,9 @@ __all__ = [
 
 # Any annotation Pydantic supports (`type`, `Annotated`, `Union`, `Literal`, `ForwardRef`, ...).
 type AnnotationType = Any
+
+# Ids of the branch adapters being rendered, see `Applicator._branch_schema`.
+_RENDERING: Final[ContextVar[frozenset[int]]] = ContextVar("_RENDERING", default=frozenset())
 
 
 class Applicator:
@@ -111,7 +115,20 @@ class Applicator:
         #  re-enters `generate_inner`, which applies that metadata.
         #  https://github.com/pydantic/pydantic/blob/cf67d4b3193c3fe43ede18612ed62785eee11382/pydantic/json_schema.py#L529
         #  https://github.com/pydantic/pydantic/blob/cf67d4b3193c3fe43ede18612ed62785eee11382/pydantic/json_schema.py#L2103
-        return handler(core_schema.definitions_schema(adapter.core_schema, []))
+        #
+        # A branch reaching back to the model it sits on renders that model again, and so this
+        #  branch again, until `RecursionError`. The re-entry references the definitions instead,
+        #  which the outer render of the same branch registers.
+        rendering = _RENDERING.get()
+        if id(adapter) in rendering:
+            return handler(_reference_definitions(adapter.core_schema))
+
+        token = _RENDERING.set(rendering | {id(adapter)})
+
+        try:
+            return handler(core_schema.definitions_schema(adapter.core_schema, []))
+        finally:
+            _RENDERING.reset(token)
 
     @staticmethod
     def _validates(
@@ -131,6 +148,24 @@ class Applicator:
         except ValidationError:
             return False
         return True
+
+
+# A core schema is a union of `TypedDict`s, which this walk reads as plain containers.
+def _reference_definitions(schema: Any, /) -> Any:  # noqa: ANN401
+    """Swap every core schema carrying a `ref` for a reference to its definition."""
+    if isinstance(schema, list):
+        return [_reference_definitions(item) for item in schema]
+
+    if not isinstance(schema, dict):
+        return schema
+
+    if schema.get("type") == "definitions":
+        return _reference_definitions(schema["schema"])
+
+    if isinstance(schema.get("ref"), str):
+        return core_schema.definition_reference_schema(schema["ref"])
+
+    return {key: _reference_definitions(value) for key, value in schema.items()}
 
 
 class AnnotationApplicator(Applicator, ABC):

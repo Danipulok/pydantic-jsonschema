@@ -1,6 +1,6 @@
 """Tests for the `allOf` applicator."""
 
-from typing import Final
+from typing import Any, Final
 from uuid import UUID
 
 import pytest
@@ -1125,3 +1125,107 @@ class TestAllOfJsonSchema:
                 ]
             }
         )
+
+    def test_all_of_recursive_closed_branch_round_trip(self) -> None:
+        """Test a closed object branch reaching back to its `allOf` def dumps a `$ref` to it."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"t": {"$ref": "#/$defs/T"}},
+                "required": ["t"],
+                "$defs": {
+                    "A": {
+                        "title": "A",
+                        "type": "object",
+                        "properties": {"c": {"type": "array", "items": {"$ref": "#/$defs/T"}}},
+                        "additionalProperties": False,
+                    },
+                    "B": {"type": "object", "properties": {"b": {"type": "integer"}}},
+                    "T": {"title": "T", "allOf": [{"$ref": "#/$defs/A"}, {"$ref": "#/$defs/B"}]},
+                },
+            }
+        )
+
+        assert to_model(schema).model_json_schema() == snapshot(
+            {
+                "$defs": {
+                    "A": {
+                        "additionalProperties": False,
+                        "properties": {
+                            "c": {"items": {"$ref": "#/$defs/T"}, "title": "C", "type": "array"}
+                        },
+                        "title": "A",
+                        "type": "object",
+                    },
+                    "T": {
+                        "additionalProperties": True,
+                        "allOf": [{"$ref": "#/$defs/A"}],
+                        "properties": {
+                            "b": {"title": "B", "type": "integer"},
+                            "c": {"items": {"$ref": "#/$defs/T"}, "title": "C", "type": "array"},
+                        },
+                        "title": "T",
+                        "type": "object",
+                    },
+                },
+                "additionalProperties": True,
+                "properties": {"t": {"$ref": "#/$defs/T"}},
+                "required": ["t"],
+                "title": "Model",
+                "type": "object",
+            }
+        )
+
+    @pytest.mark.parametrize(
+        ("pattern", "invalid"),
+        [
+            pytest.param(
+                {"$ref": "#/$defs/B"},
+                {"x": {"x": {"a": "s"}}},
+                id="ref",
+            ),
+            pytest.param(
+                {"type": "array", "items": {"$ref": "#/$defs/B"}},
+                {"x": [{"x": [{"a": "s"}]}]},
+                id="list",
+            ),
+            pytest.param(
+                {"anyOf": [{"$ref": "#/$defs/B"}, {"type": "string"}]},
+                {"x": {"x": {"a": "s"}}},
+                id="union",
+            ),
+        ],
+    )
+    def test_all_of_base_reaching_back_round_trip(
+        self,
+        *,
+        pattern: SchemaRaw,
+        invalid: dict[str, Any],
+    ) -> None:
+        """Test an `allOf` base whose keyword reaches back to it dumps a `$ref` to its def."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"t": {"$ref": "#/$defs/T"}},
+                "required": ["t"],
+                "$defs": {
+                    "B": {
+                        "type": "object",
+                        "properties": {"a": {"type": "integer"}},
+                        "patternProperties": {"^x": pattern},
+                    },
+                    "T": {
+                        "allOf": [
+                            {"$ref": "#/$defs/B"},
+                            {"type": "object", "properties": {"b": {"type": "integer"}}},
+                        ],
+                    },
+                },
+            }
+        )
+        model = to_model(schema)
+        dumped = to_model(Schema.model_validate(model.model_json_schema()))
+
+        for checked in (model, dumped):
+            with pytest.raises(ValidationError):
+                checked.model_validate({"t": invalid})
