@@ -14,6 +14,7 @@ from typing import (
     Literal,
     TypeAliasType,
     cast,
+    get_args,
     get_origin,
 )
 
@@ -41,6 +42,7 @@ from pydantic_jsonschema.applicators import (
     IfThenElse,
     Not,
     ObjectApplicator,
+    ObjectKeywords,
     OneOf,
     PatternProperties,
     PrefixItems,
@@ -53,7 +55,11 @@ from pydantic_jsonschema.schema import DataType, Reference, Schema
 from ._discriminator import discriminator_property
 from ._field_kwargs import FieldKindType, build_field_kwargs, get_field_default
 from ._metadata import annotate, array_metadata, object_dict_metadata
-from ._object_keywords import build_dependent_required, build_property_count_bounds
+from ._object_keywords import (
+    build_dependent_required,
+    build_property_count_bounds,
+    build_undeclared_required,
+)
 from ._refs import DEFS_KEY, ResolvedDef, escape_pointer_token, get_inline_defs
 from ._utils import make_union, unwrap
 
@@ -82,6 +88,28 @@ _DATA_TYPE_ANNOTATION_MAPPING: Final[dict[DataType, type]] = {
     DataType.ARRAY: list[Any],
     DataType.OBJECT: dict[str, Any],
 }
+
+# Object keywords (`Schema` field names). An untyped schema carrying any of them still applies
+#  them to object instances; a `dict[str, ...]` object expresses only the property counts and
+#  `additionalProperties`, so the rest need an object model check.
+_OBJECT_KEYWORDS: Final[tuple[str, ...]] = (
+    "properties",
+    "additional_properties",
+    "pattern_properties",
+    "property_names",
+    "required",
+    "min_properties",
+    "max_properties",
+    "dependent_required",
+    "dependent_schemas",
+)
+_MODEL_ONLY_OBJECT_KEYWORDS: Final[tuple[str, ...]] = (
+    "pattern_properties",
+    "property_names",
+    "required",
+    "dependent_required",
+    "dependent_schemas",
+)
 
 # Type aliases
 type Ref = str  # Reference path like "#/$defs/User"
@@ -451,9 +479,10 @@ class SchemaConverter:
         """Collect the `model_validator`s for an object model's non-applicator keywords.
 
         Covers object keywords with no subschema (`minProperties` / `maxProperties` /
-        `dependentRequired`). Subschema-bearing keywords (`propertyNames` / `patternProperties` /
-        `dependentSchemas`) are object applicators, applied via `_wrap_object_applicators` so they
-        also round-trip into `model_json_schema()`.
+        `dependentRequired` / a `required` name `properties` does not declare). Subschema-bearing
+        keywords (`propertyNames` / `patternProperties` / `dependentSchemas`) are object
+        applicators, applied via `_wrap_object_applicators` so they also round-trip into
+        `model_json_schema()`.
 
         :param schema: Object schema to read keywords from.
         :returns: A `create_model(__validators__=...)` mapping (empty when no keyword applies).
@@ -461,6 +490,7 @@ class SchemaConverter:
         return {
             **build_property_count_bounds(schema),
             **build_dependent_required(schema),
+            **build_undeclared_required(schema),
         }
 
     def _build_object_applicators(
@@ -626,19 +656,46 @@ class SchemaConverter:
         """
         defs = get_inline_defs(schema)
 
-        # Convert each def with its ref marked in-progress, so a body that references the def
-        #  currently being built (a recursive / mutual `$ref`) defers to a `ForwardRef` instead
-        #  of recursing forever. `_rebuild_def_models` binds those refs once every model exists.
+        # Every def is known before any is converted, so a `$ref` to a def declared later resolves.
         for ref, resolved in defs.items():
             self._defs_cache[ref] = resolved.schema
             self._def_names[ref] = resolved.name
-            self._building.add(ref)
-            try:
+
+        for ref, resolved in defs.items():
+            with self._building_def(ref):
                 self._convert_def(resolved)
-            finally:
-                self._building.discard(ref)
 
         self._rebuild_def_models(defs)
+
+    @contextmanager
+    def _building_def(
+        self,
+        ref: Ref,
+        /,
+    ) -> Generator[None]:
+        """Mark a def in progress for the duration of the block.
+
+        A body that references a def still being built (a recursive / mutual `$ref`) defers to a
+        `ForwardRef` instead of recursing forever. `_rebuild_def_models` binds those refs once
+        every model exists.
+
+        :param ref: The def being converted.
+        """
+        target = self._building_key(ref)
+        self._building.add(target)
+        try:
+            yield
+        finally:
+            self._building.discard(target)
+
+    def _building_key(self, ref: Ref, /) -> Ref:
+        """Key a def by the definition holding its body, so an alias shares its target's mark."""
+        name = self._def_names.get(ref)
+        return ref if name is None else f"#/{DEFS_KEY}/{name}"
+
+    def _is_building(self, ref: Ref, /) -> bool:
+        """Tell whether the def a ref points at is still being built."""
+        return self._building_key(ref) in self._building
 
     def _convert_def(self, resolved: ResolvedDef, /) -> None:
         """Convert a definition's body under its own `$defs/<name>` pointer.
@@ -706,7 +763,7 @@ class SchemaConverter:
         #  `$defs/<name>` pointer whichever `$ref` asks for it, so a path-scoped cache still keeps
         #  one model per definition and every `$ref` resolves to that same class.
         schema = self._defs_cache[ref]
-        with self._pinned_pointer((DEFS_KEY, self._def_names[ref])):
+        with self._building_def(ref), self._pinned_pointer((DEFS_KEY, self._def_names[ref])):
             return self._convert_nested_schema(schema)
 
     def _get_base_classes(
@@ -772,33 +829,33 @@ class SchemaConverter:
 
         for field_name, field_schema in properties.items():
             with self._track_path(f"properties.{field_name}", pointer=("properties", field_name)):
-                annotation: AnnotationType | None = None
-                schema_for_field: Schema
-
-                if isinstance(field_schema, Reference):
-                    # Defer a recursive / mutual ref (its target def is still building) to a
-                    #  `ForwardRef`, bound later by `_rebuild_def_models`. Otherwise resolve
-                    #  eagerly, so an unknown `$ref` still raises here instead of silently
-                    #  deferring.
-                    if field_schema.ref in self._building:
-                        annotation = ForwardRef(sanitize_identifier(field_schema.ref))
-                    else:
-                        annotation = self._get_model(field_schema.ref)
-                    # A local `$ref` carries its own field metadata in `$defs`; an unknown
-                    #  ref (external / pre-built) contributes none, so fall back to an empty schema.
-                    schema_for_field = self._defs_cache.get(field_schema.ref, Schema())
-                else:
-                    schema_for_field = field_schema
-
-                field = self._schema_to_field(
-                    schema_for_field,
+                field = self._property_field(
+                    field_schema,
                     field_kind="required" if field_name in required_names else "optional",
-                    annotation=annotation,
                 )
 
                 fields[field_name] = (field.annotation, field)
 
         return fields
+
+    def _property_field(
+        self,
+        field_schema: Reference | Schema,
+        /,
+        *,
+        field_kind: FieldKindType,
+    ) -> FieldInfo:
+        """Convert one `properties` entry to a field."""
+        if not isinstance(field_schema, Reference):
+            return self._schema_to_field(field_schema, field_kind=field_kind)
+
+        # A local `$ref` carries its own field metadata in `$defs`; an unknown ref (external /
+        #  pre-built) contributes none, so fall back to an empty schema.
+        return self._schema_to_field(
+            self._defs_cache.get(field_schema.ref, Schema()),
+            field_kind=field_kind,
+            annotation=self._reference_annotation(field_schema),
+        )
 
     def _apply_format(
         self,
@@ -880,7 +937,7 @@ class SchemaConverter:
 
         context = MatchContext(
             schema=schema,
-            annotation=annotation,
+            annotation=_without_object_keywords(annotation),
             path=self._current_pointer(),
         )
         result: AnnotationType = annotation
@@ -1102,7 +1159,7 @@ class SchemaConverter:
         annotation = self._apply_rules(annotation, schema=schema)
         kwargs = build_field_kwargs(schema, include_metadata=not union_branch)
 
-        if kwargs and not (union_branch and annotation is Any):
+        if kwargs and not (union_branch and _is_untyped(annotation)):
             annotation = cast("type", Annotated[annotation, Field(**kwargs)])
         return annotation
 
@@ -1169,13 +1226,10 @@ class SchemaConverter:
         # A ref to a def whose model is still being built (a recursive or mutual `$ref`)
         #  must defer: returning its half-built model would recurse forever. The `ForwardRef`
         #  is bound once every def model exists (`_rebuild_def_models` / `_bind_forward_refs`).
-        if reference.ref in self._building:
+        if self._is_building(reference.ref):
             return ForwardRef(sanitize_identifier(reference.ref))
 
-        if reference.ref in self._refs or reference.ref in self._defs_cache:
-            return self._get_model(reference.ref)
-
-        return ForwardRef(sanitize_identifier(reference.ref))
+        return self._get_model(reference.ref)
 
     @staticmethod
     def _literal_annotation(
@@ -1247,13 +1301,7 @@ class SchemaConverter:
         union_args = self._union_args(one_of_schemas, kind="oneOf")
         discriminator = discriminator_property(one_of_schemas, defs_cache=self._defs_cache)
 
-        # A discriminated union needs >= 2 concrete members to introspect the tag field.
-        #  Unresolved `ForwardRef` branches keep the `OneOf` lazy path.
-        if (
-            discriminator is not None
-            and len(union_args) >= _MIN_DISCRIMINATED_UNION_MEMBERS
-            and not any(isinstance(member, ForwardRef) for member in union_args)
-        ):
+        if discriminator is not None and len(union_args) >= _MIN_DISCRIMINATED_UNION_MEMBERS:
             discriminated = Annotated[make_union(union_args), Field(discriminator=discriminator)]  # type: ignore[valid-type]
             return cast("type", discriminated)
 
@@ -1281,6 +1329,20 @@ class SchemaConverter:
                 return _DATA_TYPE_ANNOTATION_MAPPING[schema.type]
             union_args = [_DATA_TYPE_ANNOTATION_MAPPING[data_type] for data_type in schema.type]
             return make_union(union_args)
+
+        if _declares_any(schema, keywords=_OBJECT_KEYWORDS) and _fields_convert(schema):
+            update: dict[str, Any] = {"type": DataType.OBJECT, "defs": MISSING}
+
+            # The `dict` host would type pattern-matched values by `additionalProperties` too,
+            #  rejecting valid input, so only `patternProperties` checks them.
+            if schema.pattern_properties is not MISSING:
+                update["additional_properties"] = MISSING
+
+            object_schema = schema.model_copy(update=update)
+            object_keywords = self._register(
+                ObjectKeywords(branch=self._object_annotation(object_schema)),
+            )
+            return cast("type", Annotated[Any, object_keywords])
 
         # `Any` is a valid annotation but is not a `type`, so `pyright` rejects it under the
         #  `-> type` return; the same `Any`-as-annotation pattern recurs below for `item_type`.
@@ -1388,13 +1450,69 @@ class SchemaConverter:
         if schema.additional_properties is False:
             return self._convert_nested_schema(schema)
 
+        metadata: list[PythonType] = object_dict_metadata(schema)
+        if _declares_any(schema, keywords=_MODEL_ONLY_OBJECT_KEYWORDS):
+            model = self._create_object_model(
+                schema,
+                model_name=sanitize_identifier(unwrap(schema.title, default=""))
+                or self._default_model_name,
+                base_classes=(BaseModel,),
+            )
+            object_keywords = self._register(ObjectKeywords(branch=model))
+            metadata.append(object_keywords)
+
         if isinstance(schema.additional_properties, (Schema, Reference)):
             with self._track_path("additionalProperties"):
                 value_annotation = self._child_annotation(schema.additional_properties)
                 dict_annotation = dict[str, value_annotation]  # type: ignore[valid-type]
-                return annotate(dict_annotation, metadata=object_dict_metadata(schema))
+                return annotate(dict_annotation, metadata=metadata)
 
-        return annotate(dict[str, Any], metadata=object_dict_metadata(schema))
+        return annotate(dict[str, Any], metadata=metadata)
+
+
+def _without_object_keywords(annotation: AnnotationType, /) -> AnnotationType:
+    """Drop `ObjectKeywords` metadata, so a rule matches the node by its host type."""
+    if get_origin(annotation) is not Annotated:
+        return annotation
+
+    host, *metadata = get_args(annotation)
+    kept = [item for item in metadata if not isinstance(item, ObjectKeywords)]
+    return annotate(host, metadata=kept)
+
+
+def _is_untyped(annotation: AnnotationType, /) -> bool:
+    """Tell whether an annotation is `Any`, bare or carrying only `ObjectKeywords`."""
+    if get_origin(annotation) is not Annotated:
+        return annotation is Any
+
+    host, *metadata = get_args(annotation)
+    return host is Any and all(isinstance(item, ObjectKeywords) for item in metadata)
+
+
+def _fields_convert(schema: Schema, /) -> bool:
+    """Tell whether every `properties` name can become a field of a generated model.
+
+    Pydantic refuses a leading underscore and some `BaseModel` members, and warns on the rest, so
+    an untyped schema naming either keeps converting to `Any`, as it did before object keywords
+    applied to it.
+    """
+    names: dict[str, Schema | Reference] = unwrap(schema.properties, default={})
+    return not any(name.startswith("_") or hasattr(BaseModel, name) for name in names)
+
+
+def _declares_any(
+    schema: Schema,
+    /,
+    *,
+    keywords: tuple[str, ...],
+) -> bool:
+    """Return whether the schema sets any of the keywords.
+
+    :param schema: Schema to inspect.
+    :param keywords: `Schema` field names.
+    :returns: `True` when at least one of them is set.
+    """
+    return any(getattr(schema, keyword) is not MISSING for keyword in keywords)
 
 
 def to_model(

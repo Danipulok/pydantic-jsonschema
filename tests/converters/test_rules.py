@@ -104,6 +104,11 @@ def sorted_keys[ValueType](value: dict[str, ValueType]) -> dict[str, ValueType]:
     return dict(sorted(value.items()))
 
 
+def mark_seen[ValueType](value: dict[str, ValueType]) -> dict[str, ValueType | bool]:
+    """Add a `seen` key, marking that a `ByType` target reached the map itself."""
+    return {**value, "seen": True}
+
+
 def annotation_is_str(context: MatchContext, /) -> bool:
     """Predicate: match when the resolved annotation is exactly `str`."""
     return context.annotation is str
@@ -364,6 +369,40 @@ class TestByTypeParameterization:
 
         instance = model(meta={"b": "2", "a": "1"})
         assert instance.model_dump() == snapshot({"meta": {"a": "1", "b": "2"}})
+
+    @pytest.mark.parametrize(
+        ("target", "meta_schema"),
+        [
+            pytest.param(dict, {"type": "object", "required": ["a"]}, id="typed"),
+            pytest.param(Any, {"required": ["a"]}, id="untyped"),
+        ],
+    )
+    def test_object_keywords_keep_the_host_matchable(
+        self,
+        *,
+        target: ByTypeTargetType,
+        meta_schema: "SchemaRaw",
+    ) -> None:
+        """Object keywords validated beside the host leave it matchable, and still validate."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"meta": meta_schema},
+                "required": ["meta"],
+            }
+        )
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByType(target), After(mark_seen)),
+            ],
+        )
+
+        instance = model(meta={"a": 1})
+        assert instance.model_dump() == snapshot({"meta": {"a": 1, "seen": True}})
+
+        with pytest.raises(ValidationError, match="missing required `a`"):
+            model(meta={"b": 2})
 
 
 class TestByTypeFormatTypes:

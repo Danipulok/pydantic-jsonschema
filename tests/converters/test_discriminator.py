@@ -323,6 +323,49 @@ class TestDiscriminatedOneOf:
             ]
         )
 
+    @pytest.mark.parametrize(
+        "order",
+        [
+            pytest.param(("Leaf", "Node", "Tree"), id="union-last"),
+            pytest.param(("Tree", "Leaf", "Node"), id="union-first"),
+            pytest.param(("Node", "Tree", "Leaf"), id="union-middle"),
+        ],
+    )
+    def test_recursive_references(self, order: tuple[str, ...]) -> None:
+        """A `oneOf` of `$ref` branches that refer back to it routes by tag in any `$defs` order."""
+        defs: dict[str, SchemaRaw] = {
+            "Leaf": {
+                "type": "object",
+                "properties": {"kind": {"const": "leaf"}, "v": {"type": "integer"}},
+                "required": ["kind", "v"],
+            },
+            "Node": {
+                "type": "object",
+                "properties": {
+                    "kind": {"const": "node"},
+                    "children": {"type": "array", "items": {"$ref": "#/$defs/Tree"}},
+                },
+                "required": ["kind", "children"],
+            },
+            "Tree": {"oneOf": [{"$ref": "#/$defs/Leaf"}, {"$ref": "#/$defs/Node"}]},
+        }
+        schema = Schema.model_validate(
+            {
+                "$defs": {name: defs[name] for name in order},
+                "type": "object",
+                "properties": {"t": {"$ref": "#/$defs/Tree"}},
+                "required": ["t"],
+            }
+        )
+        model = to_model(schema)
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"t": {"kind": "node", "children": [{"kind": "leaf", "v": "x"}]}})
+
+        assert [error["loc"] for error in dump_errors(exc_info.value)] == [
+            ("t", "node", "children", 0, "leaf", "v")
+        ]
+
     def test_single_value_enum_tag(self) -> None:
         """A single-value `enum` acts as a const tag for discrimination."""
         schema_raw: SchemaRaw = {
@@ -364,6 +407,44 @@ class TestDiscriminatedOneOf:
                     "loc": ("shape",),
                     "msg": "Input tag 'triangle' found using 'kind' does not match any of the expected tags: 'circle', 'square'",
                     "input": {"kind": "triangle"},
+                }
+            ]
+        )
+
+    def test_untyped_branches_fall_back_to_one_of(self) -> None:
+        """Tagged branches without `type` stay on the `OneOf` path, since they convert to `Any`."""
+        schema = Schema.model_validate(
+            {
+                "$defs": {
+                    "Leaf": {
+                        "properties": {"kind": {"const": "leaf"}, "v": {"type": "integer"}},
+                        "required": ["kind"],
+                    },
+                    "Node": {"properties": {"kind": {"const": "node"}}, "required": ["kind"]},
+                },
+                "type": "object",
+                "properties": {
+                    "t": {"oneOf": [{"$ref": "#/$defs/Leaf"}, {"$ref": "#/$defs/Node"}]}
+                },
+                "required": ["t"],
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"t": {"kind": "leaf", "v": 1}}).model_dump() == snapshot(
+            {"t": {"kind": "leaf", "v": 1}}
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"t": {"kind": "leaf", "v": "x"}})
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("t",),
+                    "msg": "Value error, Input matches 0 `oneOf` branches, expected exactly 1",
+                    "input": {"kind": "leaf", "v": "x"},
                 }
             ]
         )
