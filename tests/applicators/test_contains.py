@@ -127,6 +127,39 @@ class TestContains:
             ]
         )
 
+    def test_contains_recursive_ref(self) -> None:
+        """Test `contains` over a subschema nesting a recursive `$ref` resolves it."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"t": {"$ref": "#/$defs/T"}},
+                "required": ["t"],
+                "$defs": {
+                    "T": {
+                        "type": "array",
+                        "contains": {"type": "array", "items": {"$ref": "#/$defs/T"}},
+                    },
+                },
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"t": [[]]}).model_dump() == snapshot({"t": [[]]})
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"t": []})
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("t",),
+                    "msg": "Value error, Array must contain at least `1` matches, got `0`",
+                    "input": [],
+                }
+            ]
+        )
+
 
 class TestContainsJsonSchema:
     """`contains` / `minContains` / `maxContains` round-trip into the dumped JSON Schema."""

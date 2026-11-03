@@ -94,7 +94,7 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | `{"const": "active"}`                        | single-value `Literal[...]`                 | `Literal["active"]`                 |
 | `anyOf`                                      | union annotation                            | `str` or `int`                      |
 | `oneOf`                                      | discriminated or exactly-one-branch union   | tagged union or ambiguous rejected  |
-| `allOf`                                      | generated model inheritance or nested model | combined Pydantic model             |
+| `allOf`                                      | object branches inherited, others `AllOf`   | combined model, branches checked    |
 | nested object property                       | nested generated model                      | `post.author.name`                  |
 | property with `$ref: "#/$defs/Person"`       | model generated from `$defs.Person`         | shared `Person` field type          |
 | `$ref` passed through `refs`                 | existing Pydantic model                     | existing `Address` class            |
@@ -143,6 +143,13 @@ but do not affect the generated model.
 - `not` is only as precise as the converter's coverage of its subschema. A subschema that maps to
   `Any` (an empty schema, or `required` without `type` / `properties`) matches every value, so
   `not` then rejects everything.
+- In an `allOf` that is not over object models, the first branch produces the value and the other
+  branches only check the input, so their coercion (`"5"` to `5`) does not shape the value.
+  Keywords beside such an `allOf` take the first branch's `type` when they declare none.
+- An object `allOf` branch with `additionalProperties: false` is inherited and also checked on its
+  own, since the combined model keeps one `extra` setting. So is a branch with a property that
+  another branch or the schema's own `properties` declares again, since the model keeps one field
+  per name.
 - `patternProperties` validates the values of matching property names, but combined with
   `additionalProperties: false` a pattern-matched extra key is still rejected by `extra="forbid"`
   (the generated model cannot express "allow keys matching this regex").
@@ -167,7 +174,9 @@ Object conversion depends on where the schema appears.
 
 For a property schema, plain `{"type": "object"}` means the value must be a JSON object, so the
 field becomes `dict[str, Any]`. It is not `Any`, because non-object values like strings, numbers,
-arrays, and `null` are rejected.
+arrays, and `null` are rejected. The `required`, `dependentRequired`, `dependentSchemas`,
+`propertyNames` and `patternProperties` of an object without `properties` are checked on that
+`dict`, also when `additionalProperties` is a schema.
 
 ### Objects
 
