@@ -8,7 +8,7 @@ sharing a matcher.
 
 from dataclasses import dataclass
 
-from pydantic_jsonschema.rules._actions import Action
+from pydantic_jsonschema.rules._actions import Action, AnnotationAction, ModelAction
 from pydantic_jsonschema.rules._matchers import Matcher
 
 __all__ = [
@@ -26,3 +26,20 @@ class Rule:
 
     matcher: Matcher
     action: Action
+
+    def __post_init__(self) -> None:
+        """Reject an action outside the two families the converter knows how to apply.
+
+        The converter dispatches on `AnnotationAction` / `ModelAction`, so a direct `Action`
+        subclass would be accepted and silently never fire.
+
+        :raises TypeError: If `action` is neither an `AnnotationAction` nor a `ModelAction`.
+        """
+        if isinstance(self.action, (AnnotationAction, ModelAction)):
+            return
+
+        msg = (
+            f"`Rule.action` must be an `AnnotationAction` or a `ModelAction`, got "
+            f"{type(self.action).__name__!r}; subclass one of the two families."
+        )
+        raise TypeError(msg)
