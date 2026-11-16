@@ -3,7 +3,7 @@
 # mypy flags every `is not MISSING` check on a `Schema` field; see `_utils.py`.
 # mypy: disable-error-code="comparison-overlap"
 
-from collections.abc import Generator, Iterator, Sequence
+from collections.abc import Generator, Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from itertools import count
 from types import NoneType
@@ -469,27 +469,20 @@ class SchemaConverter:
         :param model_name: Name for the generated model.
         :returns: Pydantic model class.
         """
+        folded = self._fold_inline_branch(schema, model_name=model_name)
+        if folded is not None:
+            return folded
+
         branches = dict(enumerate(self._get_base_classes(schema, model_name=model_name)))
         assertions = self._value_assertions(schema)
         object_bases = {
             index: base for index, base in branches.items() if not issubclass(base, RootModel)
         }
-        # Two branches can be one model (a repeated `$ref`), or one can extend another
-        #  (`allOf: [X, Y]` with `Y` an `allOf` over `X`); `type()` rejects both as bases.
-        unique_bases = tuple(dict.fromkeys(object_bases.values()))
-        object_base_classes = tuple(
-            base
-            for base in unique_bases
-            if not any(other is not base and issubclass(other, base) for other in unique_bases)
-        )
+        object_base_classes = _distinct_bases(object_bases.values())
         # The combined model keeps one `extra` setting, the last base's, so a branch closing its
         #  extra keys is also checked on its own: `allOf: [A, B]` with `A` closed accepted
         #  `{"a": 1, "c": 1}`.
-        closed = {
-            index
-            for index, base in object_bases.items()
-            if base.model_config.get("extra") == "forbid"
-        }
+        closed = {index for index, base in object_bases.items() if _is_closed(base)}
         shadowed = _shadowed_branches(object_bases, own=unwrap(schema.properties, default={}))
         only_objects: bool = len(object_bases) == len(branches) and (
             schema.type is MISSING or schema.type == DataType.OBJECT
@@ -532,6 +525,58 @@ class SchemaConverter:
             branches={index: branches[index] for index in rest},
             own=self._own_keywords_annotation(schema, object_host=False),
             assertions=assertions,
+        )
+
+    def _fold_inline_branch(
+        self,
+        schema: Schema,
+        /,
+        *,
+        model_name: str,
+    ) -> type[BaseModel] | None:
+        """Build `$ref` object branches and one inline object branch of `allOf` as one model.
+
+        The inline branch's properties become fields of the model over the `$ref` bases, the way
+        properties beside `allOf` do, so the branch is not built as a model of its own that a
+        second class then combines. Only taken while no branch needs a check on its own: none
+        closes its extra keys and no property name repeats across branches.
+
+        :param schema: Schema declaring `allOf`.
+        :param model_name: Name for the generated model.
+        :returns: The model, or `None` when the schema takes the general path.
+        """
+        index = _inline_object_branch(schema)
+        if index is None:
+            return None
+
+        all_of: list[Schema | Reference] = unwrap(schema.all_of, default=[])
+        inline = cast("Schema", all_of[index])
+
+        references = {
+            other: branch for other, branch in enumerate(all_of) if isinstance(branch, Reference)
+        }
+        bases: dict[int, type[BaseModel]] = {}
+        for other, reference in references.items():
+            with self._track_path(f"allOf[{other}]", pointer=("allOf", str(other))):
+                bases[other] = self._get_model(reference.ref)
+
+        if any(
+            issubclass(base, RootModel) or _is_closed(base) for base in bases.values()
+        ) or _shadowed_branches(bases, own=unwrap(inline.properties, default={})):
+            return None
+
+        with self._track_path(f"allOf[{index}]", pointer=("allOf", str(index))):
+            model = self._create_object_model(
+                inline,
+                model_name=model_name,
+                base_classes=_distinct_bases(bases.values()) or (BaseModel,),
+            )
+
+        return self._wrap_all_of(
+            model,
+            branches={},
+            own=self._own_keywords_annotation(schema, object_host=True),
+            assertions=self._value_assertions(schema),
         )
 
     def _first_branch_type(
@@ -1690,6 +1735,65 @@ def _build_object_keywords(schema: Schema, /) -> ObjectKeywords | None:
         checks=checks,
         keywords=keywords,
     )
+
+
+def _distinct_bases(bases: Iterable[type[BaseModel]], /) -> tuple[type[BaseModel], ...]:
+    """Drop the repeated `allOf` bases and those another base already extends.
+
+    Two branches can be one model (a repeated `$ref`), or one can extend another (`allOf: [X, Y]`
+    with `Y` an `allOf` over `X`); a class statement rejects both as bases.
+
+    :param bases: Object branch models in branch order.
+    :returns: The bases a combined model can inherit.
+    """
+    unique = tuple(dict.fromkeys(bases))
+    return tuple(
+        base
+        for base in unique
+        if not any(other is not base and issubclass(other, base) for other in unique)
+    )
+
+
+def _is_closed(model: type[BaseModel], /) -> bool:
+    """Tell whether a model rejects the keys none of its fields declares.
+
+    :param model: The model to check.
+    :returns: `True` when the model forbids extra keys.
+    """
+    return model.model_config.get("extra") == "forbid"
+
+
+def _inline_object_branch(schema: Schema, /) -> int | None:
+    """Find the one inline `allOf` branch that can share a model with the `$ref` branches.
+
+    :param schema: Schema declaring `allOf`.
+    :returns: The branch index when the schema declares no `properties` of its own, every other
+        branch is a `$ref`, and the inline branch is a plain open object: typed `object`, with
+        `properties`, without `allOf` or `description`, and `additionalProperties` not `false`.
+    """
+    if schema.properties is not MISSING or not (
+        schema.type is MISSING or schema.type == DataType.OBJECT
+    ):
+        return None
+
+    inline = [
+        (index, branch)
+        for index, branch in enumerate(unwrap(schema.all_of, default=[]))
+        if isinstance(branch, Schema)
+    ]
+
+    if len(inline) != 1:
+        return None
+
+    [(index, branch)] = inline
+    plain: bool = (
+        branch.type == DataType.OBJECT
+        and branch.properties is not MISSING
+        and branch.all_of is MISSING
+        and branch.description is MISSING
+        and branch.additional_properties is not False
+    )
+    return index if plain else None
 
 
 def _shadowed_branches(

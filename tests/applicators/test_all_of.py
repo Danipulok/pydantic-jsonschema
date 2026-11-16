@@ -12,6 +12,8 @@ from pydantic_jsonschema import (
 )
 from pydantic_jsonschema.applicators import Not
 from pydantic_jsonschema.applicators._base import AnnotationType
+from pydantic_jsonschema.exceptions import SchemaReferenceError
+from pydantic_jsonschema.rules import After, ByPath, Rule
 from pydantic_jsonschema.schema import Schema
 from tests.conftest import SchemaRaw, dump_errors
 
@@ -34,6 +36,18 @@ _EXTENDS_A: Final[SchemaRaw] = {"allOf": [{"$ref": "#/$defs/A"}], "required": ["
 _INTEGER_A: Final[SchemaRaw] = {"type": "object", "properties": {"a": {"type": "integer"}}}
 _BESIDE: Final[str] = "Value does not match the keywords beside `allOf`"
 _NOT: Final[str] = "Value must not match the `not` schema"
+_BRANCH_1: Final[str] = "Value error, Value does not match `allOf[1]`"
+_BASE: Final[SchemaRaw] = {
+    "type": "object",
+    "properties": {"base": {"type": "integer"}},
+    "required": ["base"],
+}
+_INLINE: Final[SchemaRaw] = {"type": "object", "properties": {"inline": {"type": "integer"}}}
+
+
+def _ref_and_inline(inline: SchemaRaw, /, *, beside: SchemaRaw | None = None) -> SchemaRaw:
+    """Return an `allOf` of a `$ref` to `_BASE` and `inline`, with `beside` keywords next to it."""
+    return {"allOf": [{"$ref": "#/$defs/Base"}, inline], "$defs": {"Base": _BASE}, **(beside or {})}
 
 
 class TestAllOf:
@@ -591,6 +605,11 @@ class TestAllOfObjects:
                 id="closed-last",
             ),
             pytest.param(
+                {"allOf": [{"$ref": "#/$defs/A"}, _OPEN_B], "$defs": {"A": _CLOSED_A}},
+                "Value error, Value does not match `allOf[0]`",
+                id="closed-ref",
+            ),
+            pytest.param(
                 {"type": "object", "properties": {"b": {}}, "allOf": [_CLOSED_A]},
                 "Value error, Value does not match `allOf[0]`",
                 id="beside-properties",
@@ -655,6 +674,15 @@ class TestAllOfObjects:
                 {"b": "s"},
                 {"b": "ss"},
                 id="branch-drops-type",
+            ),
+            pytest.param(
+                {
+                    "allOf": [{"$ref": "#/$defs/B"}, _OPEN_B],
+                    "$defs": {"B": {"type": "object", "properties": {"b": {"type": "string"}}}},
+                },
+                {"b": "s"},
+                {"b": 1},
+                id="ref-drops-type",
             ),
         ],
     )
@@ -959,6 +987,166 @@ class TestAllOfObjects:
             model.model_validate(invalid)
 
         assert [error["msg"] for error in dump_errors(exc_info.value)] == [msg]
+
+    @pytest.mark.parametrize(
+        ("invalid", "msg"),
+        [
+            pytest.param({"inline": 1}, "Field required", id="ref-required"),
+            pytest.param({"base": 1}, "Field required", id="inline-required"),
+            pytest.param(
+                {"base": 1, "inline": 1, "a": 1, "b": 1},
+                f"Value error, {_BESIDE}",
+                id="keyword-beside",
+            ),
+            pytest.param({"base": 1, "inline": 1, "z": 1}, f"Value error, {_NOT}", id="not"),
+        ],
+    )
+    def test_all_of_ref_and_inline_object_branches(
+        self,
+        *,
+        invalid: SchemaRaw,
+        msg: str,
+    ) -> None:
+        """Test an `allOf` of a `$ref` and an inline object checks both and the keywords beside."""
+        schema = Schema.model_validate(
+            {
+                "allOf": [
+                    {"$ref": "#/$defs/Base"},
+                    {
+                        "type": "object",
+                        "properties": {"inline": {"type": "integer"}},
+                        "required": ["inline"],
+                    },
+                ],
+                "maxProperties": 3,
+                "not": {"type": "object", "required": ["z"]},
+                "$defs": {
+                    "Base": {
+                        "type": "object",
+                        "properties": {"base": {"type": "integer"}},
+                        "required": ["base"],
+                    }
+                },
+            }
+        )
+        model = to_model(schema)
+
+        # Base fields come first only when the branches build one model, the cheap path.
+        assert list(model.model_fields) == ["base", "inline"]
+        assert model.model_validate({"base": 1, "inline": 2}).model_dump() == snapshot(
+            {"base": 1, "inline": 2}
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate(invalid)
+
+        assert [error["msg"] for error in dump_errors(exc_info.value)] == [msg]
+
+    @pytest.mark.parametrize(
+        ("schema_raw", "invalid", "msg"),
+        [
+            pytest.param(
+                _ref_and_inline({**_INLINE, "allOf": [{"type": "object", "required": ["deep"]}]}),
+                {"base": 1},
+                "Value error, Object must have the properties `deep`",
+                id="inline-all-of",
+            ),
+            pytest.param(
+                _ref_and_inline({**_INLINE, "additionalProperties": False}),
+                {"base": 1, "inline": 1},
+                _BRANCH_1,
+                id="inline-closed",
+            ),
+            pytest.param(
+                _ref_and_inline({**_INLINE, "type": "array"}),
+                {"base": 1, "inline": 1},
+                _BRANCH_1,
+                id="inline-not-object",
+            ),
+            pytest.param(
+                _ref_and_inline({"type": "object", "additionalProperties": {"type": "integer"}}),
+                {"base": 1, "x": "s"},
+                _BRANCH_1,
+                id="inline-without-properties",
+            ),
+            pytest.param(
+                _ref_and_inline(_INLINE, beside={"type": "array"}),
+                {"base": 1},
+                f"Value error, {_BESIDE}",
+                id="beside-not-object",
+            ),
+            pytest.param(
+                {
+                    "allOf": [{"$ref": "#/$defs/Map"}, _INLINE],
+                    "$defs": {
+                        "Map": {"type": "object", "additionalProperties": {"type": "integer"}}
+                    },
+                },
+                {"inline": 1, "x": "s"},
+                "Input should be a valid integer, unable to parse string as an integer",
+                id="ref-dict-root",
+            ),
+        ],
+    )
+    def test_all_of_ref_and_inline_branch_checked_on_its_own(
+        self,
+        *,
+        schema_raw: SchemaRaw,
+        invalid: SchemaRaw,
+        msg: str,
+    ) -> None:
+        """Test a `$ref` and an inline object branch the converter cannot build as one model."""
+        model = to_model(Schema.model_validate(schema_raw))
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate(invalid)
+
+        assert [error["msg"] for error in dump_errors(exc_info.value)] == [msg]
+
+    def test_all_of_repeated_ref_and_inline_branch(self) -> None:
+        """Test a `$ref` repeated beside an inline object branch keeps one base."""
+        schema = Schema.model_validate(
+            {
+                "allOf": [{"$ref": "#/$defs/Base"}, {"$ref": "#/$defs/Base"}, _INLINE],
+                "$defs": {"Base": _BASE},
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"base": 1, "inline": 2}).model_dump() == snapshot(
+            {"base": 1, "inline": 2}
+        )
+
+    def test_all_of_inline_branch_description_stays_off_the_model(self) -> None:
+        """Test the `description` of an inline object branch is not dumped as the model's."""
+        schema = Schema.model_validate(_ref_and_inline({**_INLINE, "description": "Inline doc."}))
+
+        assert "description" not in to_model(schema).model_json_schema()
+
+    def test_all_of_inline_branch_rule_by_path(self) -> None:
+        """Test a `ByPath` rule reaches a property of an inline object branch beside a `$ref`."""
+        schema = Schema.model_validate(
+            _ref_and_inline({"type": "object", "properties": {"inline": {"type": "string"}}})
+        )
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByPath("/allOf/1/properties/inline"), After(str.upper)),
+            ],
+        )
+
+        assert model.model_validate({"base": 1, "inline": "ab"}).model_dump() == snapshot(
+            {"base": 1, "inline": "AB"}
+        )
+
+    def test_all_of_unresolved_ref_beside_inline_branch(self) -> None:
+        """Test an unresolved `$ref` beside an inline object branch names its branch."""
+        schema = Schema.model_validate({"allOf": [{"$ref": "#/$defs/Missing"}, _INLINE]})
+
+        with pytest.raises(SchemaReferenceError) as exc_info:
+            to_model(schema)
+
+        assert exc_info.value.path == snapshot(["allOf[0]"])
 
 
 class TestAllOfJsonSchema:
