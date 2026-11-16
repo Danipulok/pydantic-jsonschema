@@ -1,13 +1,14 @@
 """Tests for object-keyword validators (`minProperties` / `dependentRequired`)."""
 
 import pytest
-from inline_snapshot import snapshot
+from inline_snapshot import Is, snapshot
 from pydantic import ValidationError
 
 from pydantic_jsonschema import (
     to_model,
 )
 from pydantic_jsonschema.schema import Schema
+from tests.builders.schemas import TOO_LONG_DICT_MESSAGE
 from tests.conftest import dump_errors
 
 __all__: list[str] = []
@@ -110,7 +111,7 @@ class TestPropertyCount:
                 {
                     "type": "too_long",
                     "loc": (),
-                    "msg": "Dictionary should have at most 2 items after validation, not 3",
+                    "msg": Is(TOO_LONG_DICT_MESSAGE),
                     "input": {"a": 1, "b": 2, "c": 3},
                 }
             ]
