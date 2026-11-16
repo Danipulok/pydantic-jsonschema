@@ -13,7 +13,7 @@ import annotated_types
 from pydantic_jsonschema._compat import MISSING
 from pydantic_jsonschema.schema import DataType, Schema
 
-from ._utils import unwrap
+from ._utils import produces_all_of_model, unwrap
 
 __all__ = [
     "FieldKindType",
@@ -48,8 +48,16 @@ class _FieldKwargs(TypedDict, total=False):
     pattern: str | None
 
 
-def build_field_kwargs(schema: Schema, /, *, include_metadata: bool = True) -> _FieldKwargs:  # noqa: C901
+def build_field_kwargs(
+    schema: Schema,
+    /,
+    *,
+    include_metadata: bool = True,
+) -> _FieldKwargs:
     """Build `FieldInfo` kwargs, only including constraints that are explicitly set.
+
+    A schema converting to its `allOf` model contributes metadata only: the model checks its own
+    constraints, and a `Field` bound on that `RootModel` fails every value.
 
     :param schema: Schema to extract constraints and metadata from.
     :param include_metadata: When `False`, omit non-validating metadata (`title` / `description` /
@@ -66,6 +74,20 @@ def build_field_kwargs(schema: Schema, /, *, include_metadata: bool = True) -> _
             kwargs["title"] = schema.title
         if schema.description is not MISSING:
             kwargs["description"] = schema.description
+
+    if not produces_all_of_model(schema):
+        kwargs |= _constraint_kwargs(schema)
+
+    return kwargs
+
+
+def _constraint_kwargs(schema: Schema, /) -> _FieldKwargs:
+    """Build the `FieldInfo` constraint kwargs explicitly set on the schema.
+
+    :param schema: Schema to extract constraints from.
+    :returns: Keyword arguments for `FieldInfo`.
+    """
+    kwargs: _FieldKwargs = {}
 
     if schema.minimum is not MISSING:
         kwargs["ge"] = schema.minimum
