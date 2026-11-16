@@ -53,6 +53,7 @@ def build_field_kwargs(
     /,
     *,
     include_metadata: bool = True,
+    include_constraints: bool = True,
 ) -> _FieldKwargs:
     """Build `FieldInfo` kwargs, only including constraints that are explicitly set.
 
@@ -63,6 +64,8 @@ def build_field_kwargs(
     :param include_metadata: When `False`, omit non-validating metadata (`title` / `description` /
         `examples`). Used for union branches, where these are not field metadata and would otherwise
         leak into the dumped `anyOf` / `oneOf` (e.g. a `title` on a discriminated `$ref` branch).
+    :param include_constraints: When `False`, omit the constraints. Used for a `$ref` field, whose
+        definition model checks them on its own value.
     :returns: Keyword arguments for `FieldInfo`.
     """
     kwargs: _FieldKwargs = {}
@@ -75,7 +78,7 @@ def build_field_kwargs(
         if schema.description is not MISSING:
             kwargs["description"] = schema.description
 
-    if not produces_all_of_model(schema):
+    if include_constraints and not produces_all_of_model(schema):
         kwargs |= _constraint_kwargs(schema)
 
     return kwargs

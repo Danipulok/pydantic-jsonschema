@@ -141,6 +141,11 @@ def reject_value(value: str) -> str:
     raise ValueError(msg)
 
 
+def mark_seen[ValueType](value: dict[str, ValueType]) -> dict[str, ValueType | bool]:
+    """Add a `seen` key, marking that a `ByType` target reached the map itself."""
+    return {**value, "seen": True}
+
+
 def annotation_is_str(context: MatchContext, /) -> bool:
     """Predicate: match when the resolved annotation is exactly `str`."""
     return context.annotation is str
@@ -475,6 +480,40 @@ class TestByTypeParameterization:
 
         instance = model(meta="k")
         assert instance.model_dump() == snapshot({"meta": {"k": "k"}})
+
+    @pytest.mark.parametrize(
+        ("target", "meta_schema"),
+        [
+            pytest.param(dict, {"type": "object", "required": ["a"]}, id="typed"),
+            pytest.param(Any, {"required": ["a"]}, id="untyped"),
+        ],
+    )
+    def test_object_keywords_keep_the_host_matchable(
+        self,
+        *,
+        target: ByTypeTargetType,
+        meta_schema: "SchemaRaw",
+    ) -> None:
+        """Object keywords validated beside the host leave it matchable, and still validate."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"meta": meta_schema},
+                "required": ["meta"],
+            }
+        )
+        model = to_model(
+            schema,
+            rules=[
+                Rule(ByType(target), After(mark_seen)),
+            ],
+        )
+
+        instance = model(meta={"a": 1})
+        assert instance.model_dump() == snapshot({"meta": {"a": 1, "seen": True}})
+
+        with pytest.raises(ValidationError, match="must have the properties `a`"):
+            model(meta={"b": 2})
 
 
 class TestByTypeFormatTypes:
@@ -1269,6 +1308,28 @@ class TestModelBefore:
 
         model = to_model(schema, rules=[Rule(ByPath(pointer), action)])
         model.model_validate(data)
+
+    def test_untyped_object_checks_not_on_the_raw_input(self) -> None:
+        """An untyped object checks `not` once, on the raw input, not on the action's output."""
+
+        def add_zz(data: dict[str, JsonValue]) -> dict[str, JsonValue]:
+            return {**data, "zz": 1}
+
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {
+                    "o": {
+                        "properties": {"a": {"type": "integer"}},
+                        "not": {"type": "object", "required": ["zz"]},
+                    },
+                },
+                "required": ["o"],
+            },
+        )
+        model = to_model(schema, rules=[Rule(ByPath("/properties/o"), ModelBefore(add_zz))])
+
+        assert model.model_validate({"o": {"a": 1}}).model_dump() == snapshot({"o": {"a": 1}})
 
 
 class TestModelAfter:

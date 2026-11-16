@@ -35,9 +35,13 @@ them directly on your own Pydantic models.
 | `prefixItems` | `PrefixItems` | array items by position |
 | `patternProperties` | `PatternProperties` | property values whose name matches a regex |
 | `propertyNames` | `PropertyNames` | every property name |
+| object keywords without `type` | `IfObject` | the whole instance, when it is an object |
 
-The first five are *in-place* applicators (they apply to the whole instance); the last four are
-*child* applicators (they apply to items, property values, or names).
+`Not`, `OneOf`, `AllOf`, `IfThenElse` and `DependentSchemas` are *in-place* applicators (they
+apply to the whole instance); `Contains`, `PrefixItems`, `PatternProperties` and `PropertyNames`
+are *child* applicators (they apply to items, property values, or names). `IfObject` carries the
+object keywords of a schema without `type` and applies them to object instances only, as the spec
+does.
 
 ## What is not here
 

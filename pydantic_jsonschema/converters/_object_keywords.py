@@ -20,7 +20,7 @@ from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 
 from pydantic_jsonschema._compat import MISSING
-from pydantic_jsonschema.applicators import ObjectApplicator
+from pydantic_jsonschema.applicators import IfObject, ObjectApplicator
 from pydantic_jsonschema.schema import Schema
 
 from ._utils import unwrap
@@ -33,7 +33,7 @@ __all__ = [
     "build_property_count_bounds",
     "build_undeclared_required",
     "merge_keyword",
-    "strip_dict_keywords",
+    "strip_object_keywords",
 ]
 
 type PythonType = Any
@@ -269,17 +269,18 @@ def merge_keyword(
     return {"allOf": [json_schema, keyword]}
 
 
-def strip_dict_keywords(annotation: PythonType, /) -> PythonType:
-    """Return the `dict` annotation under a `DictKeywords`, so a rule matches it by type.
+def strip_object_keywords(annotation: PythonType, /) -> PythonType:
+    """Return the host under the object keyword metadata, so a rule matches it by type.
 
     :param annotation: A node's annotation.
-    :returns: The `dict[str, ...]` when `DictKeywords` is its only metadata, else `annotation`.
+    :returns: The host (`dict[str, ...]` or `Any`) when `DictKeywords` and `IfObject` are its only
+        metadata, else `annotation`.
     """
     if get_origin(annotation) is not Annotated:
         return annotation
 
     origin, *metadata = get_args(annotation)
-    if not all(isinstance(item, DictKeywords) for item in metadata):
+    if not all(isinstance(item, (DictKeywords, IfObject)) for item in metadata):
         return annotation
 
     return origin

@@ -13,7 +13,9 @@ validated by hand, each against a `TypeAdapter`-wrapped subschema:
   `IfThenElse` (`if`/`then`/`else`), `DependentSchemas` (`dependentSchemas`);
 - child applicators (apply to items / property values / names): `Contains` (`contains`),
   `PrefixItems` (`prefixItems`), `PatternProperties` (`patternProperties`),
-  `PropertyNames` (`propertyNames`).
+  `PropertyNames` (`propertyNames`);
+- `IfObject`: the object keywords of a schema that does not convert to an object model,
+  applied to object instances only.
 
 The remaining applicators (`allOf` over object models / `anyOf` / `properties` / `items` /
 `additionalProperties`) are *not* here: the converter expresses them natively as Pydantic
@@ -36,6 +38,7 @@ from ._all_of import AllOf
 from ._base import AnnotationApplicator, Applicator, ObjectApplicator
 from ._contains import Contains
 from ._dependent_schemas import DependentSchemas
+from ._if_object import IfObject
 from ._if_then_else import IfThenElse
 from ._not import Not
 from ._one_of import OneOf
@@ -49,6 +52,7 @@ __all__ = [
     "Applicator",
     "Contains",
     "DependentSchemas",
+    "IfObject",
     "IfThenElse",
     "Not",
     "ObjectApplicator",

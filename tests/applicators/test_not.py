@@ -15,12 +15,30 @@ __all__: list[str] = []
 
 
 class TestNot:
-    """Tests for `not` enforcement.
+    """Tests for `not` enforcement."""
 
-    `not` is only as precise as the converter's coverage of its subschema: a subschema that maps
-    to `Any` (e.g. an empty schema, or `required` without `type` / `properties`) matches every
-    value, so `not` then rejects everything. These tests use subschemas the converter enforces.
-    """
+    def test_not_untyped_object_keywords(self) -> None:
+        """Test an untyped `not` subschema rejects only objects matching its object keywords."""
+        schema = Schema.model_validate(
+            {"type": "object", "properties": {"x": {}}, "not": {"required": ["y"]}}
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"x": 1}).model_dump() == snapshot({"x": 1})
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"x": 1, "y": 2})
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": (),
+                    "msg": "Value error, Value must not match the `not` schema",
+                    "input": {"x": 1, "y": 2},
+                }
+            ]
+        )
 
     def test_not_scalar(self) -> None:
         """Test `not` on a scalar root value (a forbidden constant)."""
