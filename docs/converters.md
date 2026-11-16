@@ -118,6 +118,7 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | `dependentSchemas`                           | conditionally applied object subschema      | `DependentSchemas` validator        |
 | `patternProperties`                          | regex-keyed property-value subschemas       | `PatternProperties` validator       |
 | `propertyNames`                              | schema every property name must match       | `PropertyNames` validator           |
+| object keywords without `type`               | objects checked, any other value passes     | `IfObject` validator                |
 | `format` with validators                     | configured format validation                | see [Formats](formats.md)           |
 | `title`, `model_name`, `default_model_name`  | generated class name                        | `User`, `CustomUser`, `Model`       |
 
@@ -140,9 +141,9 @@ but do not affect the generated model.
   extra fields are accepted (`extra="allow"`) but their values are not validated against the `additionalProperties` schema.
 - `format` is metadata unless a matching entry is passed in `formats`. Built-in aliases cover all
   19 spec-defined formats, some with minor differences from the spec — see [Formats](formats.md).
-- `not` is only as precise as the converter's coverage of its subschema. A subschema that maps to
-  `Any` (an empty schema, or `required` without `type` / `properties`) matches every value, so
-  `not` then rejects everything.
+- `not` is only as precise as the converter's coverage of its subschema. Array keywords without
+  `type` (`items`, `minItems`, `contains`, ...) map to `Any`, which matches every value, so `not`
+  over them rejects everything.
 - In an `allOf` that is not over object models, the first branch produces the value and the other
   branches only check the input, so their coercion (`"5"` to `5`) does not shape the value.
   Keywords beside such an `allOf` take the first branch's `type` when they declare none.
@@ -153,6 +154,14 @@ but do not affect the generated model.
 - `patternProperties` validates the values of matching property names, but combined with
   `additionalProperties: false` a pattern-matched extra key is still rejected by `extra="forbid"`
   (the generated model cannot express "allow keys matching this regex").
+  With a schema-valued `additionalProperties` and no `properties`, an object typed `object`
+  validates every value against `additionalProperties`, pattern-matched keys included. An untyped
+  object with `patternProperties` ignores `additionalProperties`, `false` included.
+- Object keywords without `type` are not checked when `properties` names a property that a
+  Pydantic field refuses or warns on: a leading underscore (`_id`) or a `BaseModel` attribute (`copy`,
+  `model_validate`). Such a schema maps to `Any`, and `not` over it rejects every value.
+- Object keywords on a schema without `type` are checked at validation time, but
+  `model_json_schema()` does not emit them.
 
 ## Common Conversions
 

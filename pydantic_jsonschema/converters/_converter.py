@@ -40,6 +40,7 @@ from pydantic_jsonschema.applicators import (
     Applicator,
     Contains,
     DependentSchemas,
+    IfObject,
     IfThenElse,
     Not,
     ObjectApplicator,
@@ -62,7 +63,7 @@ from ._object_keywords import (
     build_property_count_bounds,
     build_undeclared_required,
     merge_keyword,
-    strip_dict_keywords,
+    strip_object_keywords,
 )
 from ._refs import DEFS_KEY, ResolvedDef, escape_pointer_token, get_inline_defs
 from ._utils import make_union, produces_all_of_model, unwrap
@@ -141,6 +142,20 @@ _DATA_TYPE_ANNOTATION_MAPPING: Final[dict[DataType, type]] = {
     DataType.ARRAY: list[Any],
     DataType.OBJECT: dict[str, Any],
 }
+
+# Object keywords (`Schema` field names). An untyped schema carrying any of them still applies
+#  them to object instances.
+_OBJECT_KEYWORDS: Final[tuple[str, ...]] = (
+    "properties",
+    "additional_properties",
+    "pattern_properties",
+    "property_names",
+    "required",
+    "min_properties",
+    "max_properties",
+    "dependent_required",
+    "dependent_schemas",
+)
 
 # Type aliases
 type Ref = str  # Reference path like "#/$defs/User"
@@ -1185,7 +1200,7 @@ class SchemaConverter:
 
         context = MatchContext(
             schema=schema,
-            annotation=strip_dict_keywords(annotation),
+            annotation=strip_object_keywords(annotation),
             path=self._current_pointer(),
         )
         result: AnnotationType = annotation
@@ -1440,7 +1455,7 @@ class SchemaConverter:
         annotation = self._apply_rules(annotation, schema=schema)
         kwargs = build_field_kwargs(schema, include_metadata=not union_branch)
 
-        if kwargs and not (union_branch and annotation is Any):
+        if kwargs and not (union_branch and strip_object_keywords(annotation) is Any):
             annotation = cast("type", Annotated[annotation, Field(**kwargs)])
         return annotation
 
@@ -1619,6 +1634,28 @@ class SchemaConverter:
                 return _DATA_TYPE_ANNOTATION_MAPPING[schema.type]
             union_args = [_DATA_TYPE_ANNOTATION_MAPPING[data_type] for data_type in schema.type]
             return make_union(union_args)
+
+        if _declares_object_keyword(schema) and _fields_convert(schema):
+            # `not` and `if` / `then` / `else` stay on the raw value, beside `IfObject`, which also
+            #  checks a value that is not an object; the branch would check an object twice.
+            update: dict[str, Any] = {
+                "type": DataType.OBJECT,
+                "defs": MISSING,
+                "not_": MISSING,
+                "if_": MISSING,
+                "then": MISSING,
+                "else_": MISSING,
+            }
+
+            # The `dict` host would type pattern-matched values by `additionalProperties` too, and
+            #  `false` would build it with `extra="forbid"`: either rejects valid input, so only
+            #  `patternProperties` checks them.
+            if schema.pattern_properties is not MISSING:
+                update["additional_properties"] = MISSING
+
+            object_schema = schema.model_copy(update=update)
+            if_object = self._register(IfObject(branch=self._object_annotation(object_schema)))
+            return cast("type", Annotated[Any, if_object])
 
         # `Any` is a valid annotation but is not a `type`, so `pyright` rejects it under the
         #  `-> type` return; the same `Any`-as-annotation pattern recurs below for `item_type`.
@@ -1801,6 +1838,22 @@ def _build_object_keywords(schema: Schema, /) -> ObjectKeywords | None:
         checks=checks,
         keywords=keywords,
     )
+
+
+def _declares_object_keyword(schema: Schema, /) -> bool:
+    """Tell whether the schema sets any object keyword."""
+    return any(getattr(schema, keyword) is not MISSING for keyword in _OBJECT_KEYWORDS)
+
+
+def _fields_convert(schema: Schema, /) -> bool:
+    """Tell whether every `properties` name can become a field of a generated model.
+
+    Pydantic refuses a leading underscore and some `BaseModel` members, and warns on the rest, so
+    an untyped schema naming either keeps converting to `Any`, as it did before object keywords
+    applied to it.
+    """
+    names: dict[str, Schema | Reference] = unwrap(schema.properties, default={})
+    return not any(name.startswith("_") or hasattr(BaseModel, name) for name in names)
 
 
 def _distinct_bases(bases: Iterable[type[BaseModel]], /) -> tuple[type[BaseModel], ...]:

@@ -93,7 +93,8 @@ model built over it runs once on each instance, not once per model it matched.
 `ModelBefore` and `ModelWrap` run ahead of every keyword the node's model checks as a whole
 (`propertyNames`, `patternProperties`, `dependentSchemas`, `minProperties`, `maxProperties`,
 `dependentRequired`, `not`, `if` / `then` / `else`), so those keywords check the mapping `func`
-returns.
+returns. A schema without `type` keeps the raw input as its value, so there `func` feeds only
+the object keywords, and `not` and `if` / `then` / `else` check the raw input.
 
 ```python title="rules_model_after.py"
 from pydantic import BaseModel
