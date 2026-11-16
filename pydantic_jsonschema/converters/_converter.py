@@ -787,6 +787,7 @@ class SchemaConverter:
             (model,),
             {
                 **validators,
+                "__doc__": model.__doc__,
                 "__get_pydantic_json_schema__": classmethod(get_json_schema),
                 _APPLICATORS_ATTRIBUTE: combined,
                 "__module__": __name__,

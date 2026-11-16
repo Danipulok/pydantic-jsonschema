@@ -491,3 +491,23 @@ class TestModelKeywordsDump:
                 "type": "object",
             }
         )
+
+    @pytest.mark.parametrize(
+        "keywords",
+        [
+            pytest.param({"propertyNames": {"maxLength": 3}}, id="property-names"),
+            pytest.param({"not": {"type": "object", "required": ["zz"]}}, id="not"),
+        ],
+    )
+    def test_dump_keeps_the_description(self, *, keywords: SchemaRaw) -> None:
+        """Test a model subclassed for its keywords keeps the schema's `description`."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "description": "A thing.",
+                "properties": {"r": {"type": "integer"}},
+                **keywords,
+            }
+        )
+
+        assert to_model(schema).model_json_schema()["description"] == "A thing."
