@@ -1319,7 +1319,8 @@ class SchemaConverter:
 
         :param schema: Schema to convert.
         :param field_kind: `required` / `optional` object property, or `root` model value.
-        :param annotation: Pre-computed annotation.
+        :param annotation: Pre-computed annotation: the model a `$ref` resolves to, which checks
+            the definition's constraints itself, so the field takes only its metadata.
         :returns: Pydantic FieldInfo.
         """
         if annotation is None:
@@ -1339,7 +1340,7 @@ class SchemaConverter:
         return FieldInfo(
             annotation=valid_annotation,
             default=default,
-            **build_field_kwargs(schema),
+            **build_field_kwargs(schema, include_constraints=annotation is None),
         )
 
     def _union_args(

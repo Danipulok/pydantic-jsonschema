@@ -2,7 +2,7 @@
 
 import pytest
 from inline_snapshot import snapshot
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, JsonValue, ValidationError
 
 from pydantic_jsonschema import (
     SchemaConverter,
@@ -422,6 +422,54 @@ class TestReferences:
         model = to_model(schema)
 
         assert model.model_fields["n"].description == "count"
+
+    @pytest.mark.parametrize(
+        ("definition", "valid", "invalid"),
+        [
+            pytest.param({"type": "integer", "minimum": 0}, 1, -1, id="minimum"),
+            pytest.param({"type": "string", "minLength": 3}, "abcd", "ab", id="min-length"),
+            pytest.param({"type": "array", "maxItems": 1}, [1], [1, 2], id="max-items"),
+        ],
+    )
+    def test_reference_to_a_bounded_scalar_def(
+        self,
+        *,
+        definition: SchemaRaw,
+        valid: JsonValue,
+        invalid: JsonValue,
+    ) -> None:
+        """Test a `$ref` to a scalar def with a bound checks the bound once, on the def's value."""
+        schema = Schema.model_validate(
+            {
+                "$defs": {"N": definition},
+                "type": "object",
+                "properties": {"n": {"$ref": "#/$defs/N"}},
+                "required": ["n"],
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"n": valid}).model_dump() == {"n": valid}
+
+        with pytest.raises(ValidationError):
+            model.model_validate({"n": invalid})
+
+    def test_dumped_single_scalar_all_of_loads_back(self) -> None:
+        """Test the dump of a nested one-branch scalar `allOf` loads back and checks the bound."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"v": {"allOf": [{"type": "string", "minLength": 3}]}},
+                "required": ["v"],
+            }
+        )
+        dumped = to_model(schema).model_json_schema()
+        model = to_model(Schema.model_validate(dumped))
+
+        assert model.model_validate({"v": "abcd"}).model_dump() == snapshot({"v": "abcd"})
+
+        with pytest.raises(ValidationError):
+            model.model_validate({"v": "ab"})
 
     def test_defs_alias_chain(self) -> None:
         """Test `$defs` alias chain resolving through multiple references."""
