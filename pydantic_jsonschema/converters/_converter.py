@@ -297,33 +297,9 @@ class SchemaConverter:
         self._build_defs_cache(schema)
 
         model = self._build_model(schema, model_name=model_name)
-        model = self._wrap_root_value_assertions(model, schema=schema)
         self._bind_forward_refs()
 
         return model
-
-    def _wrap_root_value_assertions(
-        self,
-        model: type[BaseModel],
-        /,
-        *,
-        schema: Schema,
-    ) -> type[BaseModel]:
-        """Attach `not` / `if` / `then` / `else` to a root object model.
-
-        A root object becomes a plain `BaseModel` (not a `RootModel`), so it bypasses the
-        annotation path where these whole-value assertions are otherwise attached. Every other
-        shape (root non-object / dict-root, all nested values, and an `allOf` model) carries them
-        already.
-
-        :param model: The freshly built root model.
-        :param schema: The root schema.
-        :returns: The model, wrapped when it carries whole-value assertions.
-        """
-        if issubclass(model, RootModel) or schema.all_of is not MISSING:
-            return model
-
-        return self._wrap_object_applicators(model, applicators=self._value_assertions(schema))
 
     def _value_assertions(
         self,
@@ -694,6 +670,10 @@ class SchemaConverter:
 
         if object_keywords is not None:
             applicators.append(object_keywords)
+
+        # An `allOf` model attaches the schema's `not` / `if` itself, over the combined model.
+        if schema.all_of is MISSING:
+            applicators.extend(self._value_assertions(schema))
 
         # For some reason, `create_model` "accepts" `fields` values as `tuple[str, Any]`,
         #  when in reality it accepts `tuple[type, FieldInfo]`. Neither `mypy` nor `pyright` can
@@ -1277,6 +1257,7 @@ class SchemaConverter:
         # `enum` / `const` -> `Literal`:
         if schema.enum is not MISSING or schema.const is not MISSING:
             annotation: type | ForwardRef = self._literal_annotation(schema)
+            composition_annotation: type | None = None
         else:
             # `anyOf` / `oneOf` / `allOf` -> union or nested model; else `type` (or `Any`).
             composition_annotation = self._composition_annotation(schema)
@@ -1287,9 +1268,11 @@ class SchemaConverter:
             )
 
         # `not` and `if` / `then` / `else` are checked against the raw value before the host type,
-        #  attached as `Annotated` wrap-validator metadata (the path used for every shape that has
-        #  a host annotation; root object and `allOf` models take the `before`-validator path).
-        if produces_all_of_model(schema):
+        #  attached as `Annotated` wrap-validator metadata. An object model built for this schema
+        #  carries them itself. A one-branch `anyOf` collapses to the branch's model, which
+        #  carries the branch's assertions only.
+        own_model: bool = composition_annotation is None and _is_object_model(annotation)
+        if produces_all_of_model(schema) or own_model:
             return annotation
 
         for assertion in self._value_assertions(schema):
@@ -1752,6 +1735,19 @@ def _distinct_bases(bases: Iterable[type[BaseModel]], /) -> tuple[type[BaseModel
         base
         for base in unique
         if not any(other is not base and issubclass(other, base) for other in unique)
+    )
+
+
+def _is_object_model(annotation: type | ForwardRef, /) -> bool:
+    """Tell whether an annotation is an object model, which carries its own `not` / `if`.
+
+    :param annotation: The annotation built for a schema.
+    :returns: `True` for a model class that is not a `RootModel`.
+    """
+    return (
+        isinstance(annotation, type)
+        and issubclass(annotation, BaseModel)
+        and not issubclass(annotation, RootModel)
     )
 
 
