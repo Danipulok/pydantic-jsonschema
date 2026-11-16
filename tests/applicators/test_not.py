@@ -2,7 +2,7 @@
 
 import pytest
 from inline_snapshot import Is, snapshot
-from pydantic import ValidationError
+from pydantic import JsonValue, ValidationError
 
 from pydantic_jsonschema import (
     to_model,
@@ -131,6 +131,89 @@ class TestNot:
                     "loc": (),
                     "msg": "Value error, Value must not match the `not` schema",
                     "input": {"evil": 1},
+                }
+            ]
+        )
+
+    def test_not_on_a_referenced_object(self) -> None:
+        """Test `not` on an object definition is checked where a `$ref` uses it."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"item": {"$ref": "#/$defs/Item"}},
+                "required": ["item"],
+                "$defs": {
+                    "Item": {
+                        "type": "object",
+                        "properties": {"a": {"type": "integer"}},
+                        "not": {"type": "object", "required": ["zz"]},
+                    },
+                },
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"item": {"a": 1}}).model_dump(exclude_unset=True) == snapshot(
+            {"item": {"a": 1}}
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"item": {"a": 1, "zz": 1}})
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("item",),
+                    "msg": "Value error, Value must not match the `not` schema",
+                    "input": {"a": 1, "zz": 1},
+                }
+            ]
+        )
+
+    @pytest.mark.parametrize(
+        "branch",
+        [
+            pytest.param(
+                {"type": "object", "properties": {"a": {"type": "integer"}}},
+                id="inline",
+            ),
+            pytest.param({"$ref": "#/$defs/Item"}, id="ref"),
+        ],
+    )
+    def test_not_beside_a_one_branch_any_of(self, *, branch: dict[str, JsonValue]) -> None:
+        """Test `not` beside an `anyOf` that collapses to its one object branch is checked."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {
+                    "item": {
+                        "anyOf": [branch],
+                        "not": {"type": "object", "required": ["zz"]},
+                    },
+                },
+                "required": ["item"],
+                "$defs": {
+                    "Item": {"type": "object", "properties": {"a": {"type": "integer"}}},
+                },
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"item": {"a": 1}}).model_dump(exclude_unset=True) == snapshot(
+            {"item": {"a": 1}}
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"item": {"a": 1, "zz": 1}})
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("item",),
+                    "msg": "Value error, Value must not match the `not` schema",
+                    "input": {"a": 1, "zz": 1},
                 }
             ]
         )
