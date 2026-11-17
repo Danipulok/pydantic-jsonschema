@@ -7,7 +7,7 @@ from inline_snapshot import snapshot
 from pydantic import AfterValidator, BaseModel, JsonValue, ValidationError
 from pydantic.functional_validators import ModelWrapValidatorHandler
 
-from pydantic_jsonschema import formats, to_model
+from pydantic_jsonschema import SchemaConverter, formats, to_model
 from pydantic_jsonschema.rules import (
     Action,
     After,
@@ -1507,6 +1507,37 @@ class TestModelAfter:
             rules=[Rule(ByFunc(lambda context: context.is_model), ModelAfter(record))],
         )
         model.model_validate({"a": 1, "c": 2})
+
+        assert fired == ["rule"]
+
+    def test_runs_once_on_a_model_deriving_from_an_earlier_call(self) -> None:
+        """A rule matching a base built by an earlier call of one converter runs once."""
+        fired: list[str] = []
+
+        def record[ModelType](model: ModelType) -> ModelType:
+            fired.append("rule")
+            return model
+
+        # `refs or {}` would swap an empty dict for a new one, so `Base` added below would not reach
+        #  the converter.
+        refs: dict[str, type[BaseModel]] = {"#/$defs/Unused": BaseModel}
+        converter = SchemaConverter(
+            refs=refs,
+            rules=[Rule(ByFunc(lambda context: context.is_model), ModelAfter(record))],
+        )
+        refs["#/$defs/Base"] = converter.convert_schema(
+            Schema.model_validate({"type": "object", "properties": {"a": {"type": "integer"}}}),
+        )
+        derived = converter.convert_schema(
+            Schema.model_validate(
+                {
+                    "type": "object",
+                    "allOf": [{"$ref": "#/$defs/Base"}],
+                    "properties": {"b": {"type": "integer"}},
+                },
+            ),
+        )
+        derived.model_validate({"a": 1, "b": 2})
 
         assert fired == ["rule"]
 

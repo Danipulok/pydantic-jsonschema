@@ -1,6 +1,6 @@
 """Tests for core JSON Schema to Pydantic model conversion."""
 
-from typing import Any
+from typing import Any, Final
 
 import pytest
 from inline_snapshot import snapshot
@@ -11,11 +11,18 @@ from pydantic_jsonschema import (
     to_model,
 )
 from pydantic_jsonschema.applicators import PropertyNames
-from pydantic_jsonschema.exceptions import SchemaConversionError
+from pydantic_jsonschema.exceptions import SchemaConversionError, SchemaReferenceError
 from pydantic_jsonschema.schema import Schema
 from tests.conftest import SchemaRaw, dump_errors
 
 __all__: list[str] = []
+
+_UNDECLARED_USER: Final[Schema] = Schema.model_validate(
+    {
+        "type": "object",
+        "properties": {"user": {"$ref": "#/$defs/User"}},
+    }
+)
 
 
 class TestBasicConversion:
@@ -677,54 +684,127 @@ class TestAdditionalProperties:
         )
 
 
+def _user_document(user_type: str) -> Schema:
+    return Schema.model_validate(
+        {
+            "type": "object",
+            "$defs": {"User": {"type": user_type}},
+            "properties": {
+                "holder": {
+                    "type": "object",
+                    "properties": {"user": {"$ref": "#/$defs/User"}},
+                },
+            },
+        }
+    )
+
+
+def _recursive_document(value_type: str) -> Schema:
+    # `next` refers to `Node` while it is built, so its `oneOf` branch is bound after conversion.
+    return Schema.model_validate(
+        {
+            "$defs": {
+                "Node": {
+                    "type": "object",
+                    "properties": {
+                        "value": {"type": value_type},
+                        "next": {"oneOf": [{"$ref": "#/$defs/Node"}, {"type": "null"}]},
+                    },
+                },
+            },
+            "$ref": "#/$defs/Node",
+        }
+    )
+
+
+class TestConverterPerDocument:
+    """Tests that a reused converter keeps nothing of an earlier document."""
+
+    def test_earlier_def_does_not_resolve(self) -> None:
+        """Test that a `$ref` to a def only an earlier document declared raises."""
+        converter = SchemaConverter()
+        converter.convert_schema(_user_document("string"))
+
+        with pytest.raises(SchemaReferenceError):
+            converter.convert_schema(_UNDECLARED_USER)
+
+    def test_earlier_def_does_not_resolve_after_a_failed_conversion(self) -> None:
+        """Test that a conversion that raised leaves no def for the next one."""
+        converter = SchemaConverter()
+        failing = Schema.model_validate(
+            {
+                "type": "object",
+                "$defs": {"User": {"type": "string"}},
+                "properties": {"user": {"$ref": "#/$defs/Missing"}},
+            }
+        )
+
+        with pytest.raises(SchemaReferenceError):
+            converter.convert_schema(failing)
+
+        with pytest.raises(SchemaReferenceError):
+            converter.convert_schema(_UNDECLARED_USER)
+
+    def test_nested_model_follows_its_own_document(self) -> None:
+        """Test that an inline object equal to an earlier one resolves its `$ref` anew."""
+        converter = SchemaConverter()
+        converter.convert_schema(_user_document("string"))
+
+        model = converter.convert_schema(_user_document("integer"))
+
+        assert model.model_validate({"holder": {"user": 1}}).model_dump() == snapshot(
+            {"holder": {"user": 1}}
+        )
+
+    def test_earlier_model_keeps_its_forward_refs(self) -> None:
+        """Test that a later conversion does not rebind the branches of an earlier model."""
+        converter = SchemaConverter()
+        model = converter.convert_schema(_recursive_document("string"))
+        converter.convert_schema(_recursive_document("integer"))
+
+        node = {"value": "a", "next": {"value": "b", "next": None}}
+
+        assert model.model_validate(node).model_dump() == snapshot(
+            {"value": "a", "next": {"value": "b", "next": None}}
+        )
+
+    def test_second_conversion_takes_its_own_model_name(self) -> None:
+        """Test that a reused converter names the model of each call after that call."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                },
+            }
+        )
+        converter = SchemaConverter()
+        first = converter.convert_schema(schema, model_name="First")
+
+        model = converter.convert_schema(schema, model_name="Second")
+
+        assert model is not first
+        assert model.__name__ == "Second"
+
+
 class TestConverterCaching:
     """Tests for model caching in converter."""
 
-    def test_same_schema_returns_cached_model(self) -> None:
-        """Test that converting the same schema twice returns cached model."""
-        schema_raw: SchemaRaw = {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-            },
-            "required": ["name"],
-        }
-
-        converter = SchemaConverter()
-        schema1 = Schema.model_validate(schema_raw)
-        schema2 = Schema.model_validate(schema_raw)
-
-        model1 = converter.convert_schema(schema1)
-        model2 = converter.convert_schema(schema2)
-
-        assert model1 is model2
-
     def test_different_schemas_return_different_models(self) -> None:
-        """Test that different schemas return different models."""
-        schema_raw1 = {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-            },
-            "required": ["name"],
-        }
+        """Test that two inline objects of one document get a model each."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {
+                    "person": {"type": "object", "properties": {"name": {"type": "string"}}},
+                    "pet": {"type": "object", "properties": {"age": {"type": "integer"}}},
+                },
+                "required": ["person", "pet"],
+            }
+        )
+        model = SchemaConverter().convert_schema(schema)
 
-        schema_raw2 = {
-            "type": "object",
-            "properties": {
-                "age": {"type": "integer"},
-            },
-            "required": ["age"],
-        }
-
-        converter = SchemaConverter()
-        schema1 = Schema.model_validate(schema_raw1)
-        schema2 = Schema.model_validate(schema_raw2)
-
-        model1 = converter.convert_schema(schema1)
-        model2 = converter.convert_schema(schema2)
-
-        assert model1 is not model2
+        assert model.model_fields["person"].annotation is not model.model_fields["pet"].annotation
 
     def test_ref_model_cached_in_get_model(self) -> None:
         """Test that `_get_model` properly caches resolved reference models."""

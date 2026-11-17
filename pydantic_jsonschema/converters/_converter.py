@@ -174,7 +174,7 @@ type FormatType = type | TypeAliasType  # A type, `Annotated` type, or PEP 695 `
 
 
 class SchemaConverter:
-    """Stateful converter from JSON Schema to Pydantic models."""
+    """Converter from JSON Schema to Pydantic models; its settings outlive each conversion."""
 
     def __init__(
         self,
@@ -197,7 +197,13 @@ class SchemaConverter:
         self._refs: dict[Ref, type[BaseModel]] = refs or {}
         self._formats: dict[FormatName, FormatType] = formats or {}
         self._rules: Sequence[Rule] = rules or ()
+        # Keys a rule's validator alike on every model this converter builds, across calls, so a
+        #  model deriving from another that the rule also matched overrides it and runs it once.
+        self._converter_number: int = next(_VALIDATOR_NUMBERS)
+        self._reset_document_state()
 
+    def _reset_document_state(self) -> None:
+        """Drop what the last conversion filled: a `$ref` means another def in each document."""
         self._defs_cache: dict[Ref, Schema] = {}
         self._def_names: dict[Ref, str] = {}  # Ref -> `$defs` name declaring its schema
         self._models_cache: dict[SchemaHash, type[BaseModel]] = {}
@@ -206,9 +212,6 @@ class SchemaConverter:
         self._applicators: list[Applicator] = []
         self._building: set[Ref] = set()  # Defs whose model is mid-construction
         self._inheriting: set[Ref] = set()  # Defs an `allOf` branch is mid-inheriting from
-        # Keys a rule's validator alike on every model of this conversion, so a model deriving
-        #  from another that the rule also matched overrides it and runs it once.
-        self._conversion_number: int = next(_VALIDATOR_NUMBERS)
 
     @staticmethod
     def _hash_schema(
@@ -322,6 +325,7 @@ class SchemaConverter:
         :returns: Pydantic model class.
         :raises SchemaConversionError: If schema cannot be converted.
         """
+        self._reset_document_state()
         schema = normalize_ref_siblings(schema)
         self._build_defs_cache(schema)
 
@@ -1347,7 +1351,7 @@ class SchemaConverter:
         validators: dict[str, PythonType] = {}
         for index, rule in enumerate(self._rules):
             if isinstance(rule.action, ModelAction) and rule.matcher.matches(context):
-                key = f"_rule_validator_{self._conversion_number}_{index}"
+                key = f"_rule_validator_{self._converter_number}_{index}"
                 validators[key] = rule.action.validator()
         return validators
 
