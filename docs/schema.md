@@ -152,6 +152,12 @@ print(author_field.ref)
 #> #/$defs/Person
 ```
 
+A `$ref` with keywords beside it parses as whichever of `Reference` and `Schema` Pydantic's smart
+union matches better: `{"$ref": ..., "minLength": 1}` is a `Reference` that keeps `minLength` as
+an extra field and dumps it back, while `{"$ref": ..., "minLength": 1, "maxLength": 2}` is a
+`Schema` that holds `$ref` as an extra keyword. How the converter applies them is in
+[Converters](converters.md#known-limitations).
+
 ## DataType Enum
 
 `DataType` maps JSON Schema type names to Python:

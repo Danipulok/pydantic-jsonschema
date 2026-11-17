@@ -55,6 +55,11 @@ class TestReference:
         json_str: str = ref.model_dump_json()
         assert json_str == snapshot('{"$ref":"#/$defs/User"}')
 
+    def test_keeps_keywords_beside_ref(self) -> None:
+        """Keywords beside `$ref` survive a parse and dump round trip."""
+        ref = Reference.model_validate({"$ref": "#/$defs/User", "minLength": 2})
+        assert ref.model_dump() == snapshot({"$ref": "#/$defs/User", "minLength": 2})
+
 
 class TestSchemaTypes:
     """Tests for the `type` keyword parsing."""
