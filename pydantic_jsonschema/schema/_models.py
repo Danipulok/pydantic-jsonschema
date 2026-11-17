@@ -56,7 +56,9 @@ class Reference(BaseModel):
     See [core §8.2.3.1](https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.3.1).
     """
 
+    # Keeps the keywords beside `$ref`, which apply alongside it.
     model_config = ConfigDict(
+        extra="allow",
         populate_by_name=True,
         serialize_by_alias=True,
     )

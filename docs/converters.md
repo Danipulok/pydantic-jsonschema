@@ -98,6 +98,8 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | nested object property                       | nested generated model                      | `post.author.name`                  |
 | property with `$ref: "#/$defs/Person"`       | model generated from `$defs.Person`         | shared `Person` field type          |
 | `$ref` passed through `refs`                 | existing Pydantic model                     | existing `Address` class            |
+| `$ref` beside a validating keyword           | `allOf` of the target and the keywords      | both apply, root `$ref` included    |
+| `$ref` beside annotations only               | model generated from the target             | shared type, its annotations apply  |
 | root object + `additionalProperties: false`  | generated model with `extra="forbid"`       | unknown fields rejected             |
 | root object + `additionalProperties: {...}`  | typed dictionary root model                 | `RootModel[dict[str, int]]`         |
 | field object + `additionalProperties: false` | generated empty model field                 | only `{}` is valid                  |
@@ -147,6 +149,15 @@ but do not affect the generated model.
 - In an `allOf` that is not over object models, the first branch produces the value and the other
   branches only check the input, so their coercion (`"5"` to `5`) does not shape the value.
   Keywords beside such an `allOf` take the first branch's `type` when they declare none.
+- A `$ref` beside a validating keyword converts as that `allOf`, so the field is no longer the
+  shared model of its target, even when the keyword (a matching `type`) adds nothing.
+  Beside a `$ref` to the definition it sits in, the keywords are checked but left out of
+  `model_json_schema()`.
+- A field whose first `allOf` branch is a `$ref`, written so or moved there from beside a
+  validating keyword, takes the `title`, `description`, `default` and `examples` of that target
+  where it sets none.
+- A root `$ref` returns the model of its target, as a root `allOf` over one definition does, so
+  `model_name` does not rename it.
 - An object `allOf` branch with `additionalProperties: false` is inherited and also checked on its
   own, since the combined model keeps one `extra` setting. So is a branch with a property that
   another branch or the schema's own `properties` declares again, since the model keeps one field
