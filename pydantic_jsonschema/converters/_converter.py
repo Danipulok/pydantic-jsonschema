@@ -65,7 +65,14 @@ from ._object_keywords import (
     merge_keyword,
     strip_object_keywords,
 )
-from ._refs import DEFS_KEY, ResolvedDef, escape_pointer_token, get_inline_defs
+from ._refs import (
+    ANNOTATION_KEYWORDS,
+    DEFS_KEY,
+    ResolvedDef,
+    escape_pointer_token,
+    get_inline_defs,
+    normalize_ref_siblings,
+)
 from ._utils import make_union, produces_all_of_model, unwrap
 
 __all__ = [
@@ -198,6 +205,7 @@ class SchemaConverter:
         self._pointer_tokens: list[str] = []  # Raw JSON Pointer tokens for the same nodes
         self._applicators: list[Applicator] = []
         self._building: set[Ref] = set()  # Defs whose model is mid-construction
+        self._inheriting: set[Ref] = set()  # Defs an `allOf` branch is mid-inheriting from
         # Keys a rule's validator alike on every model of this conversion, so a model deriving
         #  from another that the rule also matched overrides it and runs it once.
         self._conversion_number: int = next(_VALIDATOR_NUMBERS)
@@ -314,6 +322,7 @@ class SchemaConverter:
         :returns: Pydantic model class.
         :raises SchemaConversionError: If schema cannot be converted.
         """
+        schema = normalize_ref_siblings(schema)
         self._build_defs_cache(schema)
 
         model = self._build_model(schema, model_name=model_name)
@@ -594,7 +603,7 @@ class SchemaConverter:
         bases: dict[int, type[BaseModel]] = {}
         for other, reference in references.items():
             with self._track_path(f"allOf[{other}]", pointer=("allOf", str(other))):
-                bases[other] = self._get_model(reference.ref)
+                bases[other] = self._inherited_model(reference.ref)
 
         if any(
             issubclass(base, RootModel) or _is_closed(base) for base in bases.values()
@@ -1070,14 +1079,43 @@ class SchemaConverter:
         :param sub_schema: The branch schema or reference.
         :param model_name: Name for an untitled inline branch.
         :returns: The branch model.
+        :raises SchemaReferenceError: If the branch inherits from the definition it sits in.
         """
         if isinstance(sub_schema, Reference):
-            return self._get_model(sub_schema.ref)
+            return self._inherited_model(sub_schema.ref)
 
         return self._convert_nested_schema(
             sub_schema,
             model_name=None if sub_schema.title is not MISSING else model_name,
         )
+
+    def _inherited_model(
+        self,
+        ref: Ref,
+        /,
+    ) -> type[BaseModel]:
+        """Get the model an `allOf` branch inherits from.
+
+        :param ref: Reference the branch points at.
+        :returns: The referenced model.
+        :raises SchemaReferenceError: If the definition inherits from itself, directly or through
+            other `allOf` branches.
+        """
+        key = self._building_key(ref)
+        if key in self._inheriting:
+            path_str = " -> ".join(self._resolution_path)
+            msg = f"Cannot inherit from `{ref}` inside its own definition at path: `{path_str}`"
+            raise SchemaReferenceError(
+                message=msg,
+                path=self._resolution_path.copy(),
+            )
+
+        self._inheriting.add(key)
+
+        try:
+            return self._get_model(ref)
+        finally:
+            self._inheriting.discard(key)
 
     def _create_root_model(
         self,
@@ -1134,17 +1172,38 @@ class SchemaConverter:
         *,
         field_kind: FieldKindType,
     ) -> FieldInfo:
-        """Convert one `properties` entry to a field."""
-        if not isinstance(field_schema, Reference):
-            return self._schema_to_field(field_schema, field_kind=field_kind)
+        """Convert one `properties` entry to a field.
 
+        A `$ref` field takes the metadata of its definition, under the annotations beside the
+        `$ref`; a field whose first `allOf` branch is a `$ref` takes from that definition the
+        metadata it does not set itself.
+        """
+        if not isinstance(field_schema, Reference):
+            return self._schema_to_field(
+                field_schema,
+                field_kind=field_kind,
+                metadata_fallback=self._first_branch_definition(field_schema),
+            )
+
+        annotations: dict[str, Any] = {
+            key: value
+            for key, value in (field_schema.model_extra or {}).items()
+            if key in ANNOTATION_KEYWORDS
+        }
         # A local `$ref` carries its own field metadata in `$defs`; an unknown ref (external /
         #  pre-built) contributes none, so fall back to an empty schema.
         return self._schema_to_field(
-            self._defs_cache.get(field_schema.ref, Schema()),
+            self._defs_cache.get(field_schema.ref, Schema()).model_copy(update=annotations),
             field_kind=field_kind,
             annotation=self._reference_annotation(field_schema),
         )
+
+    def _first_branch_definition(self, schema: Schema, /) -> Schema | None:
+        branches: list[Schema | Reference] = unwrap(schema.all_of, default=[])
+        if not branches or not isinstance(branches[0], Reference):
+            return None
+
+        return self._defs_cache.get(branches[0].ref)
 
     def _apply_format(
         self,
@@ -1314,6 +1373,7 @@ class SchemaConverter:
         *,
         field_kind: FieldKindType,
         annotation: AnnotationType | None = None,
+        metadata_fallback: Schema | None = None,
     ) -> FieldInfo:
         """Convert schema to Pydantic FieldInfo.
 
@@ -1321,6 +1381,7 @@ class SchemaConverter:
         :param field_kind: `required` / `optional` object property, or `root` model value.
         :param annotation: Pre-computed annotation: the model a `$ref` resolves to, which checks
             the definition's constraints itself, so the field takes only its metadata.
+        :param metadata_fallback: Schema whose field metadata applies where `schema` sets none.
         :returns: Pydantic FieldInfo.
         """
         if annotation is None:
@@ -1332,15 +1393,21 @@ class SchemaConverter:
         valid_annotation = self._apply_rules(valid_annotation, schema=schema)
 
         default = get_field_default(schema, field_kind=field_kind)
+        if default is MISSING and metadata_fallback is not None:
+            default = get_field_default(metadata_fallback, field_kind=field_kind)
 
         # `MISSING` must be part of the annotation for Pydantic to accept it as default.
         if default is MISSING:
             valid_annotation = valid_annotation | MISSING
 
+        kwargs = build_field_kwargs(schema, include_constraints=annotation is None)
+        if metadata_fallback is not None:
+            kwargs = build_field_kwargs(metadata_fallback, include_constraints=False) | kwargs
+
         return FieldInfo(
             annotation=valid_annotation,
             default=default,
-            **build_field_kwargs(schema, include_constraints=annotation is None),
+            **kwargs,
         )
 
     def _union_args(
@@ -1597,11 +1664,54 @@ class SchemaConverter:
             annotation = self._one_of_annotation(schema.one_of)
         # `allOf` -> nested model:
         elif schema.all_of is not MISSING:
-            annotation = self._convert_nested_schema(schema)
+            annotation = self._all_of_annotation(schema)
         else:
             return None
 
         return self._apply_sibling_type(annotation, schema=schema)
+
+    def _all_of_annotation(
+        self,
+        schema: Schema,
+        /,
+    ) -> type:
+        """Convert an `allOf` composition in a field to an annotation.
+
+        A first branch referring to a def still being built has no model to inherit from yet, so
+        its `ForwardRef` produces the value and the rest of the schema checks the raw input.
+
+        :param schema: Schema declaring `allOf`.
+        :returns: The nested model, or the `ForwardRef` checked by the rest of the schema.
+        """
+        branches: list[Schema | Reference] = unwrap(schema.all_of, default=[])
+        if not branches:
+            return self._convert_nested_schema(schema)
+
+        producer, *rest = branches
+        if not isinstance(producer, Reference) or not self._is_building(producer.ref):
+            return self._convert_nested_schema(schema)
+
+        remainder = schema.model_copy(update={"all_of": rest or MISSING})
+        # A bound beside the `$ref` is a field constraint, not part of the annotation, so
+        #  `{"$ref": "#/$defs/N", "minimum": 2}` inside `N` accepted `1`.
+        remainder_annotation: AnnotationType = Annotated[
+            self._schema_to_annotation(remainder),
+            Field(**build_field_kwargs(remainder, include_metadata=False)),
+        ]
+        adapter: TypeAdapter[PythonType] = TypeAdapter(remainder_annotation)
+
+        def _check(value: PythonType) -> PythonType:
+            try:
+                adapter.validate_python(value)
+            # A bound without `type` raises on a value it cannot compare, where the spec ignores
+            #  the keyword, as `AllOf.validate` handles it.
+            except TypeError:
+                return value
+
+            return value
+
+        annotation = ForwardRef(sanitize_identifier(producer.ref))
+        return cast("type", Annotated[annotation, BeforeValidator(_check)])
 
     def _one_of_annotation(
         self,
