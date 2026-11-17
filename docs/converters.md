@@ -671,9 +671,9 @@ print(Model.__name__)
 #> SpecificName
 ```
 
-!!! warning "Caching Behavior"
-    Be careful using `SchemaConverter` directly. The converter maintains state for caching and
-    reference resolution across multiple schema conversions.
+A converter shares only its settings between calls: no model, `$defs` entry or `model_name`
+carries over from an earlier call, so converting the same schema twice builds two classes. Only a
+model given in `refs` is returned as is.
 
 ## Common Patterns
 
