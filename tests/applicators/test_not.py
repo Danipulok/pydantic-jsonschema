@@ -189,6 +189,52 @@ class TestNot:
             ]
         )
 
+    def test_not_over_a_one_of_referring_back(self) -> None:
+        """Test `not` over a discriminated `oneOf` that refers back to its own def."""
+        schema = Schema.model_validate(
+            {
+                "$ref": "#/$defs/Node",
+                "$defs": {
+                    "Leaf": {
+                        "type": "object",
+                        "properties": {"kind": {"const": "leaf"}},
+                        "required": ["kind"],
+                    },
+                    "Node": {
+                        "type": "object",
+                        "properties": {
+                            "kind": {"const": "node"},
+                            "x": {
+                                "not": {
+                                    "oneOf": [{"$ref": "#/$defs/Leaf"}, {"$ref": "#/$defs/Node"}]
+                                }
+                            },
+                        },
+                        "required": ["kind", "x"],
+                    },
+                },
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"kind": "node", "x": 5}).model_dump() == snapshot(
+            {"kind": "node", "x": 5}
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"kind": "node", "x": {"kind": "leaf"}})
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("x",),
+                    "msg": "Value error, Value must not match the `not` schema",
+                    "input": {"kind": "leaf"},
+                }
+            ]
+        )
+
     @pytest.mark.parametrize(
         "branch",
         [
