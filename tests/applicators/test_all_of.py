@@ -1216,7 +1216,7 @@ class TestAllOfJsonSchema:
 
         assert model.model_json_schema() == snapshot(
             {
-                "$defs": {"ModelAllOf1": {"le": 9.0, "title": "ModelAllOf1"}},
+                "$defs": {"ModelAllOf1": {"maximum": 9.0, "title": "ModelAllOf1"}},
                 "allOf": [{"$ref": "#/$defs/ModelAllOf1"}],
                 "title": "Model",
                 "type": "integer",

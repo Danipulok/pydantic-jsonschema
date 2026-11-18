@@ -121,6 +121,7 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | `patternProperties`                          | regex-keyed property-value subschemas       | `PatternProperties` validator       |
 | `propertyNames`                              | schema every property name must match       | `PropertyNames` validator           |
 | object keywords without `type`               | objects checked, any other value passes     | `IfObject` validator                |
+| number / string keywords, `type` unpinned    | values of that type checked, others pass    | `IfType` validator                  |
 | `format` with validators                     | configured format validation                | see [Formats](formats.md)           |
 | `title`, `model_name`, `default_model_name`  | generated class name                        | `User`, `CustomUser`, `Model`       |
 

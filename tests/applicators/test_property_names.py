@@ -85,7 +85,7 @@ class TestPropertyNamesJsonSchema:
             {
                 "additionalProperties": True,
                 "properties": {},
-                "propertyNames": {},
+                "propertyNames": {"pattern": "^[a-z]+$"},
                 "title": "Model",
                 "type": "object",
             }

@@ -72,17 +72,7 @@ class AllOf(ObjectApplicator):
         :raises ValueError: When a subschema does not validate the input.
         """
         for label, adapter in self._get_adapters().items():
-            try:
-                matches = self._validates(adapter, value=data)
-            # A bound without `type` (`{"minimum": 5}` -> `Annotated[Any, Ge(5)]`) raises on a value
-            #  it cannot compare, where the spec ignores the keyword: `allOf: [{"type": "string"},
-            #  {"minimum": 5}]` on `"a"` raised `TypeError: Unable to apply constraint 'ge' to
-            #  supplied value a`. https://json-schema.org/draft/2020-12/json-schema-validation#section-6.2
-            #  This skips the whole subschema, so its other keywords go unchecked for that value.
-            except TypeError:
-                matches = True
-
-            if not matches:
+            if not self._validates(adapter, value=data):
                 msg = f"Value does not match {label}"
                 raise ValueError(msg)
 

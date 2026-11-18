@@ -14,8 +14,8 @@ validated by hand, each against a `TypeAdapter`-wrapped subschema:
 - child applicators (apply to items / property values / names): `Contains` (`contains`),
   `PrefixItems` (`prefixItems`), `PatternProperties` (`patternProperties`),
   `PropertyNames` (`propertyNames`);
-- `IfObject`: the object keywords of a schema that does not convert to an object model,
-  applied to object instances only.
+- `IfType`: the keywords of one type on a schema whose `type` does not pin it, applied to
+  instances of that type only; `IfObject` is the one for object keywords.
 
 The remaining applicators (`allOf` over object models / `anyOf` / `properties` / `items` /
 `additionalProperties`) are *not* here: the converter expresses them natively as Pydantic
@@ -40,6 +40,7 @@ from ._contains import Contains
 from ._dependent_schemas import DependentSchemas
 from ._if_object import IfObject
 from ._if_then_else import IfThenElse
+from ._if_type import IfType
 from ._not import Not
 from ._one_of import OneOf
 from ._pattern_properties import PatternProperties
@@ -54,6 +55,7 @@ __all__ = [
     "DependentSchemas",
     "IfObject",
     "IfThenElse",
+    "IfType",
     "Not",
     "ObjectApplicator",
     "OneOf",

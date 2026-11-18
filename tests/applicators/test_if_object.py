@@ -144,7 +144,7 @@ class TestIfObject:
         )
 
     def test_object_keywords_union_branch(self) -> None:
-        """Test an untyped union branch skips its constraints, as a bare `Any` branch does."""
+        """Test an untyped union branch applies its object keywords to objects only."""
         schema = Schema.model_validate(
             {
                 "type": "object",

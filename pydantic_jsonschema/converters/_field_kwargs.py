@@ -13,6 +13,7 @@ import annotated_types
 from pydantic_jsonschema._compat import MISSING
 from pydantic_jsonschema.schema import DataType, Schema
 
+from ._type_keywords import pins_type
 from ._utils import produces_all_of_model, unwrap
 
 __all__ = [
@@ -92,6 +93,31 @@ def _constraint_kwargs(schema: Schema, /) -> _FieldKwargs:
     """
     kwargs: _FieldKwargs = {}
 
+    if pins_type(schema, data_type=DataType.NUMBER):
+        kwargs |= _number_kwargs(schema)
+
+    if pins_type(schema, data_type=DataType.STRING) and schema.pattern is not MISSING:
+        kwargs["pattern"] = schema.pattern
+
+    min_length = _get_min_length(schema)
+    if min_length is not None:
+        kwargs["min_length"] = min_length
+
+    max_length = _get_max_length(schema)
+    if max_length is not None:
+        kwargs["max_length"] = max_length
+
+    return kwargs
+
+
+def _number_kwargs(schema: Schema, /) -> _FieldKwargs:
+    """Build the `FieldInfo` kwargs of the numeric keywords set on the schema.
+
+    :param schema: Schema to extract constraints from.
+    :returns: Keyword arguments for `FieldInfo`.
+    """
+    kwargs: _FieldKwargs = {}
+
     if schema.minimum is not MISSING:
         kwargs["ge"] = schema.minimum
     if schema.exclusive_minimum is not MISSING:
@@ -102,16 +128,6 @@ def _constraint_kwargs(schema: Schema, /) -> _FieldKwargs:
         kwargs["lt"] = schema.exclusive_maximum
     if schema.multiple_of is not MISSING:
         kwargs["multiple_of"] = schema.multiple_of
-    if schema.pattern is not MISSING:
-        kwargs["pattern"] = schema.pattern
-
-    min_length = _get_min_length(schema)
-    if min_length is not None:
-        kwargs["min_length"] = min_length
-
-    max_length = _get_max_length(schema)
-    if max_length is not None:
-        kwargs["max_length"] = max_length
 
     return kwargs
 
@@ -149,19 +165,29 @@ def _get_min_length(schema: Schema, /) -> int | None:
     """Get min length based on schema type.
 
     :param schema: Schema to extract constraint from.
-    :returns: `minItems` for arrays, `minLength` for strings, `None` if unset.
+    :returns: `minItems` for arrays, `minLength` for strings, `None` if unset or when `type`
+        does not pin either.
     """
-    if schema.type == DataType.ARRAY:
+    if pins_type(schema, data_type=DataType.ARRAY):
         return unwrap(schema.min_items, default=None)
-    return unwrap(schema.min_length, default=None)
+
+    if pins_type(schema, data_type=DataType.STRING):
+        return unwrap(schema.min_length, default=None)
+
+    return None
 
 
 def _get_max_length(schema: Schema, /) -> int | None:
     """Get max length based on schema type.
 
     :param schema: Schema to extract constraint from.
-    :returns: `maxItems` for arrays, `maxLength` for strings, `None` if unset.
+    :returns: `maxItems` for arrays, `maxLength` for strings, `None` if unset or when `type`
+        does not pin either.
     """
-    if schema.type == DataType.ARRAY:
+    if pins_type(schema, data_type=DataType.ARRAY):
         return unwrap(schema.max_items, default=None)
-    return unwrap(schema.max_length, default=None)
+
+    if pins_type(schema, data_type=DataType.STRING):
+        return unwrap(schema.max_length, default=None)
+
+    return None
