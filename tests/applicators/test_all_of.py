@@ -920,6 +920,35 @@ class TestAllOfObjects:
                 "Value error, Value does not match `allOf[1]`",
                 id="nested-all-of",
             ),
+            pytest.param(
+                {
+                    "allOf": [
+                        {
+                            "type": "object",
+                            "properties": {"a": {"type": "integer"}},
+                            "not": {"properties": {"a": {"const": 1}}},
+                        }
+                    ]
+                },
+                {"a": 1},
+                "Value error, Value must not match the `not` schema",
+                id="object-branch-not",
+            ),
+            pytest.param(
+                {
+                    "allOf": [
+                        {
+                            "type": "object",
+                            "properties": {"a": {"type": "integer"}},
+                            "if": {"properties": {"a": {"const": 1}}},
+                            "then": {"required": ["b"]},
+                        }
+                    ]
+                },
+                {"a": 1},
+                "Value error, Value matches `if` but not `then`",
+                id="object-branch-if",
+            ),
         ],
     )
     def test_all_of_keeps_branch_applicators(
@@ -966,6 +995,20 @@ class TestAllOfObjects:
                 {"a": 1},
                 "Value error, Property name `a` does not satisfy the `propertyNames` schema",
                 id="applicator",
+            ),
+            pytest.param(
+                {"not": {"required": ["x"]}},
+                {"not": {"required": ["y"]}},
+                {"y": 1},
+                "Value error, Value must not match the `not` schema",
+                id="not",
+            ),
+            pytest.param(
+                {"if": {"required": ["a"]}, "then": {"required": ["x"]}},
+                {"if": {"required": ["c"]}, "then": {"required": ["y"]}},
+                {"c": 1},
+                "Value error, Value matches `if` but not `then`",
+                id="if",
             ),
         ],
     )
