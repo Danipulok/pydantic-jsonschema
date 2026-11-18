@@ -91,7 +91,7 @@ class Schema(BaseModel):
         serialize_by_alias=True,
     )
 
-    type: DataType | list[DataType] | MISSING = MISSING
+    type: DataType | Annotated[list[DataType], Field(min_length=1)] | MISSING = MISSING
     """The `type` keyword: allowed JSON type(s). [Validation §6.1.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.1.1)."""
 
     enum: list[Any] | MISSING = MISSING

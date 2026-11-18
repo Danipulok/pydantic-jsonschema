@@ -1,6 +1,6 @@
 """Tests for `schema.py` JSON Schema models."""
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pytest
 from inline_snapshot import snapshot
@@ -8,9 +8,7 @@ from pydantic import ValidationError
 
 from pydantic_jsonschema._compat import MISSING
 from pydantic_jsonschema.schema import DataType, Reference, Schema
-
-if TYPE_CHECKING:
-    from tests.conftest import SchemaRaw
+from tests.conftest import SchemaRaw
 
 __all__: list[str] = []
 
@@ -70,6 +68,22 @@ class TestSchemaTypes:
         schema = Schema(type=DataType.STRING)
         dumped: dict[str, Any] = schema.model_dump()
         assert dumped == snapshot({"type": "string"})
+
+    @pytest.mark.parametrize(
+        "schema_raw",
+        [
+            pytest.param({"type": []}, id="alone"),
+            pytest.param({"type": [], "enum": [1]}, id="beside-enum"),
+            pytest.param({"anyOf": [{"type": "string"}], "type": []}, id="beside-any-of"),
+        ],
+    )
+    def test_empty_type_list_is_rejected(self, schema_raw: SchemaRaw) -> None:
+        """The meta-schema requires at least one type, so an empty list fails to load."""
+        with pytest.raises(ValidationError) as exc_info:
+            Schema.model_validate(schema_raw)
+
+        failures = [(error["loc"][0], error["type"]) for error in exc_info.value.errors()]
+        assert ("type", "too_short") in failures
 
     def test_multi_type(self) -> None:
         """Test `type` as a list of types."""
