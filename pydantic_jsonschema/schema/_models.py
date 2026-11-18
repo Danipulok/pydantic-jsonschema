@@ -12,7 +12,7 @@ Validation: https://json-schema.org/draft/2020-12/json-schema-validation
 from __future__ import annotations as _annotations
 
 from enum import StrEnum
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
@@ -125,11 +125,11 @@ class Schema(BaseModel):
     dependent_schemas: dict[str, SchemaOrRefType] | MISSING = MISSING
     """The `dependentSchemas` keyword: subschemas applied when a property is present. [Core §10.2.2.4](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.4)."""
 
-    all_of: list[SchemaOrRefType] | MISSING = MISSING
+    all_of: Annotated[list[SchemaOrRefType], Field(min_length=1)] | MISSING = MISSING
     """The `allOf` keyword: must match every subschema. [Core §10.2.1.1](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.1)."""
-    any_of: list[SchemaOrRefType] | MISSING = MISSING
+    any_of: Annotated[list[SchemaOrRefType], Field(min_length=1)] | MISSING = MISSING
     """The `anyOf` keyword: must match at least one subschema. [Core §10.2.1.2](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.2)."""
-    one_of: list[SchemaOrRefType] | MISSING = MISSING
+    one_of: Annotated[list[SchemaOrRefType], Field(min_length=1)] | MISSING = MISSING
     """The `oneOf` keyword: must match exactly one subschema. [Core §10.2.1.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.3)."""
 
     # NOTE: `not` / `if` / `else` are Python reserved words, so the fields use a trailing

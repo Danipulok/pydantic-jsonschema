@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from inline_snapshot import snapshot
+from pydantic import ValidationError
 
 from pydantic_jsonschema._compat import MISSING
 from pydantic_jsonschema.schema import DataType, Reference, Schema
@@ -169,6 +170,22 @@ class TestSchemaComposition:
                 ],
             }
         )
+
+    @pytest.mark.parametrize(
+        "keyword",
+        [
+            pytest.param("allOf", id="all-of"),
+            pytest.param("anyOf", id="any-of"),
+            pytest.param("oneOf", id="one-of"),
+        ],
+    )
+    def test_empty_composition_is_rejected(self, keyword: str) -> None:
+        """The spec requires a non-empty array, so an empty one fails to load."""
+        with pytest.raises(ValidationError) as exc_info:
+            Schema.model_validate({keyword: []})
+
+        failures = [(error["loc"][0], error["type"]) for error in exc_info.value.errors()]
+        assert (keyword, "too_short") in failures
 
     def test_one_of(self) -> None:
         """Test `oneOf` composition."""

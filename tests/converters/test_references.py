@@ -5,7 +5,6 @@ from typing import Annotated, Final
 import pytest
 from inline_snapshot import snapshot
 from pydantic import BaseModel, JsonValue, StringConstraints, ValidationError
-from pydantic.errors import PydanticSchemaGenerationError
 
 from pydantic_jsonschema import (
     SchemaConverter,
@@ -1263,13 +1262,6 @@ class TestReferenceSiblings:
 
         fields = model.model_fields
         assert fields["titled"].annotation == fields["plain"].annotation
-
-    def test_empty_all_of_in_a_field_fails_as_before(self) -> None:
-        """An empty `allOf` in a field fails in Pydantic, as before `$ref` siblings were checked."""
-        schema = Schema.model_validate({"type": "object", "properties": {"p": {"allOf": []}}})
-
-        with pytest.raises(PydanticSchemaGenerationError):
-            to_model(schema)
 
     def test_annotation_siblings_of_a_schema_node_apply(self) -> None:
         """`title`, `description` and `default` beside a `$ref` parsed as a `Schema` apply."""

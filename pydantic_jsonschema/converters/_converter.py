@@ -1687,11 +1687,7 @@ class SchemaConverter:
         :param schema: Schema declaring `allOf`.
         :returns: The nested model, or the `ForwardRef` checked by the rest of the schema.
         """
-        branches: list[Schema | Reference] = unwrap(schema.all_of, default=[])
-        if not branches:
-            return self._convert_nested_schema(schema)
-
-        producer, *rest = branches
+        producer, *rest = unwrap(schema.all_of, default=[])
         if not isinstance(producer, Reference) or not self._is_building(producer.ref):
             return self._convert_nested_schema(schema)
 
