@@ -36,7 +36,7 @@ them directly on your own Pydantic models.
 | `patternProperties` | `PatternProperties` | property values whose name matches a regex |
 | `propertyNames` | `PropertyNames` | every property name |
 | object keywords without `type` | `IfObject` | the whole instance, when it is an object |
-| numeric / string keywords that `type` does not pin | `IfType` | the whole instance, when it is a number / a string |
+| number / string / array keywords that `type` does not pin | `IfType` | the whole instance, when it is of the keywords' type |
 
 `Not`, `OneOf`, `AllOf`, `IfThenElse` and `DependentSchemas` are *in-place* applicators (they
 apply to the whole instance); `Contains`, `PrefixItems`, `PatternProperties` and `PropertyNames`

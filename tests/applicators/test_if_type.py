@@ -190,6 +190,62 @@ class TestIfType:
                 "greater_than_equal",
                 id="any-of",
             ),
+            pytest.param(
+                {"minItems": 2},
+                ["a", 5, [1, 2]],
+                [1],
+                "too_short",
+                id="min-items",
+            ),
+            pytest.param(
+                {"maxItems": 1},
+                ["ab", 5, [1]],
+                [1, 2],
+                "too_long",
+                id="max-items",
+            ),
+            pytest.param(
+                {"items": {"type": "integer"}},
+                ["s", 5, [1]],
+                ["a"],
+                "int_parsing",
+                id="items",
+            ),
+            pytest.param(
+                {"prefixItems": [{"type": "integer"}]},
+                ["s", [1, "x"]],
+                ["a"],
+                "value_error",
+                id="prefix-items",
+            ),
+            pytest.param(
+                {"contains": {"type": "integer"}},
+                ["s", [1]],
+                ["a"],
+                "value_error",
+                id="contains",
+            ),
+            pytest.param(
+                {"uniqueItems": True},
+                ["aa", [1, 2]],
+                [1, 1],
+                "value_error",
+                id="unique-items",
+            ),
+            pytest.param(
+                {"type": ["string", "array"], "maxItems": 1},
+                ["abc", [1]],
+                [1, 2],
+                "too_long",
+                id="type-list-items",
+            ),
+            pytest.param(
+                {"type": ["array", "null"], "items": {"type": "integer"}},
+                [None, [1]],
+                ["a"],
+                "int_parsing",
+                id="nullable-array",
+            ),
         ],
     )
     def test_keywords_check_their_type_only(
@@ -264,6 +320,7 @@ class TestIfType:
         ("field_schema", "passing", "failing"),
         [
             pytest.param({"not": {"minimum": 5}}, 3, "s", id="not"),
+            pytest.param({"not": {"items": {"type": "string"}}}, [1], ["a"], id="not-items"),
             pytest.param(
                 {"if": {"minimum": 5}, "then": {"type": "integer"}},
                 3,
@@ -289,6 +346,7 @@ class TestIfType:
                 id="all-of-branch",
             ),
             pytest.param({"allOf": [{}], "minLength": 2}, 5, "a", id="all-of-sibling"),
+            pytest.param({"allOf": [{}], "maxItems": 1}, 5, [1, 2], id="all-of-sibling-items"),
             pytest.param(
                 {"type": "array", "prefixItems": [{"minimum": 5}]},
                 ["s"],
@@ -394,3 +452,55 @@ class TestIfType:
                 "title": "X",
             }
         )
+
+    def test_array_keywords_dump_as_json_schema(self) -> None:
+        """The array keywords dump under their JSON Schema names, beside the host's own."""
+        model = _field_model(
+            {
+                "type": ["string", "array"],
+                "items": {"type": "integer"},
+                "minItems": 1,
+                "maxItems": 2,
+            }
+        )
+
+        assert model.model_json_schema()["properties"]["x"] == snapshot(
+            {
+                "anyOf": [{"type": "string"}, {"items": {}, "type": "array"}],
+                "items": {"type": "integer"},
+                "maxItems": 2,
+                "minItems": 1,
+                "title": "X",
+            }
+        )
+
+    def test_array_keywords_check_a_coerced_tuple(self) -> None:
+        """A tuple the host turns into a list is checked as that list."""
+        model = _field_model({"type": ["array", "null"], "maxItems": 1})
+
+        assert model.model_validate({"x": (1,)}).model_dump() == {"x": [1]}
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"x": (1, 2)})
+
+        assert [error["type"] for error in dump_errors(exc_info.value)] == ["too_long"]
+
+    def test_array_keywords_refer_back_to_their_def(self) -> None:
+        """Untyped `items` referring back to the def it sits in resolves once the def is built."""
+        model = to_model(
+            Schema.model_validate(
+                {
+                    "$defs": {"T": {"items": {"$ref": "#/$defs/T"}, "maxItems": 2}},
+                    "type": "object",
+                    "properties": {"x": {"$ref": "#/$defs/T"}},
+                    "required": ["x"],
+                }
+            )
+        )
+
+        assert model.model_validate({"x": [[], [[]]]}).model_dump() == {"x": [[], [[]]]}
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"x": [[1, 2, 3]]})
+
+        assert [error["type"] for error in dump_errors(exc_info.value)] == ["too_long"]

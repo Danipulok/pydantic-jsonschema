@@ -28,6 +28,16 @@ _KEYWORD_FIELDS: Final[dict[DataType, tuple[str, ...]]] = {
         "max_length",
         "pattern",
     ),
+    DataType.ARRAY: (
+        "items",
+        "prefix_items",
+        "contains",
+        "min_items",
+        "max_items",
+        "unique_items",
+        "min_contains",
+        "max_contains",
+    ),
 }
 
 _FAMILY_TYPES: Final[dict[DataType, frozenset[DataType]]] = {
