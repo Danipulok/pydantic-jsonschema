@@ -727,7 +727,7 @@ class SchemaConverter:
         :param base_classes: Base classes from `allOf` composition.
         :returns: Pydantic model class.
         """
-        fields = self._build_fields(schema)
+        fields = self._build_fields(schema, base_classes=base_classes)
         model_config = self._build_model_config(schema)
 
         applicators = self._build_object_applicators(schema)
@@ -1138,21 +1138,45 @@ class SchemaConverter:
         self,
         schema: Schema,
         /,
+        *,
+        base_classes: tuple[type[BaseModel], ...],
     ) -> dict[str, tuple[Any, FieldInfo]]:
-        """Build Pydantic fields from schema properties."""
+        """Build Pydantic fields from schema properties, keyed by field name.
+
+        A property renamed by `_field_name` carries its name as `alias`, so it validates and dumps
+        under it, and one an `allOf` base already declares keeps that base's field name, so it
+        overrides it.
+        """
         fields: dict[str, tuple[Any, FieldInfo]] = {}
 
         properties: dict[str, Reference | Schema] = unwrap(schema.properties, default={})
         required_names: list[str] = unwrap(schema.required, default=[])
+        inherited: dict[str, str] = {
+            field.alias or name: name
+            for base in base_classes
+            for name, field in base.model_fields.items()
+        }
+        taken: set[str] = {*properties, *inherited.values()}
+        renamed: set[str] = {name for alias, name in inherited.items() if alias != name}
 
-        for field_name, field_schema in properties.items():
-            with self._track_path(f"properties.{field_name}", pointer=("properties", field_name)):
+        for property_name, field_schema in properties.items():
+            field_name: str = inherited.get(property_name) or _field_name(
+                property_name,
+                taken=taken,
+                renamed=renamed,
+            )
+
+            with self._track_path(
+                f"properties.{property_name}",
+                pointer=("properties", property_name),
+            ):
                 field = self._property_field(
                     field_schema,
-                    field_kind="required" if field_name in required_names else "optional",
+                    field_kind="required" if property_name in required_names else "optional",
+                    alias=None if field_name == property_name else property_name,
                 )
 
-                fields[field_name] = (field.annotation, field)
+            fields[field_name] = (field.annotation, field)
 
         return fields
 
@@ -1162,6 +1186,7 @@ class SchemaConverter:
         /,
         *,
         field_kind: FieldKindType,
+        alias: str | None,
     ) -> FieldInfo:
         """Convert one `properties` entry to a field.
 
@@ -1174,6 +1199,7 @@ class SchemaConverter:
                 field_schema,
                 field_kind=field_kind,
                 metadata_fallback=self._first_branch_definition(field_schema),
+                alias=alias,
             )
 
         annotations: dict[str, Any] = {
@@ -1187,6 +1213,7 @@ class SchemaConverter:
             self._defs_cache.get(field_schema.ref, Schema()).model_copy(update=annotations),
             field_kind=field_kind,
             annotation=self._reference_annotation(field_schema),
+            alias=alias,
         )
 
     def _first_branch_definition(self, schema: Schema, /) -> Schema | None:
@@ -1356,7 +1383,11 @@ class SchemaConverter:
         /,
     ) -> ConfigDict:
         """Build model config from schema."""
-        config: ConfigDict = {}
+        # A renamed field carries its property name as `alias`, which the dump and
+        #  `model_json_schema` use. The renamed `model_validate_` would still warn under the
+        #  default `protected_namespaces`, a prefix match against `model_validate`.
+        #  https://github.com/pydantic/pydantic/blob/ea492e04654ab7f7a1f9287ea912419452ead4dd/pydantic/_internal/_config.py#L293
+        config: ConfigDict = {"serialize_by_alias": True, "protected_namespaces": ()}
 
         if schema.additional_properties is False:
             config["extra"] = "forbid"
@@ -1373,6 +1404,7 @@ class SchemaConverter:
         field_kind: FieldKindType,
         annotation: AnnotationType | None = None,
         metadata_fallback: Schema | None = None,
+        alias: str | None = None,
     ) -> FieldInfo:
         """Convert schema to Pydantic FieldInfo.
 
@@ -1381,6 +1413,7 @@ class SchemaConverter:
         :param annotation: Pre-computed annotation: the model a `$ref` resolves to, which checks
             the definition's constraints itself, so the field takes only its metadata.
         :param metadata_fallback: Schema whose field metadata applies where `schema` sets none.
+        :param alias: Property name of a field named otherwise.
         :returns: Pydantic FieldInfo.
         """
         if annotation is None:
@@ -1406,6 +1439,12 @@ class SchemaConverter:
         return FieldInfo(
             annotation=valid_annotation,
             default=default,
+            # `FieldInfo` itself, unlike `Field()`, leaves both aliases unset for a bare `alias`.
+            #  `FieldInfo(alias="_id").validation_alias` prints `None`, and `{"_id": "v"}` fails
+            #  as `missing`.
+            alias=alias,
+            validation_alias=alias,
+            serialization_alias=alias,
             **kwargs,
         )
 
@@ -1759,8 +1798,18 @@ class SchemaConverter:
         union_args = self._union_args(one_of_schemas, kind="oneOf")
         discriminator = discriminator_property(one_of_schemas, defs_cache=self._defs_cache)
 
-        if discriminator is not None and len(union_args) >= _MIN_DISCRIMINATED_UNION_MEMBERS:
-            discriminated = Annotated[make_union(union_args), Field(discriminator=discriminator)]  # type: ignore[valid-type]
+        tag_field = (
+            None
+            if discriminator is None
+            else _tag_field_name(
+                zip(union_args, one_of_schemas, strict=True),
+                tag=discriminator,
+                defs_cache=self._defs_cache,
+            )
+        )
+
+        if tag_field is not None and len(union_args) >= _MIN_DISCRIMINATED_UNION_MEMBERS:
+            discriminated = Annotated[make_union(union_args), Field(discriminator=tag_field)]  # type: ignore[valid-type]
             return cast("type", discriminated)
 
         one_of_validator = self._register(OneOf(branches=union_args))
@@ -1785,7 +1834,7 @@ class SchemaConverter:
         if schema.type is not MISSING:
             return self._host_type_guard(schema.type)
 
-        if _declares_object_keyword(schema) and _fields_convert(schema):
+        if _declares_object_keyword(schema):
             # `not` and `if` / `then` / `else` stay on the raw value, beside `IfObject`, which also
             #  checks a value that is not an object; the branch would check an object twice.
             update: dict[str, Any] = {
@@ -1995,15 +2044,36 @@ def _declares_object_keyword(schema: Schema, /) -> bool:
     return any(getattr(schema, keyword) is not MISSING for keyword in _OBJECT_KEYWORDS)
 
 
-def _fields_convert(schema: Schema, /) -> bool:
-    """Tell whether every `properties` name can become a field of a generated model.
+def _field_name(property_name: str, /, *, taken: set[str], renamed: set[str]) -> str:
+    """Name the field of a property: the property name, unless Pydantic refuses or misreads it.
 
-    Pydantic refuses a leading underscore and some `BaseModel` members, and warns on the rest, so
-    an untyped schema naming either keeps converting to `Any`, as it did before object keywords
-    applied to it.
+    Pydantic refuses a leading underscore and a `model_` member, and reads `model_config` as the
+    config, so such a name loses its leading underscores and takes one trailing underscore, plus
+    one more while the name is taken.
+    So does a name a base already gives another property's field, or the two would share it.
+    Another `BaseModel` member (`copy`, `schema`) stays, with Pydantic's shadowing warning.
+
+    :param property_name: The property name, kept as the field's `alias` when it changes.
+    :param taken: Every name the model already uses; the new name is added to it.
+    :param renamed: The field names a base gives under another property name.
+    :returns: The field name.
     """
-    names: dict[str, Schema | Reference] = unwrap(schema.properties, default={})
-    return not any(name.startswith("_") or hasattr(BaseModel, name) for name in names)
+    refused: bool = (
+        property_name.startswith("_")
+        or (property_name.startswith("model_") and hasattr(BaseModel, property_name))
+        or property_name in renamed
+    )
+
+    if not refused:
+        return property_name
+
+    field_name = f"{property_name.lstrip('_') or 'field'}_"
+
+    while field_name in taken:
+        field_name += "_"
+
+    taken.add(field_name)
+    return field_name
 
 
 def _distinct_bases(bases: Iterable[type[BaseModel]], /) -> tuple[type[BaseModel], ...]:
@@ -2014,13 +2084,98 @@ def _distinct_bases(bases: Iterable[type[BaseModel]], /) -> tuple[type[BaseModel
 
     :param bases: Object branch models in branch order.
     :returns: The bases a combined model can inherit.
+    :raises SchemaConversionError: If two bases give one field name to two properties.
     """
     unique = tuple(dict.fromkeys(bases))
-    return tuple(
+    distinct = tuple(
         base
         for base in unique
         if not any(other is not base and issubclass(other, base) for other in unique)
     )
+    _check_field_names(distinct)
+
+    return distinct
+
+
+def _check_field_names(bases: Iterable[type[BaseModel]], /) -> None:
+    """Refuse `allOf` object branches that give one field name to two properties.
+
+    The combined model keeps one field per name, so `_id` (field `id_`) in one branch and `id_` in
+    another would share it: one property's value is read for the other, and a branch closing its
+    extra keys rejects the other key.
+
+    :param bases: The object branch models a combined model inherits.
+    :raises SchemaConversionError: If two branches give one field name to two property names.
+    """
+    property_names: dict[str, str] = {}
+    fields = (
+        (field_name, field.alias or field_name)
+        for base in bases
+        for field_name, field in base.model_fields.items()
+    )
+
+    for field_name, property_name in fields:
+        known = property_names.setdefault(field_name, property_name)
+        if known == property_name:
+            continue
+
+        msg = (
+            f"`allOf` branches give the field name `{field_name}` to two properties, "
+            f"`{known}` and `{property_name}`"
+        )
+        raise SchemaConversionError(msg)
+
+
+def _tag_field_name(
+    branches: Iterable[tuple[type | ForwardRef, Schema | Reference]],
+    /,
+    *,
+    tag: str,
+    defs_cache: dict[Ref, Schema],
+) -> str | None:
+    """Return the tag when every branch keeps it as a field of that name, for the discriminator.
+
+    Pydantic reads a tag by field name before alias, so under a renamed tag an extra `type_` key
+    beside `_type` overrides it, and such a union falls back to `OneOf`.
+    https://github.com/pydantic/pydantic/blob/ea492e04654ab7f7a1f9287ea912419452ead4dd/pydantic/_internal/_discriminated_union.py#L234
+
+    A branch still being built is a `ForwardRef`, so its tag field is named from its schema, and
+    is unknown when it has `allOf` bases.
+
+    :param branches: Each `oneOf` branch annotation with the sub-schema it was built from.
+    :param tag: The tag property name.
+    :param defs_cache: Resolved local `$defs`, which hold the schema of a branch still being built.
+    :returns: The tag, or `None` when a branch renames it or its field names are unknown.
+    """
+    field_names: set[str] = set()
+    for annotation, branch_schema in branches:
+        model = get_args(annotation)[0] if get_origin(annotation) is Annotated else annotation
+        if isinstance(model, type) and issubclass(model, BaseModel):
+            field_names.update(
+                name for name, field in model.model_fields.items() if (field.alias or name) == tag
+            )
+            continue
+
+        schema = (
+            defs_cache.get(branch_schema.ref)
+            if isinstance(branch_schema, Reference)
+            else branch_schema
+        )
+
+        if schema is None or schema.all_of is not MISSING:
+            return None
+
+        field_name = _field_name(
+            tag,
+            taken=set(),
+            renamed=set(),
+        )
+        field_names.add(field_name)
+
+    if field_names != {tag}:
+        return None
+
+    return tag
 
 
 def _is_object_model(annotation: type | ForwardRef, /) -> bool:

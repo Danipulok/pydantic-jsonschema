@@ -1,7 +1,5 @@
 """Tests for discriminated `oneOf` unions."""
 
-from typing import TYPE_CHECKING
-
 import pytest
 from inline_snapshot import snapshot
 from pydantic import ValidationError
@@ -10,10 +8,7 @@ from pydantic_jsonschema import (
     to_model,
 )
 from pydantic_jsonschema.schema import Schema
-from tests.conftest import dump_errors
-
-if TYPE_CHECKING:
-    from tests.conftest import SchemaRaw
+from tests.conftest import SchemaRaw, dump_errors
 
 __all__: list[str] = []
 
@@ -565,3 +560,206 @@ class TestDiscriminatedOneOf:
                 }
             ]
         )
+
+    @pytest.mark.parametrize(
+        ("tag", "field_name"),
+        [
+            pytest.param("_type", "type_", id="leading-underscore"),
+            pytest.param("model_config", "model_config_", id="model-member"),
+        ],
+    )
+    def test_renamed_tag_falls_back_to_one_of(
+        self,
+        *,
+        tag: str,
+        field_name: str,
+    ) -> None:
+        """A tag renamed as a field routes by its property, even beside a key spelled like the field."""
+        schema_raw: SchemaRaw = {
+            "oneOf": [
+                {
+                    "type": "object",
+                    "properties": {tag: {"const": "cat"}, "meow": {"type": "boolean"}},
+                    "required": [tag, "meow"],
+                },
+                {
+                    "type": "object",
+                    "properties": {tag: {"const": "dog"}, "bark": {"type": "boolean"}},
+                    "required": [tag, "bark"],
+                },
+            ],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        document = {tag: "dog", field_name: "fish", "bark": False}
+        assert model.model_validate(document).model_dump() == document
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({tag: "fish"})
+
+        assert [error["type"] for error in exc_info.value.errors()] == ["value_error"]
+
+    def test_tag_spelled_like_a_renamed_base_field_routes_by_tag(self) -> None:
+        """A tag spelled like the field a base gives `_id` routes by the tag, not by `_id`."""
+        base: SchemaRaw = {"type": "object", "properties": {"_id": {"type": "string"}}}
+        schema_raw: SchemaRaw = {
+            "oneOf": [
+                {
+                    "type": "object",
+                    "allOf": [base],
+                    "properties": {"id_": {"const": "cat"}},
+                    "required": ["id_"],
+                },
+                {
+                    "type": "object",
+                    "allOf": [base],
+                    "properties": {"id_": {"const": "dog"}},
+                    "required": ["id_"],
+                },
+            ],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        dog = model.model_validate({"id_": "dog", "_id": "cat"})
+        assert dog.model_dump() == snapshot({"_id": "cat", "id_": "dog"})
+
+    def test_tag_with_two_field_names_falls_back_to_one_of(self) -> None:
+        """Branches that give the tag two field names fall back to `OneOf`."""
+        schema_raw: SchemaRaw = {
+            "oneOf": [
+                {
+                    "type": "object",
+                    "properties": {"_type": {"const": "cat"}, "type_": {"type": "string"}},
+                    "required": ["_type"],
+                },
+                {
+                    "type": "object",
+                    "properties": {"_type": {"const": "dog"}},
+                    "required": ["_type"],
+                },
+            ],
+        }
+        schema = Schema.model_validate(schema_raw)
+        model = to_model(schema)
+
+        dog = model.model_validate({"_type": "dog"})
+        assert dog.model_dump() == {"_type": "dog"}
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"_type": "fish"})
+
+        assert dump_errors(exc_info.value) == snapshot(
+            [
+                {
+                    "type": "value_error",
+                    "loc": (),
+                    "msg": "Value error, Input matches 0 `oneOf` branches, expected exactly 1",
+                    "input": {"_type": "fish"},
+                }
+            ]
+        )
+
+    @pytest.mark.parametrize(
+        ("tag", "error_type"),
+        [
+            pytest.param("kind", "union_tag_invalid", id="kept"),
+            pytest.param("_type", "value_error", id="renamed"),
+        ],
+    )
+    def test_branches_still_being_built_route_by_tag(
+        self,
+        *,
+        tag: str,
+        error_type: str,
+    ) -> None:
+        """A `oneOf` whose every `$ref` branch is still being built routes by its tag, natively when it is kept."""
+        defs: dict[str, SchemaRaw] = {
+            "B": {
+                "type": "object",
+                "properties": {tag: {"const": "b"}, "c": {"$ref": "#/$defs/C"}},
+                "required": [tag, "c"],
+            },
+            "C": {
+                "type": "object",
+                "properties": {tag: {"const": "c"}, "x": {"$ref": "#/$defs/X"}},
+                "required": [tag, "x"],
+            },
+            "X": {"oneOf": [{"$ref": "#/$defs/B"}, {"$ref": "#/$defs/C"}]},
+        }
+        schema = Schema.model_validate({"$defs": defs, "$ref": "#/$defs/B"})
+        model = to_model(schema)
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({tag: "b", "c": {tag: "c", "x": {tag: "z"}}})
+
+        assert [error["type"] for error in exc_info.value.errors()] == [error_type]
+
+    @pytest.mark.parametrize(
+        "second_branch",
+        [
+            pytest.param(
+                {"_type": {"const": "b"}, "type_": {"type": "string"}},
+                id="same-field-name",
+            ),
+            pytest.param({"_type": {"const": "b"}}, id="two-field-names"),
+        ],
+    )
+    def test_branch_still_being_built_with_a_like_named_property(
+        self,
+        *,
+        second_branch: dict[str, SchemaRaw],
+    ) -> None:
+        """A branch still being built that declares `type_` beside the tag `_type` names the tag `type__`."""
+        defs: dict[str, SchemaRaw] = {
+            "A": {
+                "type": "object",
+                "properties": {
+                    "_type": {"const": "a"},
+                    "type_": {"type": "string"},
+                    "child": {"$ref": "#/$defs/U"},
+                },
+                "required": ["_type", "type_"],
+            },
+            "B": {"type": "object", "properties": second_branch, "required": ["_type"]},
+            "U": {"oneOf": [{"$ref": "#/$defs/A"}, {"$ref": "#/$defs/B"}]},
+        }
+        schema = Schema.model_validate({"$defs": defs, "$ref": "#/$defs/U"})
+        model = to_model(schema)
+
+        document = {"_type": "a", "type_": "x", "child": {"_type": "b"}}
+        assert model.model_validate(document).model_dump(exclude_unset=True) == document
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"_type": "z"})
+
+        assert [error["type"] for error in exc_info.value.errors()] == ["value_error"]
+
+    def test_branch_still_being_built_with_all_of_falls_back_to_one_of(self) -> None:
+        """A branch still being built with `allOf` bases, whose field names are unknown, falls back to `OneOf`."""
+        defs: dict[str, SchemaRaw] = {
+            "Base": {"type": "object", "properties": {"_kind": {"type": "string"}}},
+            "A": {
+                "type": "object",
+                "allOf": [{"$ref": "#/$defs/Base"}],
+                "properties": {"kind": {"const": "a"}, "child": {"$ref": "#/$defs/U"}},
+                "required": ["kind", "child"],
+            },
+            "B": {
+                "type": "object",
+                "properties": {"kind": {"const": "b"}},
+                "required": ["kind"],
+            },
+            "U": {"oneOf": [{"$ref": "#/$defs/A"}, {"$ref": "#/$defs/B"}]},
+        }
+        schema = Schema.model_validate({"$defs": defs, "$ref": "#/$defs/U"})
+        model = to_model(schema)
+
+        document = {"kind": "a", "_kind": "b", "child": {"kind": "b"}}
+        assert model.model_validate(document).model_dump(exclude_unset=True) == document
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"kind": "z"})
+
+        assert [error["type"] for error in exc_info.value.errors()] == ["value_error"]
