@@ -159,15 +159,15 @@ but do not affect the generated model.
   own, since the combined model keeps one `extra` setting. So is a branch with a property that
   another branch or the schema's own `properties` declares again, since the model keeps one field
   per name.
+- A renamed property in one `allOf` branch and a property spelled like its field name in another
+  (`_id`, whose field is `id_`, and `id_`) raise `SchemaConversionError`, since the combined model
+  would give both one field.
 - `patternProperties` validates the values of matching property names, but combined with
   `additionalProperties: false` a pattern-matched extra key is still rejected by `extra="forbid"`
   (the generated model cannot express "allow keys matching this regex").
   With a schema-valued `additionalProperties` and no `properties`, an object typed `object`
   validates every value against `additionalProperties`, pattern-matched keys included. An untyped
   object with `patternProperties` ignores `additionalProperties`, `false` included.
-- Object keywords without `type` are not checked when `properties` names a property that a
-  Pydantic field refuses or warns on: a leading underscore (`_id`) or a `BaseModel` attribute (`copy`,
-  `model_validate`). Such a schema maps to `Any`, and `not` over it rejects every value.
 - Object keywords on a schema without `type` are checked at validation time, but
   `model_json_schema()` does not emit them.
 
@@ -218,6 +218,33 @@ Post = to_model(schema, model_name="Post")
 post = Post(title="Hello World", views=100)
 print(post.title)
 #> Hello World
+```
+
+A property name that Pydantic refuses as a field name (a leading underscore, or a `BaseModel`
+attribute starting with `model_`, such as `model_config`) gets a field name without the leading
+underscores, or `field` when nothing is left, and with one trailing underscore, plus one more while
+another field uses it: `_id` becomes `id_`, `_` becomes `field_`, and `_id` beside an `id_`
+property becomes `id__`. A property spelled like a field an `allOf` base gives a renamed property
+(`id_` beside a base `_id`) is renamed the same way. Each
+renamed field keeps the property name as its `alias`, so `model_fields` maps field names to
+property names. Validation, the dump and `model_json_schema()` use the property name. Another
+`BaseModel` attribute, such as `copy`, stays the field name, and Pydantic warns that it shadows
+the attribute:
+
+```python title="renamed_property.py"
+from pydantic_jsonschema import Schema, to_model
+
+schema = Schema.model_validate(
+    {"type": "object", "properties": {"_id": {"type": "string"}, "model_config": {"type": "string"}}}
+)
+
+Document = to_model(schema, model_name="Document")
+
+document = Document.model_validate({"_id": "42", "model_config": "draft"})
+print(document.id_, document.model_config_)
+#> 42 draft
+print(document.model_dump())
+#> {'_id': '42', 'model_config': 'draft'}
 ```
 
 ### Arrays
@@ -365,7 +392,8 @@ via `Field(discriminator=...)`.
 Pydantic then routes to a single branch by the tag value instead of probing every branch:
 validation is faster and errors point at the selected branch rather than reporting an
 ambiguous match. When the branches do not form a tagged union, the converter falls back to
-the exactly-one-branch validator above.
+the exactly-one-branch validator above. So does a tag renamed as a field (`_type`), since
+Pydantic reads a tag by field name first and an extra `type_` key would override it.
 
 ```python title="discriminated_one_of.py"
 from pydantic import ValidationError

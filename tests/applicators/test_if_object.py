@@ -211,23 +211,54 @@ class TestIfObject:
         [
             pytest.param("_id", id="leading-underscore"),
             pytest.param("model_validate", id="model-method"),
-            pytest.param("copy", id="shadowed-attribute"),
         ],
     )
-    def test_object_keywords_untyped_unusable_field_name(self, property_name: str) -> None:
-        """Test an untyped schema naming a property no model field can carry stays `Any`."""
+    def test_object_keywords_untyped_renamed_field(self, property_name: str) -> None:
+        """Test an untyped schema checks a property whose field Pydantic would refuse."""
         schema = Schema.model_validate(
             {
                 "type": "object",
-                "properties": {"a": {"properties": {property_name: {"type": "string"}}}},
+                "properties": {
+                    "a": {
+                        "properties": {property_name: {"type": "string"}},
+                        "required": [property_name],
+                    }
+                },
                 "required": ["a"],
             }
         )
         model = to_model(schema)
 
-        assert model.model_validate({"a": {property_name: 1}}).model_dump() == {
-            "a": {property_name: 1}
+        assert model.model_validate({"a": {property_name: "v"}}).model_dump() == {
+            "a": {property_name: "v"}
         }
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"a": {property_name: 1}})
+
+        assert [error["type"] for error in dump_errors(exc_info.value)] == ["string_type"]
+
+    def test_object_keywords_untyped_shadowing_property(self) -> None:
+        """Test an untyped schema checks a property shadowing a `BaseModel` attribute, with its warning."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {
+                    "a": {"properties": {"copy": {"type": "string"}}, "required": ["copy"]}
+                },
+                "required": ["a"],
+            }
+        )
+
+        with pytest.warns(UserWarning, match='Field name "copy"'):
+            model = to_model(schema)
+
+        assert model.model_validate({"a": {"copy": "v"}}).model_dump() == {"a": {"copy": "v"}}
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"a": {"copy": 1}})
+
+        assert [error["type"] for error in dump_errors(exc_info.value)] == ["string_type"]
 
     def test_object_keywords_untyped_non_object(self) -> None:
         """Test an untyped schema's object keywords pass every non-object value."""

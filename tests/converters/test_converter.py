@@ -369,6 +369,332 @@ class TestObjectApplicators:
         ]
 
 
+class TestPropertyNames:
+    """Tests for properties whose name Pydantic refuses as a field name."""
+
+    @pytest.mark.parametrize(
+        "property_name",
+        [
+            pytest.param("_id", id="leading-underscore"),
+            pytest.param("__x", id="double-underscore"),
+            pytest.param("_", id="underscore-only"),
+            pytest.param("model_validate", id="model-method"),
+            pytest.param("model_config", id="model-config"),
+        ],
+    )
+    def test_renamed_property_round_trips(self, property_name: str) -> None:
+        """Test a refused name validates, dumps and documents under the property name."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {property_name: {"type": "string"}},
+                "required": [property_name],
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({property_name: "v"}).model_dump() == {property_name: "v"}
+        assert list(model.model_json_schema()["properties"]) == [property_name]
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({})
+
+        assert [error["type"] for error in dump_errors(exc_info.value)] == ["missing"]
+
+    def test_shadowing_property_keeps_its_name(self) -> None:
+        """Test a `BaseModel` attribute outside `model_` stays the field name, as before."""
+        schema = Schema.model_validate(
+            {"type": "object", "properties": {"copy": {"type": "string"}}}
+        )
+
+        with pytest.warns(UserWarning, match='Field name "copy"'):
+            model = to_model(schema)
+
+        assert list(model.model_fields) == ["copy"]
+
+    def test_renamed_field_avoids_a_declared_name(self) -> None:
+        """Test `_id` beside `id_` keeps both properties."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"_id": {"type": "string"}, "id_": {"type": "integer"}},
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"_id": "a", "id_": 1}).model_dump() == snapshot(
+            {"_id": "a", "id_": 1}
+        )
+        assert {name: field.alias for name, field in model.model_fields.items()} == snapshot(
+            {"id__": "_id", "id_": None}
+        )
+
+    def test_renamed_field_beside_a_plain_name_in_another_branch(self) -> None:
+        """Test `_id` in one `allOf` branch and `id` in another keep both values."""
+        schema = Schema.model_validate(
+            {
+                "allOf": [
+                    {"type": "object", "properties": {"_id": {"type": "string"}}},
+                    {"type": "object", "properties": {"id": {"type": "integer"}}},
+                ]
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"_id": "a", "id": 1}).model_dump() == snapshot(
+            {"_id": "a", "id": 1}
+        )
+
+    def test_renamed_property_overrides_its_all_of_base(self) -> None:
+        """Test a property beside `allOf` replaces the base field of the same refused name."""
+        schema = Schema.model_validate(
+            {
+                "allOf": [{"type": "object", "properties": {"_id": {"type": "string"}}}],
+                "type": "object",
+                "properties": {"_id": {"type": "string", "minLength": 2}},
+                "required": ["_id"],
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"_id": "ab"}).model_dump() == snapshot({"_id": "ab"})
+        assert {name: field.alias for name, field in model.model_fields.items()} == snapshot(
+            {"id_": "_id"}
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"_id": "a"})
+
+        assert [error["type"] for error in dump_errors(exc_info.value)] == ["string_too_short"]
+
+    @pytest.mark.parametrize(
+        ("property_name", "field_name"),
+        [
+            pytest.param("_id", "id_", id="leading-underscore"),
+            pytest.param("__x", "x_", id="double-underscore"),
+            pytest.param("_", "field_", id="underscore-only"),
+            pytest.param("model_validate", "model_validate_", id="model-method"),
+            pytest.param("model_name", "model_name", id="model-prefix-not-a-member"),
+        ],
+    )
+    def test_field_name_of_a_property(self, property_name: str, field_name: str) -> None:
+        """Test which field name a property gets."""
+        schema = Schema.model_validate(
+            {"type": "object", "properties": {property_name: {"type": "string"}}}
+        )
+        model = to_model(schema)
+
+        assert list(model.model_fields) == [field_name]
+
+    def test_renamed_fields_of_two_properties_stay_apart(self) -> None:
+        """Test `_id` and `__id` get two fields, both checked."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {"_id": {"type": "string"}, "__id": {"type": "integer"}},
+                "required": ["_id", "__id"],
+            }
+        )
+        model = to_model(schema)
+
+        assert {name: field.alias for name, field in model.model_fields.items()} == snapshot(
+            {"id_": "_id", "id__": "__id"}
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"_id": 1, "__id": 1})
+
+        assert [error["type"] for error in dump_errors(exc_info.value)] == ["string_type"]
+
+    def test_renamed_ref_property_validates_under_its_name(self) -> None:
+        """Test a `$ref` property with a refused name validates under the property name."""
+        schema = Schema.model_validate(
+            {
+                "$defs": {"S": {"type": "string"}},
+                "type": "object",
+                "properties": {"_id": {"$ref": "#/$defs/S"}},
+                "required": ["_id"],
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"_id": "ab"}).model_dump() == snapshot({"_id": "ab"})
+
+    def test_renamed_property_avoids_a_base_field(self) -> None:
+        """Test an own `_id` beside an `allOf` base declaring `id_` keeps the base field."""
+        schema = Schema.model_validate(
+            {
+                "allOf": [
+                    {
+                        "type": "object",
+                        "properties": {"id_": {"type": "integer"}},
+                        "required": ["id_"],
+                    }
+                ],
+                "type": "object",
+                "properties": {"_id": {"type": "string"}},
+                "required": ["_id"],
+            }
+        )
+        model = to_model(schema)
+
+        assert {name: field.alias for name, field in model.model_fields.items()} == snapshot(
+            {"id_": None, "id__": "_id"}
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"_id": "a", "id_": "x"})
+
+        assert [error["type"] for error in dump_errors(exc_info.value)] == ["int_parsing"]
+
+    def test_property_named_like_a_renamed_base_field(self) -> None:
+        """Test an own `id_` beside a base `_id`, whose field is `id_`, keeps the base default."""
+        schema = Schema.model_validate(
+            {
+                "allOf": [
+                    {
+                        "type": "object",
+                        "properties": {"_id": {"type": "string", "default": "d"}},
+                    }
+                ],
+                "type": "object",
+                "properties": {"id_": {"type": "integer"}},
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"id_": 1}).model_dump() == snapshot({"_id": "d", "id_": 1})
+
+    def test_renamed_property_beside_its_base_and_a_like_named_property(self) -> None:
+        """Test an own `_id` overriding a base `_id` keeps its own constraint beside `id_`."""
+        schema = Schema.model_validate(
+            {
+                "allOf": [
+                    {
+                        "type": "object",
+                        "properties": {"_id": {"type": "string"}},
+                        "required": ["_id"],
+                    }
+                ],
+                "type": "object",
+                "properties": {
+                    "_id": {"type": "string", "minLength": 2},
+                    "id_": {"type": "integer"},
+                },
+                "required": ["_id", "id_"],
+            }
+        )
+        model = to_model(schema)
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"_id": "a", "id_": 1})
+
+        assert [error["type"] for error in dump_errors(exc_info.value)] == ["string_too_short"]
+
+    @pytest.mark.parametrize(
+        "branches",
+        [
+            pytest.param(
+                [
+                    {"type": "object", "properties": {"_id": {"type": "string"}}},
+                    {
+                        "type": "object",
+                        "properties": {"id_": {"type": "integer"}},
+                        "additionalProperties": False,
+                    },
+                ],
+                id="renamed-first",
+            ),
+            pytest.param(
+                [
+                    {"type": "object", "properties": {"id_": {"type": "integer"}}},
+                    {"type": "object", "properties": {"_id": {"type": "string"}}},
+                ],
+                id="renamed-second",
+            ),
+        ],
+    )
+    def test_renamed_field_meets_a_property_of_another_branch(
+        self,
+        branches: list[SchemaRaw],
+    ) -> None:
+        """Test `_id` and `id_` in two `allOf` branches fail, since they would share one field."""
+        schema = Schema.model_validate({"allOf": branches})
+
+        with pytest.raises(SchemaConversionError) as exc_info:
+            to_model(schema)
+
+        assert "`id_`" in str(exc_info.value)
+
+    def test_renamed_field_meets_a_property_of_another_ref_branch(self) -> None:
+        """Test `_id` and `id_` in two `$ref` branches beside an inline branch fail too."""
+        schema = Schema.model_validate(
+            {
+                "$defs": {
+                    "A": {"type": "object", "properties": {"_id": {"type": "string"}}},
+                    "B": {"type": "object", "properties": {"id_": {"type": "integer"}}},
+                },
+                "allOf": [
+                    {"$ref": "#/$defs/A"},
+                    {"$ref": "#/$defs/B"},
+                    {"type": "object", "properties": {"x": {}}},
+                ],
+            }
+        )
+
+        with pytest.raises(SchemaConversionError) as exc_info:
+            to_model(schema)
+
+        assert "`id_`" in str(exc_info.value)
+
+    def test_renamed_property_skips_every_taken_name(self) -> None:
+        """Test `_id` beside `id_` and `id__` takes `id___`, keeping its own `type`."""
+        schema = Schema.model_validate(
+            {
+                "type": "object",
+                "properties": {
+                    "_id": {"type": "string"},
+                    "id_": {"type": "integer"},
+                    "id__": {"type": "boolean"},
+                },
+                "required": ["_id", "id_", "id__"],
+            }
+        )
+        model = to_model(schema)
+
+        assert {name: field.alias for name, field in model.model_fields.items()} == snapshot(
+            {"id___": "_id", "id_": None, "id__": None}
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            model.model_validate({"_id": 1, "id_": 1, "id__": True})
+
+        assert [error["type"] for error in dump_errors(exc_info.value)] == ["string_type"]
+
+    def test_renamed_property_replaces_a_required_base_field(self) -> None:
+        """Test an own `_id` beside an `allOf` base `_id` keeps the base `type` and `required`."""
+        schema = Schema.model_validate(
+            {
+                "allOf": [
+                    {
+                        "type": "object",
+                        "properties": {"_id": {"type": "string"}},
+                        "required": ["_id"],
+                    }
+                ],
+                "type": "object",
+                "properties": {"_id": {"minLength": 2}},
+            }
+        )
+        model = to_model(schema)
+
+        assert model.model_validate({"_id": "ab"}).model_dump() == snapshot({"_id": "ab"})
+
+        for document in ({}, {"_id": 55}):
+            with pytest.raises(ValidationError):
+                model.model_validate(document)
+
+
 class TestRootModels:
     """Tests for `RootModel` creation from non-object root schemas."""
 
