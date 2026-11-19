@@ -498,6 +498,54 @@ class TestFormatOnChildNodes:
 
         assert model(**payload).model_dump() == expected
 
+    @pytest.mark.parametrize(
+        ("field_schema", "passing", "failing"),
+        [
+            pytest.param(
+                {"type": ["string", "null"], "format": "email", "pattern": "^a"},
+                "alice@example.com",
+                "bob@example.com",
+                id="type-list-pattern",
+            ),
+            pytest.param(
+                {"format": "email", "pattern": "^a"},
+                "alice@example.com",
+                "bob@example.com",
+                id="untyped-pattern",
+            ),
+            pytest.param(
+                {"format": "email", "not": {"const": "bob@example.com"}},
+                "alice@example.com",
+                "bob@example.com",
+                id="not",
+            ),
+            pytest.param(
+                {
+                    "format": "email",
+                    "if": {"const": "bob@example.com"},
+                    "then": {"maxLength": 3},
+                },
+                "alice@example.com",
+                "bob@example.com",
+                id="if-then",
+            ),
+        ],
+    )
+    def test_format_keeps_the_other_keywords(
+        self,
+        field_schema: "SchemaRaw",
+        passing: str,
+        failing: str,
+    ) -> None:
+        """A registered format replaces the host type, not the keywords checked beside it."""
+        schema = Schema.model_validate({"type": "object", "properties": {"field": field_schema}})
+        model = to_model(schema, formats={"email": Email})
+
+        assert model(field=passing).model_dump() == {"field": passing}
+
+        with pytest.raises(ValidationError):
+            model(field=failing)
+
 
 class TestFormatAcceptedForms:
     """A `formats` entry must be a type or `Annotated` type; any other form is rejected."""

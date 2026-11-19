@@ -294,6 +294,9 @@ Each format type replaces the generated annotation and runs its own validation p
 runs on the raw input, then Pydantic coerces to the base type, then `AfterValidator` and
 `Field(...)` constraints run on the coerced value.
 
+The schema's other keywords still apply around the format type: `not`, `if` / `then` / `else`, and
+a keyword for a type that `type` does not pin (`{"format": "email", "pattern": "^a"}`).
+
 ## Error Handling
 
 Raise `ValueError` with a clear message when a value is invalid:

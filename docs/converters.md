@@ -121,6 +121,7 @@ Use this table as the quick reference for what each JSON Schema feature becomes.
 | `patternProperties`                          | regex-keyed property-value subschemas       | `PatternProperties` validator       |
 | `propertyNames`                              | schema every property name must match       | `PropertyNames` validator           |
 | object keywords without `type`               | objects checked, any other value passes     | `IfObject` validator                |
+| keywords of a type `type` does not pin       | values of their type checked, others pass   | `IfType` validator                  |
 | `format` with validators                     | configured format validation                | see [Formats](formats.md)           |
 | `title`, `model_name`, `default_model_name`  | generated class name                        | `User`, `CustomUser`, `Model`       |
 
@@ -143,12 +144,8 @@ but do not affect the generated model.
   extra fields are accepted (`extra="allow"`) but their values are not validated against the `additionalProperties` schema.
 - `format` is metadata unless a matching entry is passed in `formats`. Built-in aliases cover all
   19 spec-defined formats, some with minor differences from the spec — see [Formats](formats.md).
-- `not` is only as precise as the converter's coverage of its subschema. Array keywords without
-  `type` (`items`, `minItems`, `contains`, ...) map to `Any`, which matches every value, so `not`
-  over them rejects everything.
 - In an `allOf` that is not over object models, the first branch produces the value and the other
   branches only check the input, so their coercion (`"5"` to `5`) does not shape the value.
-  Keywords beside such an `allOf` take the first branch's `type` when they declare none.
 - A `$ref` beside a validating keyword converts as that `allOf`, so the field is no longer the
   shared model of its target, even when the keyword (a matching `type`) adds nothing.
   Beside a `$ref` to the definition it sits in, the keywords are checked but left out of

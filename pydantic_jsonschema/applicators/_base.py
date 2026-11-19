@@ -110,9 +110,9 @@ class Applicator:
         #
         # The empty `definitions_schema` wrapper is what makes that handler take the full path.
         #  Called on a foreign schema it dispatches straight to the per-type method, skipping the
-        #  `pydantic_js_updates` metadata of the schema it was handed — a typeless branch
-        #  (`{"maxLength": 3}` -> `Annotated[Any, MaxLen(3)]`) then dumps as `{}`. The wrapper
-        #  re-enters `generate_inner`, which applies that metadata.
+        #  `pydantic_js_updates` metadata of the schema it was handed, so the branch dumps without
+        #  the keywords that metadata carries. The wrapper re-enters `generate_inner`, which
+        #  applies that metadata.
         #  https://github.com/pydantic/pydantic/blob/cf67d4b3193c3fe43ede18612ed62785eee11382/pydantic/json_schema.py#L529
         #  https://github.com/pydantic/pydantic/blob/cf67d4b3193c3fe43ede18612ed62785eee11382/pydantic/json_schema.py#L2103
         #

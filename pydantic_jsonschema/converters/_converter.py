@@ -5,6 +5,7 @@
 
 from collections.abc import Generator, Iterable, Iterator, Sequence
 from contextlib import contextmanager
+from decimal import Decimal
 from itertools import count
 from types import NoneType
 from typing import (
@@ -15,6 +16,7 @@ from typing import (
     Literal,
     TypeAliasType,
     cast,
+    get_args,
     get_origin,
 )
 
@@ -42,6 +44,7 @@ from pydantic_jsonschema.applicators import (
     DependentSchemas,
     IfObject,
     IfThenElse,
+    IfType,
     Not,
     ObjectApplicator,
     OneOf,
@@ -63,7 +66,7 @@ from ._object_keywords import (
     build_property_count_bounds,
     build_undeclared_required,
     merge_keyword,
-    strip_object_keywords,
+    strip_keyword_checks,
 )
 from ._refs import (
     ANNOTATION_KEYWORDS,
@@ -73,6 +76,7 @@ from ._refs import (
     get_inline_defs,
     normalize_ref_siblings,
 )
+from ._type_keywords import unpinned_keywords
 from ._utils import make_union, produces_all_of_model, unwrap
 
 __all__ = [
@@ -90,6 +94,9 @@ _MIN_DISCRIMINATED_UNION_MEMBERS: Final[int] = 2
 # Pydantic keeps one validator per name across bases, and a model from another conversion can
 #  reach this one through `refs`, so a validator name is unique per process.
 _VALIDATOR_NUMBERS: Final[Iterator[int]] = count()
+# The keywords `_schema_to_annotation` checks beside the host type, which a format type
+#  replacing that host still has to check.
+_FORMAT_KEPT_METADATA: Final[tuple[type[Applicator], ...]] = (IfType, Not, IfThenElse)
 # Validating `Schema` fields that `_own_keywords_annotation` checks beside `allOf`. `not` and
 #  `if` / `then` / `else` are attached as their own applicators, and anything else (metadata,
 #  `$defs`, extension keywords) validates nothing. An object producing the value keeps only the
@@ -633,22 +640,6 @@ class SchemaConverter:
             assertions=self._value_assertions(schema),
         )
 
-    def _first_branch_type(
-        self,
-        schema: Schema,
-        /,
-    ) -> DataType | MISSING:
-        """Get the single `type` of the first `allOf` branch, which produces the value.
-
-        :param schema: Schema declaring `allOf`.
-        :returns: The branch's `type` when it declares exactly one, else `MISSING`.
-        """
-        [producer, *_] = unwrap(schema.all_of, default=[])
-        if isinstance(producer, Reference):
-            producer = self._defs_cache.get(producer.ref, Schema())
-
-        return producer.type if isinstance(producer.type, DataType) else MISSING
-
     def _own_keywords_annotation(
         self,
         schema: Schema,
@@ -668,12 +659,8 @@ class SchemaConverter:
         if own == Schema():
             return None
 
-        # Without a `type`, `items`, `maxItems` or `required` converted to `Any` and checked
-        #  nothing, so they take the type of the value they check.
         if object_host:
             own = own.model_copy(update={"type": DataType.OBJECT})
-        elif own.type is MISSING:
-            own = own.model_copy(update={"type": self._first_branch_type(schema)})
 
         annotation = self._apply_format(self._schema_to_annotation(own), schema=own)
         return Annotated[annotation, Field(**build_field_kwargs(own, include_metadata=False))]
@@ -1226,6 +1213,8 @@ class SchemaConverter:
         - `Annotated` types: used directly as the field annotation (replaces the original).
         - Type classes: used directly as the field annotation (replaces the original).
 
+        The replaced annotation's `not`, `if` and type-gated keyword applicators stay on it.
+
         :param annotation: Original annotation.
         :param schema: Schema to check for `format`.
         :returns: The format type's annotation when a matching entry exists, else `annotation`.
@@ -1242,17 +1231,23 @@ class SchemaConverter:
         #  annotation stays clean (`str`, `uuid.UUID`) instead of the alias wrapper.
         format_type = unwrap_type_alias(format_type)
 
-        if get_origin(format_type) is Annotated:
+        if get_origin(format_type) is not Annotated and not isinstance(format_type, type):
+            msg = (
+                f"`formats[{schema.format!r}]` must be a type or `Annotated` type, "
+                f"got `{format_type!r}`"
+            )
+            raise SchemaConversionError(msg)
+
+        kept: list[Applicator] = []
+        if get_origin(annotation) is Annotated:
+            kept = [
+                item for item in get_args(annotation)[1:] if isinstance(item, _FORMAT_KEPT_METADATA)
+            ]
+
+        if not kept:
             return format_type
 
-        if isinstance(format_type, type):
-            return format_type
-
-        msg = (
-            f"`formats[{schema.format!r}]` must be a type or `Annotated` type, "
-            f"got `{format_type!r}`"
-        )
-        raise SchemaConversionError(msg)
+        return cast("AnnotationType", Annotated[format_type, *kept])
 
     def _current_pointer(self) -> str:
         """Build the current node's canonical JSON Pointer from the tracked tokens.
@@ -1290,7 +1285,7 @@ class SchemaConverter:
 
         context = MatchContext(
             schema=schema,
-            annotation=strip_object_keywords(annotation),
+            annotation=strip_keyword_checks(annotation),
             path=self._current_pointer(),
         )
         result: AnnotationType = annotation
@@ -1474,7 +1469,44 @@ class SchemaConverter:
         for assertion in self._value_assertions(schema):
             annotation = cast("type", Annotated[annotation, assertion])
 
+        # Outside the assertions, or `not` / `if` dump the gated keywords into their subschema.
+        for data_type, branch_schema in unpinned_keywords(schema).items():
+            type_gate = self._build_type_gate(branch_schema, data_type=data_type)
+            annotation = cast("type", Annotated[annotation, type_gate])
+
         return annotation
+
+    def _build_type_gate(
+        self,
+        branch_schema: Schema,
+        /,
+        *,
+        data_type: DataType,
+    ) -> IfType:
+        """Build the gate checking one keyword family on instances of its type only.
+
+        :param branch_schema: The family's keywords, typed to the family.
+        :param data_type: The family's type.
+        :returns: An `IfType` validator for the family, registered for namespace binding.
+        """
+        field = Field(**build_field_kwargs(branch_schema, include_metadata=False))
+        branch: AnnotationType = Annotated[self._schema_to_annotation(branch_schema), field]
+
+        # A `float` rounds an `int` past 2**53 and rejects one past its range; a `Decimal` holds it
+        #  exactly and takes a fractional bound, which an `int` bound refuses.
+        integer_branch: AnnotationType | None = None
+        integer_precision_margin: int = 0
+        if data_type == DataType.NUMBER:
+            integer_branch = Annotated[Decimal, field]
+            integer_precision_margin = _quotient_margin(branch_schema)
+
+        type_gate = IfType(
+            data_type=data_type,
+            branch=branch,
+            integer_branch=integer_branch,
+            integer_precision_margin=integer_precision_margin,
+        )
+        return self._register(type_gate)
 
     def _apply_sibling_type(
         self,
@@ -1541,9 +1573,7 @@ class SchemaConverter:
 
         :param schema: The subschema (or reference) to convert.
         :param union_branch: `True` for `anyOf` / `oneOf` branches: drop non-validating metadata
-            (`title` / `description` / `examples`, which would leak into the dumped union) and skip
-            constraints on an untyped (`Any`) branch (a bound on `Any` makes Pydantic raise
-            `TypeError` on non-comparable input).
+            (`title` / `description` / `examples`, which would leak into the dumped union).
         :returns: The annotation, wrapped with `Field(...)` when it carries field-level constraints.
         """
         annotation = self._schema_to_annotation(schema)
@@ -1554,7 +1584,7 @@ class SchemaConverter:
         annotation = self._apply_rules(annotation, schema=schema)
         kwargs = build_field_kwargs(schema, include_metadata=not union_branch)
 
-        if kwargs and not (union_branch and strip_object_keywords(annotation) is Any):
+        if kwargs:
             annotation = cast("type", Annotated[annotation, Field(**kwargs)])
         return annotation
 
@@ -1701,13 +1731,7 @@ class SchemaConverter:
         adapter: TypeAdapter[PythonType] = TypeAdapter(remainder_annotation)
 
         def _check(value: PythonType) -> PythonType:
-            try:
-                adapter.validate_python(value)
-            # A bound without `type` raises on a value it cannot compare, where the spec ignores
-            #  the keyword, as `AllOf.validate` handles it.
-            except TypeError:
-                return value
-
+            adapter.validate_python(value)
             return value
 
         annotation = ForwardRef(sanitize_identifier(producer.ref))
@@ -2137,3 +2161,17 @@ def to_model(
         rules=rules,
     )
     return converter.convert_schema(schema, model_name=model_name)
+
+
+def _quotient_margin(schema: Schema, /) -> int:
+    """Count the digits an `int`'s `multipleOf` quotient needs beyond the `int`'s own.
+
+    Dividing a `D`-digit `int` by `M * 10**e` leaves at most `D - e - len(M) + 1` integer digits
+    and a nonzero remainder of at least `1 / (M * 10**max(e, 0))`, which `D + max(0, -e) + 1`
+    digits hold together.
+    """
+    if schema.multiple_of is MISSING:
+        return 0
+
+    exponent = int(Decimal(str(schema.multiple_of)).as_tuple().exponent)
+    return max(0, -exponent) + 1
