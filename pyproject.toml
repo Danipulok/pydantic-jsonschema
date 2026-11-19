@@ -33,6 +33,10 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
+    # Imported directly. `0.4.0` has every name we use, but `pydantic` `2.13.0` requires `0.6.0`,
+    #  so a lower floor would never resolve and `just test-floor` would not run it.
+    #  https://github.com/pydantic/pydantic/blob/46bf4fa648af3a1fbf4603a37f210e9d9c618357/pyproject.toml#L48
+    "annotated-types>=0.6.0",
     # `2.12.0` is the floor for the `MISSING` sentinel (see `pydantic_jsonschema/_compat.py`),
     #  but `2.12.x` emits `PydanticSerializationUnexpectedValue` warnings on every
     #  `Schema.model_dump()` with nested schemas. Clean from `2.13.0`.
