@@ -1510,11 +1510,11 @@ class SchemaConverter:
         sibling_type: DataType | list[DataType],
         /,
     ) -> type:
-        """Map the sibling `type` to a plain JSON-type guard.
+        """Map a `type` to a plain JSON-type guard.
 
-        Unlike `_type_annotation`, this only checks the value's JSON type: it does not build a
-        nested model or attach array applicators, since it guards a value already shaped by the
-        composition.
+        This only checks the value's JSON type: it builds no nested model and attaches no array
+        applicators, so it serves a sibling `type` guarding a value the composition already
+        shaped, and a `type` that `_type_annotation` builds no model for.
 
         :param sibling_type: The schema's `type` (single `DataType` or a list).
         :returns: A type (or union of types) to validate the value's JSON type against.
@@ -1687,11 +1687,7 @@ class SchemaConverter:
         :param schema: Schema declaring `allOf`.
         :returns: The nested model, or the `ForwardRef` checked by the rest of the schema.
         """
-        branches: list[Schema | Reference] = unwrap(schema.all_of, default=[])
-        if not branches:
-            return self._convert_nested_schema(schema)
-
-        producer, *rest = branches
+        producer, *rest = unwrap(schema.all_of, default=[])
         if not isinstance(producer, Reference) or not self._is_building(producer.ref):
             return self._convert_nested_schema(schema)
 
@@ -1763,10 +1759,7 @@ class SchemaConverter:
             return self._object_annotation(schema)
 
         if schema.type is not MISSING:
-            if isinstance(schema.type, DataType):
-                return _DATA_TYPE_ANNOTATION_MAPPING[schema.type]
-            union_args = [_DATA_TYPE_ANNOTATION_MAPPING[data_type] for data_type in schema.type]
-            return make_union(union_args)
+            return self._host_type_guard(schema.type)
 
         if _declares_object_keyword(schema) and _fields_convert(schema):
             # `not` and `if` / `then` / `else` stay on the raw value, beside `IfObject`, which also
