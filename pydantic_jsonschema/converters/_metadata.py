@@ -1,10 +1,5 @@
 """`Annotated` metadata helpers for array / object value annotations."""
 
-# NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
-#  recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
-#  and flags every `is not MISSING` check as a non-overlapping identity comparison.
-# mypy: disable-error-code="comparison-overlap"
-
 from typing import Annotated, Any, cast
 
 import annotated_types
@@ -29,7 +24,7 @@ def _ensure_unique_items(value: list[Any], /) -> list[Any]:
     common scalar / object / array cases. The check is O(n^2) pairwise rather than `set`-based
     because JSON values can be unhashable (`dict` / `list`).
 
-    NOTE: Python equates `True == 1` and `1 == 1.0`, so e.g. `[true, 1]` is treated as a
+    Python equates `True == 1` and `1 == 1.0`, so e.g. `[true, 1]` is treated as a
     duplicate even though JSON Schema considers the two values distinct. Acceptable edge.
 
     Reproduce:
@@ -43,7 +38,7 @@ def _ensure_unique_items(value: list[Any], /) -> list[Any]:
     seen: list[Any] = []
     for item in value:
         if item in seen:
-            msg = "Array items must be unique"
+            msg: str = "Array items must be unique"
             raise ValueError(msg)
         seen.append(item)
     return value

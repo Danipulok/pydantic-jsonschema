@@ -1,10 +1,5 @@
 """`FieldInfo` kwargs and defaults derived from JSON Schema constraints."""
 
-# NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
-#  recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
-#  and flags every `is not MISSING` check as a non-overlapping identity comparison.
-# mypy: disable-error-code="comparison-overlap"
-
 from types import EllipsisType
 from typing import Any, Final, Literal, TypedDict
 
@@ -33,7 +28,7 @@ class _FieldKwargs(TypedDict, total=False):
     """Subset of Pydantic `FieldInfo` kwargs produced from JSON Schema constraints.
 
     Field names and types mirror `pydantic.fields._FromFieldInfoInputs`.
-    See: https://github.com/pydantic/pydantic/blob/v2.13.4/pydantic/fields.py#L50
+    See: https://github.com/pydantic/pydantic/blob/cf67d4b3193c3fe43ede18612ed62785eee11382/pydantic/fields.py#L50
     """
 
     examples: list[Any] | None

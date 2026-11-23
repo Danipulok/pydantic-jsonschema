@@ -19,12 +19,12 @@ __all__ = [
 # See: https://www.rfc-editor.org/rfc/rfc3986#appendix-B
 #  Decompose a URI-reference into scheme, authority, path, query, and fragment.
 #
-# NOTE: Quantifiers are possessive (`++`/`*+`) to keep matching linear: the `scheme`,
-#       `authority`, `path`, and query character classes overlap, so on non-matching
-#       input greedy backtracking between them is quadratic, and a long crafted value
-#       hangs validation (ReDoS, Sonar S8786). Possessiveness cannot change what
-#       matches — each class excludes the delimiter that follows it, so giving
-#       characters back never enables a match the possessive form misses.
+# Quantifiers are possessive (`++`/`*+`) to keep matching linear: the `scheme`,
+#  `authority`, `path`, and query character classes overlap, so on non-matching
+#  input greedy backtracking between them is quadratic, and a long crafted value
+#  hangs validation (ReDoS, Sonar S8786). Possessiveness cannot change what
+#  matches: each class excludes the delimiter that follows it, so giving
+#  characters back never enables a match the possessive form misses.
 #
 # Reproduce:
 #   >>> _URI_RE.match("//" + "a" * 16_000 + "#\nx")

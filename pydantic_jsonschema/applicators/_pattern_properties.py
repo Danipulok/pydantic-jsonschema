@@ -79,12 +79,15 @@ class PatternProperties(ObjectApplicator):
             return data
 
         for name, value in data.items():
-            for pattern, adapter in self._get_compiled():
-                # ECMA-262 `patternProperties` is unanchored; `re.search` matches anywhere.
-                if not pattern.search(str(name)):
-                    continue
-                if not self._validates(adapter, value=value):
-                    msg = f"Property `{name}` does not satisfy its `patternProperties` schema"
-                    raise ValueError(msg)
+            self._check_property(name, value=value)
 
         return data
+
+    def _check_property(self, name: AnnotationType, /, *, value: AnnotationType) -> None:
+        for pattern, adapter in self._get_compiled():
+            # ECMA-262 `patternProperties` is unanchored; `re.search` matches anywhere.
+            if not pattern.search(str(name)):
+                continue
+            if not self._validates(adapter, value=value):
+                msg = f"Property `{name}` does not satisfy its `patternProperties` schema"
+                raise ValueError(msg)

@@ -12,11 +12,6 @@ together with the keywords beside it.
 https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.3.1
 """
 
-# NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
-#  recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
-#  and flags every `is not MISSING` check as a non-overlapping identity comparison.
-# mypy: disable-error-code="comparison-overlap"
-
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Final
@@ -114,7 +109,11 @@ def resolve_def_alias(defs: dict[str, Schema | Reference], /, *, name: str) -> R
     current: Schema | Reference = defs[name]
 
     while isinstance(current, Reference):
-        target_name = _check_alias_target(defs, reference=current, seen_names=seen_names)
+        target_name = _check_alias_target(
+            defs,
+            reference=current,
+            seen_names=seen_names,
+        )
         seen_names.append(target_name)
         current = defs[target_name]
 

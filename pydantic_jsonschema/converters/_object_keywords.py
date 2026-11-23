@@ -7,11 +7,6 @@ converter-aware ones (`dependentSchemas` / `patternProperties` / `propertyNames`
 `dict[str, ...]` runs them, and its object applicators, through `DictKeywords`.
 """
 
-# NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
-#  recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
-#  and flags every `is not MISSING` check as a non-overlapping identity comparison.
-# mypy: disable-error-code="comparison-overlap"
-
 from collections.abc import Sequence
 from typing import Annotated, Any, Protocol, get_args, get_origin, override
 
@@ -276,7 +271,8 @@ def strip_keyword_checks(annotation: PythonType, /) -> PythonType:
     :returns: The host (`dict[str, ...]`, `Any`, a union, ...) when `DictKeywords` and `IfType`
         gates are its only metadata, else `annotation`.
     """
-    if get_origin(annotation) is not Annotated:
+    # mypy misreads `get_origin` of an `Any` alias; see `PythonType` in `converters/_utils.py`.
+    if get_origin(annotation) is not Annotated:  # type: ignore[comparison-overlap]
         return annotation
 
     origin, *metadata = get_args(annotation)

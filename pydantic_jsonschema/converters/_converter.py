@@ -1,8 +1,5 @@
 """Convert a JSON Schema `Schema` into a Pydantic model (`to_model` / `SchemaConverter`)."""
 
-# mypy flags every `is not MISSING` check on a `Schema` field; see `_utils.py`.
-# mypy: disable-error-code="comparison-overlap"
-
 from collections.abc import Generator, Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from decimal import Decimal
@@ -84,19 +81,42 @@ __all__ = [
     "to_model",
 ]
 
+# Type aliases
+type Ref = str  # Reference path like "#/$defs/User"
+type SchemaHash = str  # Schema cache key (JSON hash)
+type FormatName = str  # Format name like "date-time", "uuid"
+type AnnotationType = Any  # `type`, `Annotated`, `Union`, `Literal`, `ForwardRef`, etc.
+type PythonType = Any  # Anything that Pydantic supports
+type FormatType = type | TypeAliasType  # A type, `Annotated` type, or PEP 695 `type` alias
+
 
 # Default model name
 _DEFAULT_MODEL_NAME: Final[str] = "Model"
 # Class attribute where `_wrap_object_applicators` records every applicator a model carries.
 _APPLICATORS_ATTRIBUTE: Final[str] = "__pydantic_jsonschema_applicators__"
 # A discriminated union needs at least two members for Pydantic to tag-dispatch.
-_MIN_DISCRIMINATED_UNION_MEMBERS: Final[int] = 2
+_MIN_DISCRIMINATED_MEMBERS: Final[int] = 2
 # Pydantic keeps one validator per name across bases, and a model from another conversion can
 #  reach this one through `refs`, so a validator name is unique per process.
 _VALIDATOR_NUMBERS: Final[Iterator[int]] = count()
 # The keywords `_schema_to_annotation` checks beside the host type, which a format type
 #  replacing that host still has to check.
 _FORMAT_KEPT_METADATA: Final[tuple[type[Applicator], ...]] = (IfType, Not, IfThenElse)
+# The `Schema` field holding the `required` keyword.
+_REQUIRED_FIELD: Final = "required"
+# Object keywords (`Schema` field names). An untyped schema carrying any of them still applies
+#  them to object instances.
+_OBJECT_KEYWORDS: Final[tuple[str, ...]] = (
+    "properties",
+    "additional_properties",
+    "pattern_properties",
+    "property_names",
+    _REQUIRED_FIELD,
+    "min_properties",
+    "max_properties",
+    "dependent_required",
+    "dependent_schemas",
+)
 # Validating `Schema` fields that `_own_keywords_annotation` checks beside `allOf`. `not` and
 #  `if` / `then` / `else` are attached as their own applicators, and anything else (metadata,
 #  `$defs`, extension keywords) validates nothing. An object producing the value keeps only the
@@ -106,15 +126,7 @@ _ALL_OF_OBJECT_HOST_FIELDS: Final[frozenset[str]] = frozenset(
     {
         "enum",
         "const",
-        "properties",
-        "additional_properties",
-        "pattern_properties",
-        "property_names",
-        "required",
-        "min_properties",
-        "max_properties",
-        "dependent_required",
-        "dependent_schemas",
+        *_OBJECT_KEYWORDS,
         "any_of",
         "one_of",
     }
@@ -156,28 +168,6 @@ _DATA_TYPE_ANNOTATION_MAPPING: Final[dict[DataType, type]] = {
     DataType.ARRAY: list[Any],
     DataType.OBJECT: dict[str, Any],
 }
-
-# Object keywords (`Schema` field names). An untyped schema carrying any of them still applies
-#  them to object instances.
-_OBJECT_KEYWORDS: Final[tuple[str, ...]] = (
-    "properties",
-    "additional_properties",
-    "pattern_properties",
-    "property_names",
-    "required",
-    "min_properties",
-    "max_properties",
-    "dependent_required",
-    "dependent_schemas",
-)
-
-# Type aliases
-type Ref = str  # Reference path like "#/$defs/User"
-type SchemaHash = str  # Schema cache key (JSON hash)
-type FormatName = str  # Format name like "date-time", "uuid"
-type AnnotationType = Any  # `type`, `Annotated`, `Union`, `Literal`, `ForwardRef`, etc.
-type PythonType = Any  # Anything that Pydantic supports
-type FormatType = type | TypeAliasType  # A type, `Annotated` type, or PEP 695 `type` alias
 
 
 class SchemaConverter:
@@ -287,6 +277,7 @@ class SchemaConverter:
         """
         saved: list[str] = self._pointer_tokens
         self._pointer_tokens = list(tokens)
+
         try:
             yield
         finally:
@@ -312,6 +303,7 @@ class SchemaConverter:
 
         self._resolution_path.append(segment)
         self._pointer_tokens.extend(tokens)
+
         try:
             yield
         finally:
@@ -685,6 +677,7 @@ class SchemaConverter:
         checked: dict[str, AnnotationType] = {
             f"`allOf[{index}]`": branch for index, branch in branches.items()
         }
+
         if own is not None:
             checked["the keywords beside `allOf`"] = own
 
@@ -951,6 +944,7 @@ class SchemaConverter:
         """
         target = self._building_key(ref)
         self._building.add(target)
+
         try:
             yield
         finally:
@@ -1048,7 +1042,7 @@ class SchemaConverter:
         :returns: Tuple of base classes.
         """
         all_of: list[Schema | Reference] = unwrap(schema.all_of, default=[])
-        base_models = []
+        base_models: list[type[BaseModel]] = []
         for index, sub_schema in enumerate(all_of):
             # The first branch may produce the value, so it keeps the `allOf` model's name; the
             #  others would all dump as `Model` under mangled `$defs` keys.
@@ -1258,7 +1252,8 @@ class SchemaConverter:
         #  annotation stays clean (`str`, `uuid.UUID`) instead of the alias wrapper.
         format_type = unwrap_type_alias(format_type)
 
-        if get_origin(format_type) is not Annotated and not isinstance(format_type, type):
+        # mypy misreads `get_origin` of an `Any` alias; see `PythonType` in `converters/_utils.py`.
+        if get_origin(format_type) is not Annotated and not isinstance(format_type, type):  # type: ignore[comparison-overlap]
             msg = (
                 f"`formats[{schema.format!r}]` must be a type or `Annotated` type, "
                 f"got `{format_type!r}`"
@@ -1266,7 +1261,8 @@ class SchemaConverter:
             raise SchemaConversionError(msg)
 
         kept: list[Applicator] = []
-        if get_origin(annotation) is Annotated:
+        # mypy misreads `get_origin` of an `Any` alias; see `PythonType` in `converters/_utils.py`.
+        if get_origin(annotation) is Annotated:  # type: ignore[comparison-overlap]
             kept = [
                 item for item in get_args(annotation)[1:] if isinstance(item, _FORMAT_KEPT_METADATA)
             ]
@@ -1710,7 +1706,7 @@ class SchemaConverter:
         # An empty `enum` has no valid value; `Literal[()]` makes Pydantic raise a bare
         #  `AssertionError` deep in schema generation, so reject it with a library error instead.
         if not values:
-            msg = "`enum` must contain at least one value"
+            msg: str = "`enum` must contain at least one value"
             raise SchemaConversionError(msg)
 
         literal_type = Literal[tuple(values)]  # type: ignore[valid-type]
@@ -1808,7 +1804,7 @@ class SchemaConverter:
             )
         )
 
-        if tag_field is not None and len(union_args) >= _MIN_DISCRIMINATED_UNION_MEMBERS:
+        if tag_field is not None and len(union_args) >= _MIN_DISCRIMINATED_MEMBERS:
             discriminated = Annotated[make_union(union_args), Field(discriminator=tag_field)]  # type: ignore[valid-type]
             return cast("type", discriminated)
 
@@ -1917,7 +1913,12 @@ class SchemaConverter:
             with self._track_path("items"):
                 tail = self._constrained_annotation(schema.items)
 
-        return self._register(PrefixItems(prefixes=prefixes, tail=tail))
+        return self._register(
+            PrefixItems(
+                prefixes=prefixes,
+                tail=tail,
+            )
+        )
 
     def _build_contains(
         self,
@@ -1943,7 +1944,11 @@ class SchemaConverter:
         max_contains = unwrap(schema.max_contains, default=None)
 
         return self._register(
-            Contains(branch=branch, min_contains=min_contains, max_contains=max_contains)
+            Contains(
+                branch=branch,
+                min_contains=min_contains,
+                max_contains=max_contains,
+            )
         )
 
     def _object_annotation(
@@ -1994,9 +1999,10 @@ class SchemaConverter:
         ]
         applicators = self._build_object_applicators(schema)
         keywords = schema.model_dump(
-            include={"required", "dependent_required"},
+            include={_REQUIRED_FIELD, "dependent_required"},
             exclude_unset=True,
         )
+
         if checks or applicators:
             dict_keywords = DictKeywords(
                 checks=checks,
@@ -2031,7 +2037,7 @@ def _build_object_keywords(schema: Schema, /) -> ObjectKeywords | None:
     )
     undeclared = [name for name in unwrap(schema.required, default=[]) if name not in declared]
     if undeclared:
-        keywords["required"] = undeclared
+        keywords[_REQUIRED_FIELD] = undeclared
 
     return ObjectKeywords(
         checks=checks,

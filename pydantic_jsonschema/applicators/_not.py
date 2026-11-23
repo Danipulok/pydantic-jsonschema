@@ -95,7 +95,7 @@ class Not(AnnotationApplicator, ObjectApplicator):
         :raises ValueError: When the value matches the `not` subschema.
         """
         if self.matches(value):
-            msg = "Value must not match the `not` schema"
+            msg: str = "Value must not match the `not` schema"
             raise ValueError(msg)
         return value
 

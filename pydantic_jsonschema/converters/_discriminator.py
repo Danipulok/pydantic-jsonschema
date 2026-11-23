@@ -5,9 +5,6 @@ promoted to a native Pydantic discriminated union (`Field(discriminator=...)`) i
 probing `OneOf` validator.
 """
 
-# mypy flags every `is not MISSING` check on a `Schema` field; see `_utils.py`.
-# mypy: disable-error-code="comparison-overlap"
-
 from types import NoneType
 
 from pydantic_jsonschema._compat import MISSING

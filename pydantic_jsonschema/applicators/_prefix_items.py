@@ -65,6 +65,7 @@ class PrefixItems(AnnotationApplicator):
         json_schema["prefixItems"] = [
             self._branch_schema(adapter, handler=handler) for adapter in self._prefix_adapters or []
         ]
+
         if self._tail_adapter is not None:
             json_schema["items"] = self._branch_schema(self._tail_adapter, handler=handler)
 
@@ -88,11 +89,12 @@ class PrefixItems(AnnotationApplicator):
         :raises ValueError: When an element does not match its `prefixItems` / `items` schema.
         """
         self._build_adapters()
-        prefix_adapters = self._prefix_adapters or []
+        prefix_adapters: list[TypeAdapter[AnnotationType]] = self._prefix_adapters or []
 
         result: list[AnnotationType] = []
         for index, item in enumerate(value):
             adapter: TypeAdapter[AnnotationType] | None
+            keyword: str
             if index < len(prefix_adapters):
                 adapter = prefix_adapters[index]
                 keyword = "prefixItems"
