@@ -1,34 +1,34 @@
+set shell := ["bash", "-uc"]
+
 # Block installing known-malware dependencies (OSV MAL records) before any package code runs.
-#  Exported here so every `uv sync` / `uv add` run through `just` is checked — CI and local alike.
+#  Exported here so every `uv sync` / `uv add` run through `just` is checked, in CI and locally alike.
 #  `malware-check` is a `uv` preview feature; naming it also silences its experimental warning.
 export UV_MALWARE_CHECK := "1"
 export UV_PREVIEW_FEATURES := "malware-check"
 
 # In CI (`$CI` is set by GitHub Actions) skip the per-command auto-sync and pin the lockfile: the
 #  environment is provisioned once, up front, by an `install-*` step, so there's no local/CI recipe
-#  split — `just lint` / `just test` behave correctly in both. Locally `$CI` is empty, so these
+#  split, and `just lint` / `just test` behave correctly in both. Locally `$CI` is empty, so these
 #  resolve to `false` and `uv run` keeps auto-syncing for convenience.
 #
-# NOTE: Normalized to `true`/`false` (not the raw `$CI` value). `just` exports a `:=` variable even
+# Normalized to `true`/`false` (not the raw `$CI` value): `just` exports a `:=` variable even
 #  when empty, and `uv` rejects an empty boolean:
 #   UV_NO_SYNC= uv run ...
 #   # -> error: Failed to parse environment variable `UV_NO_SYNC` with invalid value ``: expected a boolish value
 export UV_NO_SYNC := if env_var_or_default("CI", "") != "" { "true" } else { "false" }
 export UV_FROZEN := if env_var_or_default("CI", "") != "" { "true" } else { "false" }
 
-# Python versions under test. Mirrors the canonical matrix — `python-version` in `ci.yml`'s `test`
+# Python versions under test. Mirrors the canonical matrix, `python-version` in `ci.yml`'s `test`
 #  job, which `os-matrix.yml` subsets, sans `3.15`. Keep in sync.
 python_versions := "3.12 3.13 3.14 3.15"
 # Floor = oldest supported (dependency-floor run); ceiling = newest supported (dependency-ceiling
-#  run) — currently the `3.15` beta, so breakage surfaces before the October stable release. `uv`
+#  run), currently the `3.15` beta, so breakage surfaces before the October stable release. `uv`
 #  resolves `3.15` to the beta because no stable `3.15` exists yet; once one ships it takes over
 #  automatically.
 python_floor := "3.12"
 python_ceil := "3.15"
 
-# --- General ---
-
-# Default recipe to display help information
+[doc("Show the recipes")]
 default:
     @just --list
 
@@ -40,17 +40,18 @@ _check-uv:
         exit 1
     fi
 
-# --- Setup ---
-
-# Install the full environment: all extras, all workspace packages, default groups (frozen in CI)
+[group("setup")]
+[doc("Install the full environment: all extras, all workspace packages, default groups (frozen in CI)")]
 install-all: _check-uv
     uv sync --all-extras --all-packages
 
-# Local dev setup: the full environment plus git hooks (the one step CI never needs)
+[group("setup")]
+[doc("Local dev setup: the full environment plus git hooks (the one step CI never needs)")]
 install: install-all
     uv run pre-commit install --install-hooks
 
-# Install and synchronize an interpreter for every supported python version
+[group("setup")]
+[doc("Install and synchronize an interpreter for every supported Python version")]
 install-all-python:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -59,65 +60,69 @@ install-all-python:
             uv sync --python "$version" --frozen --no-default-groups --group test
     done
 
-# Install the test group only, leaving out the `docs` group and its native dependencies. Frozen in CI.
+[group("setup")]
+[doc("Install the test group only, without the docs group and its native dependencies (frozen in CI)")]
 install-test: _check-uv
     uv sync --no-default-groups --group test
 
-# Install the benchmark group only (adds `pytest-codspeed` to the `test` group). Frozen in CI.
+[group("setup")]
+[doc("Install the benchmark group only, the test group plus `pytest-codspeed` (frozen in CI)")]
 install-benchmark: _check-uv
     uv sync --no-default-groups --group benchmark
 
-# Install the docs group. Frozen in CI.
+[group("setup")]
+[doc("Install the docs group (frozen in CI)")]
 install-docs: _check-uv
     uv sync --group docs
 
-# Install the audit group only (just `zizmor`). Frozen in CI.
+[group("setup")]
+[doc("Install the audit group only, `zizmor` (frozen in CI)")]
 install-audit: _check-uv
     uv sync --no-default-groups --group audit
 
-# Install the release group only (`git-cliff` + `twine`). Frozen in CI.
+[group("setup")]
+[doc("Install the release group only, `git-cliff` and `twine` (frozen in CI)")]
 install-release: _check-uv
     uv sync --no-default-groups --group release
 
-# Update local packages and `uv.lock`
-sync: _check-uv
-    uv sync --all-extras --all-packages
-
-# --- Code quality ---
-
-# Format code
+[group("check")]
+[doc("Format the code")]
 format:
     uv run ruff format
     uv run ruff check --fix --fix-only
 
-# Run linting
+[group("check")]
+[doc("Check formatting, lint, types, spelling and Markdown")]
 lint:
     uv run ruff format --check
     uv run ruff check
     uv run mypy
     uv run pyright
     # Only the tracked files, so an untracked local directory cannot fail the gate; `uv.lock` holds
-    #  hashes, not prose. `bash` for `pipefail`: the runner's `sh` rejects it (`Illegal option -o pipefail`).
+    #  hashes, not prose. `-o pipefail` so a failing `git ls-files` fails the line.
     bash -o pipefail -c "git ls-files -z -- ':!uv.lock' | xargs -0 --no-run-if-empty uv run codespell"
     npx --yes markdownlint-cli2
 
-# Scan the locked dependency graph for known CVEs against a digest-pinned vulnerability DB
-#  (frozen for reproducibility). All flags and the DB pin live in `scripts/trivy_scan.sh`,
-#  shared verbatim with the CI `Audit` job. Runs `trivy` via docker — no local install needed.
+# The scan is frozen for reproducibility. All flags and the DB pin live in
+#  `scripts/trivy_scan.sh`, shared verbatim with the CI `Audit` job. Runs `trivy` via docker,
+#  so no local install is needed.
+[group("check")]
 [doc("Scan uv.lock for known CVEs (frozen, digest-pinned DB)")]
 scan-deps:
     scripts/trivy_scan.sh fs
 
-# Audit GitHub Actions workflows, composite actions and the Dependabot config for security issues (`zizmor`)
+[group("check")]
+[doc("Audit the workflows, composite actions and Dependabot config with `zizmor`")]
 audit-workflows:
     uv run zizmor --offline .github/
 
-# Generate a CycloneDX SBOM of the runtime dependency tree into `sbom/`. On-demand convenience only —
-#  deliberately NOT wired into releases: the published wheel's `Requires-Dist` already declares deps,
-#  and `just scan-deps` (Trivy) covers active CVE scanning, so this is just a standardized bill-of-materials for
-#  anyone who explicitly needs one. `--no-default-groups` restricts it to runtime deps; `uv export`
-#  carries hashes for component integrity. `cyclonedx-py` has no native `uv` lockfile support, hence
-#  the `requirements` bridge. See https://github.com/CycloneDX/cyclonedx-python/issues/857
+# On-demand only, and deliberately NOT wired into releases: the published wheel's `Requires-Dist`
+#  already declares deps, and `just scan-deps` (Trivy) covers active CVE scanning, so this is a
+#  standardized bill of materials for anyone who explicitly needs one. `--no-default-groups`
+#  restricts it to runtime deps; `uv export` carries hashes for component integrity. `cyclonedx-py`
+#  has no native `uv` lockfile support, hence the `requirements` bridge.
+#  See https://github.com/CycloneDX/cyclonedx-python/issues/857
+[group("check")]
 [doc("Generate a CycloneDX SBOM of the runtime deps into sbom/")]
 sbom:
     #!/usr/bin/env bash
@@ -142,23 +147,25 @@ sbom:
 
     printf 'Wrote %s\n' "$output_file"
 
-# Run pre-commit on all files
+[group("check")]
+[doc("Run pre-commit on all files")]
 precommit:
     uv run pre-commit run --all-files
 
-# Run all checks
-all: format lint scan-deps audit-workflows test docs-build
+[group("check")]
+[doc("Run the full local gate: lint, CVE scan, workflow audit, tests, docs build")]
+ci: lint scan-deps audit-workflows test docs-build
 
-# --- Tests ---
-
-# Run tests and show the coverage report (the trailing `coverage xml` feeds the CI upload step)
+[group("test")]
+[doc("Run the tests and show the coverage report (`coverage xml` feeds the CI upload step)")]
 test:
     uv run coverage run -m pytest
     uv run coverage combine
     uv run coverage report
     uv run coverage xml
 
-# Run tests for every supported python version and show combined coverage report
+[group("test")]
+[doc("Run the tests on every supported Python version and show the combined coverage report")]
 test-all-python: install-all-python
     #!/usr/bin/env bash
     set -euo pipefail
@@ -171,18 +178,19 @@ test-all-python: install-all-python
     just test-floor
     just test-ceil
 
-# Run tests and generate an HTML coverage report
+[group("test")]
+[doc("Run the tests and generate an HTML coverage report")]
 testcov: test
     uv run coverage html
 
-# Update `inline_snapshot` values in tests after behavior changes
+[group("test")]
+[doc("Update `inline_snapshot` values in tests after behavior changes")]
 test-fix-snapshots:
     uv run pytest --inline-snapshot=fix
 
-# Test the dependency FLOOR: lowest Python + lowest direct deps our bounds allow.
-#  `--resolution lowest-direct` re-resolves direct deps to their declared minimums (e.g.
-#  `pydantic>=2.13.0` -> `2.13.0`), proving the floor actually resolves and passes. No coverage
-#  gate.
+# The dependency FLOOR: `--resolution lowest-direct` re-resolves direct deps to their declared
+#  minimums (e.g. `pydantic>=2.13.0` -> `2.13.0`), proving the floor actually resolves and passes.
+#  No coverage gate.
 #
 # `--isolated` runs in a fresh environment and resolves without writing `uv.lock`, which a plain
 #  `uv run` rewrites with the floor versions.
@@ -190,9 +198,10 @@ test-fix-snapshots:
 #  The recipe compares `uv.lock` before and after the run rather than against `HEAD`, so an
 #  uncommitted lock edit does not fail it.
 #
-# NOTE: `UV_NO_SYNC`/`UV_FROZEN` are forced off here — this recipe MUST sync a throwaway env and MUST
+# `UV_NO_SYNC`/`UV_FROZEN` are forced off here: this recipe MUST sync a throwaway env and MUST
 #  re-resolve, both of which conflict with the CI-wide defaults. With `UV_FROZEN=true` it would
 #  silently install the *locked* versions instead of the floor, making the test meaningless.
+[group("test")]
 [doc("Test the dependency floor (oldest Python, lowest direct deps)")]
 test-floor:
     #!/usr/bin/env bash
@@ -201,11 +210,11 @@ test-floor:
     UV_NO_SYNC=false UV_FROZEN=false uv run --isolated --python {{python_floor}} --resolution lowest-direct --no-default-groups --group test pytest
     [ "$(git hash-object uv.lock)" = "$lock" ] || { echo "test-floor rewrote uv.lock" >&2; exit 1; }
 
-# Test the dependency CEILING: newest supported Python + highest resolvable deps.
-#  `--upgrade` ignores the lockfile pins and re-resolves to the latest allowed versions (within
-#  `tool.uv.exclude-newer` in `pyproject.toml`), catching breakage from a new dependency release
-#  before it reaches the lockfile.
+# The dependency CEILING: `--upgrade` ignores the lockfile pins and re-resolves to the latest
+#  allowed versions (within `tool.uv.exclude-newer` in `pyproject.toml`), catching breakage from a
+#  new dependency release before it reaches the lockfile.
 #  No coverage gate. See `test-floor` for `--isolated` and for why the CI-wide flags are cleared.
+[group("test")]
 [doc("Test the dependency ceiling (newest supported Python, highest deps)")]
 test-ceil:
     #!/usr/bin/env bash
@@ -214,58 +223,67 @@ test-ceil:
     UV_NO_SYNC=false UV_FROZEN=false uv run --isolated --python {{python_ceil}} --upgrade --no-default-groups --group test pytest
     [ "$(git hash-object uv.lock)" = "$lock" ] || { echo "test-ceil rewrote uv.lock" >&2; exit 1; }
 
-# Run the `CodSpeed` benchmarks (`-m benchmark` overrides the suite-wide `not benchmark`). Locally
-#  this measures wall-clock; in CI the `CodSpeedHQ/action` wraps it and records stable measurements.
+# `-m benchmark` overrides the suite-wide `not benchmark`. Locally this measures wall-clock; in CI
+#  the `CodSpeedHQ/action` wraps it and records stable measurements.
+[group("test")]
 [doc("Run the CodSpeed benchmarks")]
 bench:
     uv run pytest --codspeed -m benchmark tests/benchmarks
 
-# --- Documentation ---
-
-# Format documentation examples
+[group("docs")]
+[doc("Format the documentation examples")]
 docs-format:
     uv run pytest tests/test_docs.py --update-examples -v --tb=long
 
-# Build documentation
+[group("docs")]
+[doc("Build the documentation")]
 docs-build:
     uv run mkdocs build
 
-# Serve documentation locally with live reload
+[group("docs")]
+[doc("Serve the documentation locally with live reload")]
 docs-serve:
     uv run mkdocs serve
 
-# Deploy documentation to GitHub Pages (latest version)
+[group("docs")]
+[doc("Deploy the documentation to GitHub Pages (latest version)")]
 docs-deploy:
     uv run mike deploy --push --update-aliases latest dev
 
-# Deploy documentation for a specific version
+[group("docs")]
+[doc("Deploy the documentation for a specific version")]
 docs-deploy-version version:
     uv run mike deploy --push --update-aliases {{version}}
 
-# Add alias for a documentation version
+[group("docs")]
+[doc("Add an alias for a documentation version")]
 docs-alias version alias:
     uv run mike alias --push --update-aliases {{version}} {{alias}}
 
-# Set default version for documentation
+[group("docs")]
+[doc("Set the default documentation version")]
 docs-set-default version:
     uv run mike set-default --push {{version}}
 
-# List all deployed documentation versions
+[group("docs")]
+[doc("List the deployed documentation versions")]
 docs-list:
     uv run mike list
 
-# Delete a documentation version
+[group("docs")]
+[doc("Delete a documentation version")]
 docs-delete version:
     uv run mike delete --push {{version}}
 
-# Deploy versioned docs to a single-commit `gh-pages` in CI (history never grows). Kept `ci-`-prefixed
-#  because, unlike `docs-deploy`, it configures a bot git identity and force-pushes the remote branch.
+# Kept `ci-`-prefixed because, unlike `docs-deploy`, it configures a bot git identity and
+#  force-pushes the remote branch, so it must never run locally.
 #
 # `mike` keeps every version in the `gh-pages` *tree*, but each `mike deploy --push` adds a
 #  commit carrying a full site snapshot, so the branch history balloons over time. Instead we
 #  deploy locally (no `--push`), then collapse the whole branch into one orphan commit and
-#  force-push it — each release replaces `gh-pages` rather than appending to it.
+#  force-push it: each release replaces `gh-pages` rather than appending to it.
 #  See: https://github.com/ag2ai/ag2/pull/2989
+[group("docs")]
 [doc("Deploy versioned docs to a single-commit gh-pages branch in CI")]
 ci-docs-deploy version: _ci-configure-git
     #!/usr/bin/env bash
@@ -286,9 +304,8 @@ _ci-configure-git:
     git config user.name 'github-actions[bot]'
     git config user.email 'github-actions[bot]@users.noreply.github.com'
 
-# --- Release ---
-
-# Generate `docs/changelog.md` from git history via `git-cliff`
+[group("release")]
+[doc("Generate `docs/changelog.md` from git history via `git-cliff`")]
 changelog tag="":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -299,33 +316,37 @@ changelog tag="":
     fi
     printf '%s\n' "$(< docs/changelog.md)" > docs/changelog.md
 
-# Generate release notes for the latest tag into a file (used by the release workflow)
+[group("release")]
+[doc("Generate release notes for the latest tag into a file (used by the release workflow)")]
 release-notes output:
     uv run git-cliff --latest --strip header -o {{output}}
 
-# Build the package and check its metadata (`twine check`)
+[group("release")]
+[doc("Build the package and check its metadata (`twine check`)")]
 build:
     rm -rf dist/
     uv build
     uv run twine check dist/*
 
-# Smoke-test a just-published release: install it FROM PyPI into a throwaway env and verify it
-#  imports and converts a real schema. `--isolated --no-project` builds the env from the index only
-#  (ignores the local source), so this exercises the actual published wheel. `UV_NO_SYNC=false`
-#  suppresses uv's "`--no-sync` has no effect with `--no-project`" warning under the CI-wide default.
+# Installs the release FROM PyPI into a throwaway env and checks it imports and converts a real
+#  schema. `--isolated --no-project` builds the env from the index only (ignores the local source),
+#  so this exercises the actual published wheel. `UV_NO_SYNC=false` suppresses uv's "`--no-sync`
+#  has no effect with `--no-project`" warning under the CI-wide default.
 #
-# NOTE: `--exclude-newer-package "pydantic-jsonschema=2999-12-31"` is required. Our `exclude-newer`
+# `--exclude-newer-package "pydantic-jsonschema=2999-12-31"` is required. Our `exclude-newer`
 #  cooldown (canonical: `tool.uv.exclude-newer = "7 days"` in `pyproject.toml`) is read because `just`
 #  runs inside the repo, so it rejects the just-released version as "too new" (0 days old). The
 #  override lifts the cutoff for OUR
 #  package only (a far-future date = no limit); dependencies keep the cooldown. Without it:
 #   uv run --with 'pydantic-jsonschema==<fresh version>' ...
 #   # -> error: ... filtered by `exclude-newer` ... requirements are unsatisfiable
+[group("release")]
 [doc("Smoke-test a published release installed from PyPI")]
 smoke-test version:
     UV_NO_SYNC=false uv run --isolated --no-project --exclude-newer-package "pydantic-jsonschema=2999-12-31" --with "pydantic-jsonschema=={{ version }}" python -c "from pydantic_jsonschema import Schema, to_model; print(to_model(Schema.model_validate({'type': 'object', 'properties': {'x': {'type': 'integer'}}, 'required': ['x']}))(x=1).model_dump())"
 
-# Generate the changelog on a `release/X.Y.Z` branch and open the release PR
+[group("release")]
+[doc("Generate the changelog on a `release/X.Y.Z` branch and open the release PR")]
 release-pr version: (_check-release-version version)
     #!/usr/bin/env bash
     set -euo pipefail
@@ -339,7 +360,7 @@ release-pr version: (_check-release-version version)
     git switch -c "release/$version"
     just changelog "v$version"
     if [[ -z "$(git status --porcelain docs/changelog.md)" ]]; then
-        printf 'docs/changelog.md is unchanged — nothing to release.\n' >&2
+        printf 'docs/changelog.md is unchanged, nothing to release.\n' >&2
         exit 2
     fi
     git add docs/changelog.md
@@ -347,7 +368,8 @@ release-pr version: (_check-release-version version)
     git push -u origin "release/$version"
     gh pr create --title "chore(version): update to \`$version\`" --body "Changelog for \`v$version\`. After merge, run \`just release $version\` to tag and publish."
 
-# Tag the merged release from up-to-date `main` and push only the tag (triggers `release.yml`)
+[group("release")]
+[doc("Tag the merged release from up-to-date `main` and push only the tag (triggers `release.yml`)")]
 release version: (_check-release-version version)
     #!/usr/bin/env bash
     set -euo pipefail
@@ -360,7 +382,7 @@ release version: (_check-release-version version)
     fi
     git fetch origin main
     if [[ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]]; then
-        printf 'Local `main` must match `origin/main` — merge the release PR and `git pull` first.\n' >&2
+        printf 'Local `main` must match `origin/main`: merge the release PR and `git pull` first.\n' >&2
         exit 2
     fi
     if ! grep -q "^## \[$version\]" docs/changelog.md; then
@@ -388,9 +410,8 @@ _check-release-version version:
         exit 2
     fi
 
-# --- Maintenance ---
-
-# Clean up generated files
+[group("maintenance")]
+[doc("Remove generated files")]
 clean:
     rm -rf .pytest_cache
     rm -rf .ruff_cache
@@ -399,7 +420,7 @@ clean:
     rm -rf htmlcov
     rm -rf site
     rm -rf sbom
-    # Remove throwaway envs (`.venv312`-`.venv315`) but keep the main `.venv` so a clean doesn't
+    # Remove throwaway envs (`.venv312` to `.venv315`) but keep the main `.venv` so a clean doesn't
     #  force a full re-sync of the working environment.
     find . -maxdepth 1 -type d -name ".venv*" ! -name ".venv" -exec rm -rf {} +
     find . -type d -name __pycache__ -exec rm -rf {} +

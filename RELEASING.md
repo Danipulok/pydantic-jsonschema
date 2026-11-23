@@ -26,7 +26,7 @@ On [pypi.org](https://pypi.org):
 
 Before the first public release:
 
-1. Run `just all` — format, lint, tests, docs build must all pass.
+1. Run `just ci` and make sure it passes.
 2. Verify `docs/changelog.md` contains the target release section, for example `## [X.Y.Z]`.
 3. Confirm PyPI trusted publisher is configured (see above).
 4. Confirm GitHub environment `pypi` exists.

@@ -13,7 +13,7 @@ Closes #<!-- issue number, or remove this line -->
 
 ## How it was tested
 
-<!-- `just all`? New tests? Manual steps? Tell us how you know it works. -->
+<!-- `just ci`? New tests? Manual steps? Tell us how you know it works. -->
 
 ## Notes
 
