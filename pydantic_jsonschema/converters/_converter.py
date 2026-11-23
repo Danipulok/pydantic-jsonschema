@@ -54,7 +54,7 @@ from pydantic_jsonschema.rules import AnnotationAction, MatchContext, ModelActio
 from pydantic_jsonschema.schema import DataType, Reference, Schema
 
 from ._discriminator import discriminator_property
-from ._field_kwargs import FieldKindType, build_field_kwargs, get_field_default
+from ._field_kwargs import FieldKind, build_field_kwargs, get_field_default
 from ._metadata import annotate, array_metadata, object_dict_metadata
 from ._object_keywords import (
     DictKeywords,
@@ -1115,7 +1115,7 @@ class SchemaConverter:
         :param model_name: Name for the generated model.
         :returns: `RootModel` subclass.
         """
-        field = self._schema_to_field(schema, field_kind="root")
+        field = self._schema_to_field(schema, field_kind=FieldKind.ROOT)
 
         created_model = type(
             model_name,
@@ -1159,6 +1159,9 @@ class SchemaConverter:
                 taken=taken,
                 renamed=renamed,
             )
+            field_kind = (
+                FieldKind.REQUIRED if property_name in required_names else FieldKind.OPTIONAL
+            )
 
             with self._track_path(
                 f"properties.{property_name}",
@@ -1166,7 +1169,7 @@ class SchemaConverter:
             ):
                 field = self._property_field(
                     field_schema,
-                    field_kind="required" if property_name in required_names else "optional",
+                    field_kind=field_kind,
                     alias=None if field_name == property_name else property_name,
                 )
 
@@ -1179,7 +1182,7 @@ class SchemaConverter:
         field_schema: Reference | Schema,
         /,
         *,
-        field_kind: FieldKindType,
+        field_kind: FieldKind,
         alias: str | None,
     ) -> FieldInfo:
         """Convert one `properties` entry to a field.
@@ -1397,7 +1400,7 @@ class SchemaConverter:
         schema: Schema,
         /,
         *,
-        field_kind: FieldKindType,
+        field_kind: FieldKind,
         annotation: AnnotationType | None = None,
         metadata_fallback: Schema | None = None,
         alias: str | None = None,
@@ -2050,7 +2053,13 @@ def _declares_object_keyword(schema: Schema, /) -> bool:
     return any(getattr(schema, keyword) is not MISSING for keyword in _OBJECT_KEYWORDS)
 
 
-def _field_name(property_name: str, /, *, taken: set[str], renamed: set[str]) -> str:
+def _field_name(
+    property_name: str,
+    /,
+    *,
+    taken: set[str],
+    renamed: set[str],
+) -> str:
     """Name the field of a property: the property name, unless Pydantic refuses or misreads it.
 
     Pydantic refuses a leading underscore and a `model_` member, and reads `model_config` as the

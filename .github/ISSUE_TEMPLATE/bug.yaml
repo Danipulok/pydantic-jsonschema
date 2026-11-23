@@ -15,6 +15,7 @@ body:
       options:
         - label: I confirm that I'm using the latest version of Pydantic JSON Schema
           required: true
+
         - label: I have searched the existing issues and this is a new bug
           required: true
 

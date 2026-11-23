@@ -83,7 +83,13 @@ class PatternProperties(ObjectApplicator):
 
         return data
 
-    def _check_property(self, name: AnnotationType, /, *, value: AnnotationType) -> None:
+    def _check_property(
+        self,
+        name: AnnotationType,
+        /,
+        *,
+        value: AnnotationType,
+    ) -> None:
         for pattern, adapter in self._get_compiled():
             # ECMA-262 `patternProperties` is unanchored; `re.search` matches anywhere.
             if not pattern.search(str(name)):

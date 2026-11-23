@@ -35,6 +35,10 @@ class TestSanitizeIdentifier:
             pytest.param("_test.value-2", "_testvalue2", id="mixed-dot-hyphen"),
         ],
     )
-    def test_sanitize_identifier(self, input_value: str, expected: str) -> None:
+    def test_sanitize_identifier(
+        self,
+        input_value: str,
+        expected: str,
+    ) -> None:
         """Test sanitize_identifier with various inputs."""
         assert sanitize_identifier(input_value) == expected

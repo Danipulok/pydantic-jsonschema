@@ -1397,7 +1397,12 @@ class TestReferenceSiblings:
             pytest.param({"oneOf": [{"type": "string", "minLength": 2}]}, "a", id="one-of"),
         ],
     )
-    def test_own_branch_sibling_checks(self, *, sibling: SchemaRaw, invalid: str) -> None:
+    def test_own_branch_sibling_checks(
+        self,
+        *,
+        sibling: SchemaRaw,
+        invalid: str,
+    ) -> None:
         """A keyword in its own `allOf` branch rejects a value the target accepts."""
         model = to_model(Schema.model_validate(_in_property({"$ref": "#/$defs/S", **sibling})))
 
@@ -1572,7 +1577,12 @@ class TestReferenceSiblings:
             ),
         ],
     )
-    def test_non_string_ref_raises(self, *, schema_raw: SchemaRaw, path: list[str]) -> None:
+    def test_non_string_ref_raises(
+        self,
+        *,
+        schema_raw: SchemaRaw,
+        path: list[str],
+    ) -> None:
         """A `$ref` that is not a string is a reference error at its location, not a recursion."""
         schema = Schema.model_validate(schema_raw)
 

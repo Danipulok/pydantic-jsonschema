@@ -96,7 +96,12 @@ def get_inline_defs(schema: Schema, /) -> dict[str, ResolvedDef]:
     return result_defs
 
 
-def resolve_def_alias(defs: dict[str, Schema | Reference], /, *, name: str) -> ResolvedDef:
+def resolve_def_alias(
+    defs: dict[str, Schema | Reference],
+    /,
+    *,
+    name: str,
+) -> ResolvedDef:
     """Resolve a `$defs` entry to a concrete schema, following alias chains.
 
     :param defs: Raw `$defs` mapping.
@@ -168,7 +173,12 @@ def _check_alias_target(
     return target_name
 
 
-def normalize_ref_siblings(schema: Schema, /, *, path: Sequence[str] = ()) -> Schema:
+def normalize_ref_siblings(
+    schema: Schema,
+    /,
+    *,
+    path: Sequence[str] = (),
+) -> Schema:
     """Move every `$ref` whose siblings must apply with it under `allOf`.
 
     The root `$ref` always moves. Elsewhere a `$ref` moves beside a validating keyword, whichever
@@ -191,7 +201,12 @@ def normalize_ref_siblings(schema: Schema, /, *, path: Sequence[str] = ()) -> Sc
     )
 
 
-def _normalize_node(node: Schema | Reference, /, *, path: Sequence[str]) -> Schema | Reference:
+def _normalize_node(
+    node: Schema | Reference,
+    /,
+    *,
+    path: Sequence[str],
+) -> Schema | Reference:
     if isinstance(node, Reference):
         reference_siblings: dict[str, JsonValueType] = node.model_extra or {}
         if reference_siblings.keys().isdisjoint(_VALIDATING_KEYWORDS):
@@ -224,7 +239,12 @@ def _normalize_node(node: Schema | Reference, /, *, path: Sequence[str]) -> Sche
     )
 
 
-def _schema_ref(schema: Schema, /, *, path: Sequence[str]) -> str | None:
+def _schema_ref(
+    schema: Schema,
+    /,
+    *,
+    path: Sequence[str],
+) -> str | None:
     extra: dict[str, JsonValueType] = schema.model_extra or {}
     if _REF_KEY not in extra:
         return None
@@ -249,7 +269,12 @@ def _ref_siblings(schema: Schema, /) -> dict[str, JsonValueType]:
     return siblings
 
 
-def _check_siblings(siblings: dict[str, JsonValueType], /, *, path: Sequence[str]) -> None:
+def _check_siblings(
+    siblings: dict[str, JsonValueType],
+    /,
+    *,
+    path: Sequence[str],
+) -> None:
     try:
         Schema.model_validate(siblings)
     except ValidationError as er:
@@ -286,7 +311,12 @@ def _ref_under_all_of(
     return _normalize_children(Schema.model_validate({**rest, "allOf": all_of}), path=path)
 
 
-def _normalize_children(schema: Schema, /, *, path: Sequence[str]) -> Schema:
+def _normalize_children(
+    schema: Schema,
+    /,
+    *,
+    path: Sequence[str],
+) -> Schema:
     update: dict[str, JsonValueType] = {}
     set_fields: set[str] = schema.model_fields_set
     for name, field in type(schema).model_fields.items():

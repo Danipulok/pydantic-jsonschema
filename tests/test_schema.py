@@ -29,7 +29,11 @@ class TestDataType:
             pytest.param(DataType.OBJECT, "object", id="object"),
         ],
     )
-    def test_values(self, member: DataType, value: str) -> None:
+    def test_values(
+        self,
+        member: DataType,
+        value: str,
+    ) -> None:
         """Test enum members have correct string values."""
         assert member == value
         assert str(member) == value
@@ -315,7 +319,12 @@ class TestSchemaConstraints:
             pytest.param("multipleOf", 0.5, id="fractional-multiple-of"),
         ],
     )
-    def test_bound_on_the_edge_loads(self, *, keyword: str, value: float) -> None:
+    def test_bound_on_the_edge_loads(
+        self,
+        *,
+        keyword: str,
+        value: float,
+    ) -> None:
         """A zero count and a fractional `multipleOf` stay valid."""
         schema = Schema.model_validate({keyword: value})
 

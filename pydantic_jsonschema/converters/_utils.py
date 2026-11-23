@@ -20,7 +20,12 @@ __all__ = [
 type PythonType = Any
 
 
-def unwrap[ValueT](value: ValueT | MISSING, /, *, default: ValueT) -> ValueT:
+def unwrap[ValueT](
+    value: ValueT | MISSING,
+    /,
+    *,
+    default: ValueT,
+) -> ValueT:
     """Return a `Schema` field's value, or `default` when it is the `MISSING` sentinel.
 
     Replaces the `value if value is not MISSING else default` ternary repeated across the

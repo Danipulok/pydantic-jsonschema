@@ -70,7 +70,10 @@ def get_examples() -> list[CodeExample]:
 
 
 @pytest.mark.parametrize("example", get_examples(), ids=str)
-def test_docs_examples(example: CodeExample, eval_example: EvalExample) -> None:
+def test_docs_examples(
+    example: CodeExample,
+    eval_example: EvalExample,
+) -> None:
     """Test that all Python code examples in documentation are valid and run correctly.
 
     :param example: An example object.
@@ -87,7 +90,10 @@ def test_docs_examples(example: CodeExample, eval_example: EvalExample) -> None:
 
 
 @pytest.mark.parametrize("example_file", get_example_files(), ids=lambda path: path.name)
-def test_example_files(example_file: Path, eval_example: EvalExample) -> None:
+def test_example_files(
+    example_file: Path,
+    eval_example: EvalExample,
+) -> None:
     """Test that Python example files run correctly.
 
     :param example_file: Path to the example file.
