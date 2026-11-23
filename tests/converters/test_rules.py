@@ -621,7 +621,7 @@ class TestByPathPointers:
         """An object root becomes the model class, so `/` has no annotation to wrap.
 
         Rules attach where a node turns into an annotation: a field, a validated branch, or an
-        inline child. A `RootModel` value is a field (`field_kind="root"`), but an object root is
+        inline child. A `RootModel` value is a field (`FieldKind.ROOT`), but an object root is
         not: its properties are the fields. Target those instead.
         """
         schema = Schema.model_validate(

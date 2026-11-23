@@ -1,7 +1,8 @@
 """`FieldInfo` kwargs and defaults derived from JSON Schema constraints."""
 
+from enum import StrEnum
 from types import EllipsisType
-from typing import Any, Final, Literal, TypedDict
+from typing import Any, Final, TypedDict
 
 import annotated_types
 
@@ -12,16 +13,26 @@ from ._type_keywords import pins_type
 from ._utils import produces_all_of_model, unwrap
 
 __all__ = [
-    "FieldKindType",
+    "FieldKind",
     "build_field_kwargs",
     "get_field_default",
 ]
 
-type FieldKindType = Literal["required", "optional", "root"]  # How a field is used in a model
 
 # Pydantic's "required, no default" marker for a field default (`...`).
 #  See: https://github.com/pydantic/pydantic/blob/6800281ba87625346daf5826563740ded8a9851b/pydantic/fields.py#L241-L247
 _PYDANTIC_DEFAULT_MISSING: Final[EllipsisType] = ...
+
+
+class FieldKind(StrEnum):
+    """How a field is used in a model."""
+
+    REQUIRED = "required"
+    """A property the object lists in `required`."""
+    OPTIONAL = "optional"
+    """A property the object does not list in `required`."""
+    ROOT = "root"
+    """The value of a `RootModel`."""
 
 
 class _FieldKwargs(TypedDict, total=False):
@@ -131,7 +142,7 @@ def get_field_default(
     schema: Schema,
     /,
     *,
-    field_kind: FieldKindType,
+    field_kind: FieldKind,
 ) -> Any:  # noqa: ANN401
     """Determine default value for the field based on its schema.
 
@@ -139,7 +150,7 @@ def get_field_default(
     :param field_kind: `required` / `optional` object property, or `root` model value.
     :returns: Default value, `...` for required fields, or the `MISSING` sentinel.
     """
-    if field_kind == "required":
+    if field_kind is FieldKind.REQUIRED:
         return _PYDANTIC_DEFAULT_MISSING
 
     if schema.default is not MISSING:
@@ -147,7 +158,7 @@ def get_field_default(
 
     # Root model values have no "absent" concept:
     #  a bare `{"type": "string"}` root schema always validates a value.
-    if field_kind == "root":
+    if field_kind is FieldKind.ROOT:
         return _PYDANTIC_DEFAULT_MISSING
 
     # Optional field without explicit default -> `MISSING` sentinel, so the
