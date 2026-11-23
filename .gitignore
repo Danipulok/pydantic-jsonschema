@@ -10,14 +10,8 @@ __pycache__/
 .DS_Store
 
 # Testing
-.pytest_cache/
 .coverage*
 coverage.xml
-htmlcov/
-
-# Linting
-.mypy_cache/
-.ruff_cache/
 
 # Documentation
 site/
@@ -25,7 +19,6 @@ site/
 docs/assets/copy-to-llm/
 
 # Build artifacts
-dist/
 build/
 *.egg-info/
 
