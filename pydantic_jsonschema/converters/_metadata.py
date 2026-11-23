@@ -38,7 +38,7 @@ def _ensure_unique_items(value: list[Any], /) -> list[Any]:
     seen: list[Any] = []
     for item in value:
         if item in seen:
-            msg = "Array items must be unique"
+            msg: str = "Array items must be unique"
             raise ValueError(msg)
         seen.append(item)
     return value

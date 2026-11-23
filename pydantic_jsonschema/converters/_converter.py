@@ -81,6 +81,14 @@ __all__ = [
     "to_model",
 ]
 
+# Type aliases
+type Ref = str  # Reference path like "#/$defs/User"
+type SchemaHash = str  # Schema cache key (JSON hash)
+type FormatName = str  # Format name like "date-time", "uuid"
+type AnnotationType = Any  # `type`, `Annotated`, `Union`, `Literal`, `ForwardRef`, etc.
+type PythonType = Any  # Anything that Pydantic supports
+type FormatType = type | TypeAliasType  # A type, `Annotated` type, or PEP 695 `type` alias
+
 
 # Default model name
 _DEFAULT_MODEL_NAME: Final[str] = "Model"
@@ -167,14 +175,6 @@ _OBJECT_KEYWORDS: Final[tuple[str, ...]] = (
     "dependent_required",
     "dependent_schemas",
 )
-
-# Type aliases
-type Ref = str  # Reference path like "#/$defs/User"
-type SchemaHash = str  # Schema cache key (JSON hash)
-type FormatName = str  # Format name like "date-time", "uuid"
-type AnnotationType = Any  # `type`, `Annotated`, `Union`, `Literal`, `ForwardRef`, etc.
-type PythonType = Any  # Anything that Pydantic supports
-type FormatType = type | TypeAliasType  # A type, `Annotated` type, or PEP 695 `type` alias
 
 
 class SchemaConverter:
@@ -284,6 +284,7 @@ class SchemaConverter:
         """
         saved: list[str] = self._pointer_tokens
         self._pointer_tokens = list(tokens)
+
         try:
             yield
         finally:
@@ -309,6 +310,7 @@ class SchemaConverter:
 
         self._resolution_path.append(segment)
         self._pointer_tokens.extend(tokens)
+
         try:
             yield
         finally:
@@ -682,6 +684,7 @@ class SchemaConverter:
         checked: dict[str, AnnotationType] = {
             f"`allOf[{index}]`": branch for index, branch in branches.items()
         }
+
         if own is not None:
             checked["the keywords beside `allOf`"] = own
 
@@ -948,6 +951,7 @@ class SchemaConverter:
         """
         target = self._building_key(ref)
         self._building.add(target)
+
         try:
             yield
         finally:
@@ -1045,7 +1049,7 @@ class SchemaConverter:
         :returns: Tuple of base classes.
         """
         all_of: list[Schema | Reference] = unwrap(schema.all_of, default=[])
-        base_models = []
+        base_models: list[type[BaseModel]] = []
         for index, sub_schema in enumerate(all_of):
             # The first branch may produce the value, so it keeps the `allOf` model's name; the
             #  others would all dump as `Model` under mangled `$defs` keys.
@@ -1709,7 +1713,7 @@ class SchemaConverter:
         # An empty `enum` has no valid value; `Literal[()]` makes Pydantic raise a bare
         #  `AssertionError` deep in schema generation, so reject it with a library error instead.
         if not values:
-            msg = "`enum` must contain at least one value"
+            msg: str = "`enum` must contain at least one value"
             raise SchemaConversionError(msg)
 
         literal_type = Literal[tuple(values)]  # type: ignore[valid-type]
@@ -1916,7 +1920,12 @@ class SchemaConverter:
             with self._track_path("items"):
                 tail = self._constrained_annotation(schema.items)
 
-        return self._register(PrefixItems(prefixes=prefixes, tail=tail))
+        return self._register(
+            PrefixItems(
+                prefixes=prefixes,
+                tail=tail,
+            )
+        )
 
     def _build_contains(
         self,
@@ -1942,7 +1951,11 @@ class SchemaConverter:
         max_contains = unwrap(schema.max_contains, default=None)
 
         return self._register(
-            Contains(branch=branch, min_contains=min_contains, max_contains=max_contains)
+            Contains(
+                branch=branch,
+                min_contains=min_contains,
+                max_contains=max_contains,
+            )
         )
 
     def _object_annotation(
@@ -1996,6 +2009,7 @@ class SchemaConverter:
             include={"required", "dependent_required"},
             exclude_unset=True,
         )
+
         if checks or applicators:
             dict_keywords = DictKeywords(
                 checks=checks,

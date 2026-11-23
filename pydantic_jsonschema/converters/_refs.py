@@ -109,7 +109,11 @@ def resolve_def_alias(defs: dict[str, Schema | Reference], /, *, name: str) -> R
     current: Schema | Reference = defs[name]
 
     while isinstance(current, Reference):
-        target_name = _check_alias_target(defs, reference=current, seen_names=seen_names)
+        target_name = _check_alias_target(
+            defs,
+            reference=current,
+            seen_names=seen_names,
+        )
         seen_names.append(target_name)
         current = defs[target_name]
 

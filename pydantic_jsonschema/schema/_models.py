@@ -130,14 +130,23 @@ class Schema(BaseModel):
     # `not` / `if` / `else` are Python reserved words, so the fields use a trailing
     #  underscore with an explicit alias. `populate_by_name=True` keeps both forms loadable
     #  (e.g. `Schema(if_=...)` and `Schema.model_validate({"if": ...})`); dumps use the alias.
-    not_: SchemaOrRefType | MISSING = Field(default=MISSING, alias="not")
+    not_: SchemaOrRefType | MISSING = Field(
+        default=MISSING,
+        alias="not",
+    )
     """The `not` keyword: must NOT match this subschema. [Core §10.2.1.4](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.4)."""
 
-    if_: SchemaOrRefType | MISSING = Field(default=MISSING, alias="if")
+    if_: SchemaOrRefType | MISSING = Field(
+        default=MISSING,
+        alias="if",
+    )
     """The `if` keyword: condition subschema gating `then` / `else`. [Core §10.2.2.1](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.1)."""
     then: SchemaOrRefType | MISSING = MISSING
     """The `then` keyword: applied when `if` validates. [Core §10.2.2.2](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.2)."""
-    else_: SchemaOrRefType | MISSING = Field(default=MISSING, alias="else")
+    else_: SchemaOrRefType | MISSING = Field(
+        default=MISSING,
+        alias="else",
+    )
     """The `else` keyword: applied when `if` fails. [Core §10.2.2.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.3)."""
 
     multiple_of: Annotated[PositiveFloat, Field(allow_inf_nan=False)] | MISSING = MISSING
@@ -181,5 +190,8 @@ class Schema(BaseModel):
     examples: list[Any] | MISSING = MISSING
     """The `examples` keyword: example values. [Validation §9.5](https://json-schema.org/draft/2020-12/json-schema-validation#section-9.5)."""
 
-    defs: dict[str, SchemaOrRefType] | MISSING = Field(default=MISSING, alias="$defs")
+    defs: dict[str, SchemaOrRefType] | MISSING = Field(
+        default=MISSING,
+        alias="$defs",
+    )
     """The `$defs` keyword: reusable subschema definitions. [Core §8.2.4](https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.4)."""
