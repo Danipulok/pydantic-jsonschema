@@ -27,9 +27,9 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      # The PR title must follow Conventional Commits because squash-merge
-      #  uses it as the commit message, and `git-cliff` parses it for
-      #  the changelog. Non-conforming titles are silently dropped.
+      # The PR title must follow Conventional Commits: it titles the merge
+      #  commit, and a squashed bot PR's title is the commit `git-cliff`
+      #  parses for the changelog. Non-conforming commits are silently dropped.
       - name: Check Conventional Commits format
         uses: amannn/action-semantic-pull-request@2252a14e810aa9b85c2d560bd7070c802206ecf6 # v6.1.2
         env:

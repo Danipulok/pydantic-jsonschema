@@ -45,7 +45,7 @@ The changelog lands on `main` through a regular PR; the tag is pushed as a separ
    This creates branch `release/X.Y.Z` from up-to-date `main`, generates `docs/changelog.md`,
    commits it as `chore(version): update to X.Y.Z`, and opens the PR via `gh`.
 
-2. Review and squash-merge the release PR (keep the PR title as the commit message).
+2. Review and merge the release PR with a merge commit, the way every human PR lands.
 
 3. Tag the merged commit:
 
