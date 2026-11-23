@@ -1726,6 +1726,7 @@ wheels = [
 name = "pydantic-jsonschema"
 source = { editable = "." }
 dependencies = [
+    { name = "annotated-types" },
     { name = "pydantic" },
 ]
 
@@ -1793,7 +1794,10 @@ test = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic", specifier = ">=2.13.0" }]
+requires-dist = [
+    { name = "annotated-types", specifier = ">=0.6.0" },
+    { name = "pydantic", specifier = ">=2.13.0" },
+]
 
 [package.metadata.requires-dev]
 audit = [{ name = "zizmor", specifier = ">=1.29.0" }]
