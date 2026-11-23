@@ -28,27 +28,27 @@ Thank you for helping improve Pydantic JSON Schema.
     just install
     ```
 
-The `just install` recipe runs `uv sync --frozen --all-extras --all-packages` and installs
-pre-commit hooks.
+The `just install` recipe installs the full development environment and the pre-commit hooks.
 
 ## Development Workflow
 
-Run `just` to list all available commands.
+Run `just` to list all available commands, each with a short description.
 
-| Need                              | Command                | What it runs                                                    |
-|-----------------------------------|------------------------|-----------------------------------------------------------------|
-| Format code                       | `just format`          | `ruff format` and autofix-only `ruff check`                     |
-| Lint everything                   | `just lint`            | `ruff`, `mypy`, `pyright`, `codespell`, and `markdownlint-cli2` |
-| Run tests                         | `just test`            | `pytest` with coverage reporting                                |
-| Run all supported Python versions | `just test-all-python` | Test suite on every supported Python version                    |
-| Generate HTML coverage            | `just testcov`         | `just test` plus `coverage html`                                |
-| Run pre-commit hooks              | `just precommit`       | `pre-commit run --all-files`                                    |
-| Run the full local gate           | `just all`             | format, lint, tests, and docs build                             |
+| Need                              | Command                |
+|-----------------------------------|------------------------|
+| Format code                       | `just format`          |
+| Lint everything                   | `just lint`            |
+| Run tests                         | `just test`            |
+| Run all supported Python versions | `just test-all-python` |
+| Generate HTML coverage            | `just testcov`         |
+| Run pre-commit hooks              | `just precommit`       |
+| Run the full local gate           | `just ci`              |
 
 Before opening a PR, run:
 
 ```bash
-just all
+just format
+just ci
 ```
 
 ## Documentation Workflow
@@ -169,10 +169,11 @@ Tests are held to all of the above, except where a rule exempts them by name; se
 
 2. Make your changes.
 
-3. Run the full local gate:
+3. Format the code, then run the full local gate:
 
     ```bash
-    just all
+    just format
+    just ci
     ```
 
 4. Commit your changes:
