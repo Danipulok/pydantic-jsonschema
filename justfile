@@ -59,7 +59,7 @@ install-all-python:
             uv sync --python "$version" --frozen --no-default-groups --group test
     done
 
-# Install the test group only (skips `docs`: `Pillow` has no Python 3.15 wheel). Frozen in CI.
+# Install the test group only, leaving out the `docs` group and its native dependencies. Frozen in CI.
 install-test: _check-uv
     uv sync --no-default-groups --group test
 
