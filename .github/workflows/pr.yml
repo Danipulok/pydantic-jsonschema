@@ -1,9 +1,9 @@
 name: PR
 
-# NOTE: `pull_request_target` is required so the title check works on PRs from
-#       forks (it needs the base-repo token to read PR metadata). This workflow
-#       never checks out or runs untrusted PR code, so the elevated context is
-#       safe, hence the `dangerous-triggers` suppression.
+# `pull_request_target` is required so the title check works on PRs from
+#  forks (it needs the base-repo token to read PR metadata). This workflow
+#  never checks out or runs untrusted PR code, so the elevated context is
+#  safe, hence the `dangerous-triggers` suppression.
 on:
   pull_request_target:  # zizmor: ignore[dangerous-triggers]
     types: [opened, edited, synchronize]
@@ -27,9 +27,9 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      # NOTE: PR title must follow Conventional Commits because squash-merge
-      #       uses it as the commit message, and `git-cliff` parses it for
-      #       the changelog. Non-conforming titles are silently dropped.
+      # The PR title must follow Conventional Commits because squash-merge
+      #  uses it as the commit message, and `git-cliff` parses it for
+      #  the changelog. Non-conforming titles are silently dropped.
       - name: Check Conventional Commits format
         uses: amannn/action-semantic-pull-request@2252a14e810aa9b85c2d560bd7070c802206ecf6 # v6.1.2
         env:

@@ -1,4 +1,4 @@
-# NOTE: The body/footer templates use careful `-%` whitespace control and
+# The body/footer templates use careful `-%` whitespace control and
 #  `trim = false` because `trim = true` strips trailing newlines from each
 #  rendered body, collapsing the blank line between release sections.
 #  The `postprocessors` regex collapses 3+ consecutive newlines into exactly 2

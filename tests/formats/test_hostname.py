@@ -10,10 +10,10 @@ https://github.com/ypcrts/fqdn/blob/e893170fb465f928e41605946b2258646ba70d04/tes
 IDN test data derived from the JSON Schema Test Suite (MIT):
 https://github.com/json-schema-org/JSON-Schema-Test-Suite/blob/fe8c2f0de2041943975932b6bf4bd882625b6cfb/tests/draft2020-12/optional/format/idn-hostname.json
 
-NOTE: Suite cases that exercise IDNA 2008 contextual rules (CONTEXTO middle dot /
-      keraia / geresh, ZWJ-virama checks, leading combining marks, punycode
-      well-formedness) are excluded: `validate_idn_hostname` uses the stdlib
-      IDNA 2003 codec, which accepts them (documented difference from the spec).
+Suite cases that exercise IDNA 2008 contextual rules (CONTEXTO middle dot /
+keraia / geresh, ZWJ-virama checks, leading combining marks, punycode
+well-formedness) are excluded: `validate_idn_hostname` uses the stdlib
+IDNA 2003 codec, which accepts them (documented difference from the spec).
 """
 
 import pytest

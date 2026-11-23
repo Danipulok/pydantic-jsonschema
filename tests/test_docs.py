@@ -59,7 +59,7 @@ def get_examples() -> list[CodeExample]:
     docs_dir = Path(__file__).parent.parent.joinpath("docs")
     readme = Path(__file__).parent.parent.joinpath("README.md")
 
-    # NOTE: `examples.md` uses `--8<--` file inclusion, so its code blocks are not standalone.
+    # `examples.md` uses `--8<--` file inclusion, so its code blocks are not standalone.
     paths = [readme, *(path for path in docs_dir.glob("*.md") if path.name != "examples.md")]
 
     # `list(...)` is required: `find_examples` returns a generator, and `parametrize`

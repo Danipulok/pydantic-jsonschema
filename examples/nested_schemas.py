@@ -50,7 +50,7 @@ post = BlogPost(
     tags=["python", "pydantic", "json-schema"],
 )
 
-# NOTE: `ruff format` rewrites `#>` to `# >`, breaking `pytest-examples` output markers.
+# `ruff format` rewrites `#>` to `# >`, breaking `pytest-examples` output markers.
 # fmt: off
 print(post.title)  # type: ignore[attr-defined]
 #> Getting Started with Pydantic JSON Schema

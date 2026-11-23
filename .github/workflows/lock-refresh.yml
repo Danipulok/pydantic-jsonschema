@@ -82,6 +82,7 @@ jobs:
       #  an open PR instead of landing. Only the PR this job just opened is reachable through the
       #  step output, so no author guard is needed. Merged with the App token rather than
       #  `GITHUB_TOKEN`, whose pushes cannot start workflows.
+      #
       #  Gated on the PR number, not on `pull-request-operation`: the action sets the number whenever
       #  an open PR differs from the base, but leaves the operation at `none` when the branch itself
       #  needed no update, which is every re-run over an already-open lock PR.

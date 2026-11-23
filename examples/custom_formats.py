@@ -66,7 +66,7 @@ product = Product(
     price=19.99,
 )
 
-# NOTE: `ruff format` rewrites `#>` to `# >`, breaking `pytest-examples` output markers.
+# `ruff format` rewrites `#>` to `# >`, breaking `pytest-examples` output markers.
 # fmt: off
 print(product.sku)  # type: ignore[attr-defined]
 #> WDG-1234-PRO

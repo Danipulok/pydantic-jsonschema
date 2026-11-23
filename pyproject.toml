@@ -95,9 +95,9 @@ test = [
     "pytest>=8.0.0",
     "pytest-cov>=6.0.0",
     "pytest-examples>=0.0.18",
-    # NOTE: Used in `docs/formats.md` examples, which are executed by `tests/test_docs.py`.
-    #       Base package only: examples use `Color` and `PaymentCardNumber`, which need no extras.
-    #       `2.0.0`-`2.2.0` work but use deprecated `pydantic-core` APIs; clean from `2.3.0`.
+    # Used in `docs/formats.md` examples, which are executed by `tests/test_docs.py`.
+    #  Base package only: examples use `Color` and `PaymentCardNumber`, which need no extras.
+    #  `2.0.0`-`2.2.0` work but use deprecated `pydantic-core` APIs; clean from `2.3.0`.
     #
     # Reproduce on `2.2.0`:
     #   uv run --with 'pydantic-extra-types==2.2.0' -m pytest tests/test_docs.py -q
@@ -177,7 +177,7 @@ files = ["pydantic_jsonschema", "tests", "examples"]
 #  field aliases (`$ref`, `if_`, `else_`, `not_`) and (b) flags the deliberate "wrong" inputs our
 #  validation tests feed to coercing fields. `mypy` (with `pydantic.mypy`) covers `tests`.
 [tool.pyright]
-# https://github.com/microsoft/pyright/blob/main/docs/configuration.md
+# https://github.com/microsoft/pyright/blob/2981f9f1ce41be5c15667da1f7a3cfda4f245089/docs/configuration.md
 venvPath = "."
 venv = ".venv"
 typeCheckingMode = "standard"
