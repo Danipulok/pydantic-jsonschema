@@ -1,8 +1,8 @@
 # Applicators
 
 In JSON Schema, a keyword whose value is *itself a schema* (or schemas) is called an
-**applicator**: it applies those subschemas to the instance — or to its array items, object
-property values, or property names — and the instance is valid only if those subschemas are
+**applicator**: it applies those subschemas to the instance (or to its array items, object
+property values, or property names), and the instance is valid only if those subschemas are
 satisfied. The term and the grouping are the spec's own, from
 [core §10, "A Vocabulary for Applying Subschemas"][applicator-vocab].
 
@@ -14,10 +14,10 @@ them directly on your own Pydantic models.
 ## Why "applicators", not "validators" or "markers"
 
 - **`validators`** is too broad. The package already has *format validators* and *field
-  constraints*; "validator" says nothing about the trait that sets these apart — *applying a
+  constraints*; "validator" says nothing about the trait that sets these apart: *applying a
   subschema*.
 - **`markers`** described only the implementation: an `Annotated[T, ...]` metadata object. But
-  several of these run as `before` model validators rather than `Annotated` markers — so the name
+  several of these run as `before` model validators rather than `Annotated` markers, so the name
   was both narrower and less accurate than the behaviour.
 - **`applicators`** is the exact word the JSON Schema spec uses for this category. The library
   speaks JSON Schema everywhere else, so it speaks it here too.
@@ -48,15 +48,15 @@ keywords of one type on a schema whose `type` does not pin it (no `type`, a `typ
 ## What is not here
 
 `anyOf`, `properties`, `items`, `additionalProperties`, and `allOf` over object models are
-applicators too, but each has a native Pydantic equivalent — inheritance, `Union`, and model
-fields — so the converter expresses them directly instead of through a class here. See the
+applicators too, but each has a native Pydantic equivalent (inheritance, `Union`, and model
+fields), so the converter expresses them directly instead of through a class here. See the
 [conversion map](converters.md#conversion-map).
 
 ## How they work
 
 Each applicator holds one or more subschema annotations and validates a value against them with a
 Pydantic `TypeAdapter`. A subschema may be a `ForwardRef` pointing at a `$ref` that only becomes
-resolvable once the whole schema — including `$defs` — is converted, so applicators build their
+resolvable once the whole schema (including `$defs`) is converted, so applicators build their
 adapters lazily and receive a forward-reference namespace via `bind_namespace` after conversion
 finishes.
 
@@ -65,7 +65,7 @@ the field type or as a `before` model validator on the model.
 
 ## Using an applicator directly
 
-The applicator classes are not converter-internal — you can build a validated annotation from one
+The applicator classes are not converter-internal: you can build a validated annotation from one
 directly. `OneOf`, for example, enforces JSON Schema `oneOf` semantics (*exactly one* branch must
 match), unlike a plain `Union`:
 

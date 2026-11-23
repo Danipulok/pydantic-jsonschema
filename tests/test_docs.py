@@ -12,17 +12,17 @@ __all__: list[str] = []
 # `pytest-examples` has no native `pyproject.toml` support, so source its settings here instead of
 #  hardcoding them: `line-length` / `target-version` / `quote-style` track `[tool.ruff]`, and the
 #  doc/example-only `ruff` ignores live in `[tool.pytest-examples]`. A `None` (key absent) means
-#  "leave the `pytest-examples` default" — the value is simply not forwarded to `set_config`.
+#  "leave the `pytest-examples` default": the value is simply not forwarded to `set_config`.
 _PYPROJECT_TOML_DATA: Final[dict[str, Any]] = tomllib.loads(
     (Path(__file__).parent.parent / "pyproject.toml").read_text(encoding="utf-8"),
 )
 _TOOL_DATA: Final[dict[str, Any]] = _PYPROJECT_TOML_DATA["tool"]
 _RUFF_DATA: Final[dict[str, Any]] = _TOOL_DATA["ruff"]
 
-LINE_LENGTH: Final[int | None] = _RUFF_DATA.get("line-length")
-TARGET_VERSION: Final[str | None] = _RUFF_DATA.get("target-version")
-QUOTES: Final[str | None] = _RUFF_DATA.get("format", {}).get("quote-style")
-RUFF_IGNORE: Final[list[str]] = _TOOL_DATA.get("pytest-examples", {}).get("ruff-ignore", [])
+_LINE_LENGTH: Final[int | None] = _RUFF_DATA.get("line-length")
+_TARGET_VERSION: Final[str | None] = _RUFF_DATA.get("target-version")
+_QUOTES: Final[str | None] = _RUFF_DATA.get("format", {}).get("quote-style")
+_RUFF_IGNORE: Final[list[str]] = _TOOL_DATA.get("pytest-examples", {}).get("ruff-ignore", [])
 
 
 def _configure(eval_example: EvalExample, /) -> None:
@@ -30,14 +30,14 @@ def _configure(eval_example: EvalExample, /) -> None:
 
     :param eval_example: Fixture for evaluating examples.
     """
-    config: dict[str, Any] = {"ruff_ignore": RUFF_IGNORE}
+    config: dict[str, Any] = {"ruff_ignore": _RUFF_IGNORE}
 
-    if LINE_LENGTH is not None:
-        config["line_length"] = LINE_LENGTH
-    if TARGET_VERSION is not None:
-        config["target_version"] = TARGET_VERSION
-    if QUOTES is not None:
-        config["quotes"] = QUOTES
+    if _LINE_LENGTH is not None:
+        config["line_length"] = _LINE_LENGTH
+    if _TARGET_VERSION is not None:
+        config["target_version"] = _TARGET_VERSION
+    if _QUOTES is not None:
+        config["quotes"] = _QUOTES
 
     eval_example.set_config(**config)
 
@@ -59,10 +59,10 @@ def get_examples() -> list[CodeExample]:
     docs_dir = Path(__file__).parent.parent.joinpath("docs")
     readme = Path(__file__).parent.parent.joinpath("README.md")
 
-    # NOTE: `examples.md` uses `--8<--` file inclusion, so its code blocks are not standalone.
+    # `examples.md` uses `--8<--` file inclusion, so its code blocks are not standalone.
     paths = [readme, *(path for path in docs_dir.glob("*.md") if path.name != "examples.md")]
 
-    # NOTE: `list(...)` is required — `find_examples` returns a generator, and `parametrize`
+    # `list(...)` is required: `find_examples` returns a generator, and `parametrize`
     #  deprecated non-`Collection` iterables (`PytestRemovedIn10Warning`, surfaced by the ceiling
     #  test on a newer pytest). Reproduce:
     #   uv run --upgrade pytest -W error -q   # -> error during collection of `tests/test_docs.py`

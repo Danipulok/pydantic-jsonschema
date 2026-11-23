@@ -1,10 +1,10 @@
 # Automated dependency update PRs.
 #
-# NOTE: Dependabot does NOT respect `uv`'s `tool.uv.exclude-newer` — it always targets the latest
+# Dependabot does NOT respect `uv`'s `tool.uv.exclude-newer`: it always targets the latest
 #  release. The two are separate systems that only collide at lock time: Dependabot runs `uv` to
 #  update `uv.lock`, and `uv` then refuses any version inside the `exclude-newer` window, producing a
 #  broken (unlockable) PR. `uv`'s own docs therefore recommend mirroring the cutoff as a `cooldown`.
-#  `cooldown.default-days` is duplicated from `tool.uv.exclude-newer` ("7 days") in `pyproject.toml` —
+#  `cooldown.default-days` is duplicated from `tool.uv.exclude-newer` ("7 days") in `pyproject.toml`;
 #  keep the two values in sync. See: https://docs.astral.sh/uv/guides/integration/dependabot/
 version: 2
 
@@ -25,6 +25,7 @@ updates:
       # A group without `applies-to` covers version updates only, so every security update
       #  opened its own PR.
       #  https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#groups--
+      #
       #  Majors stay out of the group: in a group the highest bump decides, so one major would
       #  hold every patch fix back from auto-merge.
       #  https://github.com/dependabot/fetch-metadata/blob/25dd0e34f4fe68f24cc83900b1fe3fe149efef98/src/dependabot/output.ts#L79-L86

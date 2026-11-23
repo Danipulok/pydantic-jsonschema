@@ -41,7 +41,10 @@ class TestBasicConversion:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
 
-        instance = model(name="Alice", age=30)
+        instance = model(
+            name="Alice",
+            age=30,
+        )
         assert instance.model_dump() == snapshot(
             {
                 "name": "Alice",
@@ -739,11 +742,11 @@ class TestRootModels:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
 
-        valid_value = 42
+        valid_value: int = 42
         instance = model(valid_value)  # type: ignore[call-arg]
         assert instance.model_dump() == valid_value  # type: ignore[comparison-overlap]
 
-        invalid_value = -1
+        invalid_value: int = -1
         with pytest.raises(ValidationError):
             model(invalid_value)  # type: ignore[call-arg]
 
@@ -945,7 +948,10 @@ class TestAdditionalProperties:
         assert instance.model_dump() == snapshot({"name": "Alice"})
 
         with pytest.raises(ValidationError):
-            model(name="Alice", extra="field")
+            model(
+                name="Alice",
+                extra="field",
+            )
 
     def test_additional_properties_allow(self) -> None:
         """Test that additionalProperties allows extra fields."""
@@ -957,7 +963,10 @@ class TestAdditionalProperties:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
 
-        instance = model(name="Alice", extra="allowed")
+        instance = model(
+            name="Alice",
+            extra="allowed",
+        )
         assert instance.model_dump() == snapshot(
             {
                 "name": "Alice",
@@ -980,7 +989,11 @@ class TestAdditionalProperties:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
 
-        instance = model(name="test", extra1=10, extra2=20)
+        instance = model(
+            name="test",
+            extra1=10,
+            extra2=20,
+        )
         assert instance.model_dump() == snapshot(
             {
                 "name": "test",
@@ -1175,8 +1188,11 @@ class TestConverterCaching:
 
             def trigger_uncached_ref_scenario(self) -> type[BaseModel]:
                 """Simulate scenario where ref exists in defs_cache but model not cached."""
-                test_schema = Schema(type="object", properties={"value": Schema(type="string")})
-                ref = "#/$defs/TestType"
+                test_schema = Schema(
+                    type="object",
+                    properties={"value": Schema(type="string")},
+                )
+                ref: str = "#/$defs/TestType"
                 # A def is registered with the name that declares its schema; its nodes are
                 #  addressed by that name, so both halves are filled together.
                 self._defs_cache[ref] = test_schema

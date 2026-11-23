@@ -7,7 +7,7 @@ matching entry in `formats`.
 Without a matching validator, `format` is treated as metadata and the normal JSON Schema type still
 applies.
 
-An entry applies wherever its `format` appears — on a property, on an array element (`items`), or
+An entry applies wherever its `format` appears: on a property, on an array element (`items`), or
 on a typed map value (`additionalProperties`).
 
 ## Third-Party Validator Libraries
@@ -38,7 +38,10 @@ schema = Schema.model_validate(
 )
 
 LooseUser = to_model(schema)
-loose_user = LooseUser(email="not-an-email", id="not-a-uuid")
+loose_user = LooseUser(
+    email="not-an-email",
+    id="not-a-uuid",
+)
 print(loose_user.email)
 #> not-an-email
 
@@ -58,7 +61,10 @@ print(type(strict_user.id).__name__)
 #> UUID
 
 try:
-    StrictUser(email="invalid", id="550e8400-e29b-41d4-a716-446655440000")
+    StrictUser(
+        email="invalid",
+        id="550e8400-e29b-41d4-a716-446655440000",
+    )
 except ValidationError as er:
     print(type(er).__name__)
     #> ValidationError
@@ -162,7 +168,10 @@ Checkout = to_model(
     },
 )
 
-checkout = Checkout(card="4111111111111111", color="#ff5733")
+checkout = Checkout(
+    card="4111111111111111",
+    color="#ff5733",
+)
 print(type(checkout.color).__name__)
 #> Color
 ```
@@ -174,7 +183,7 @@ list.
 
 ## Custom Formats
 
-A custom format is a Pydantic type you map to a `format` value — exactly how the built-in
+A custom format is a Pydantic type you map to a `format` value, exactly how the built-in
 aliases are defined (`Email = Annotated[str, AfterValidator(...)]`). Wrap your own validation or
 normalization in an `Annotated` type; the wrapper you choose (`AfterValidator`, `BeforeValidator`,
 `Field(...)`) controls how and when it runs, so you keep full control.
@@ -191,7 +200,7 @@ def validate_sku(value: str) -> str:
     parts = value.split("-")
 
     if len(parts) != 3:
-        msg = "SKU must have 3 parts"
+        msg: str = "SKU must have 3 parts"
         raise ValueError(msg)
 
     if not parts[0].isalpha() or len(parts[0]) != 3:
@@ -242,7 +251,7 @@ except ValidationError as er:
 | Type class       | `{"url": HttpUrl}`         | Replaces the generated annotation                   |
 | `Annotated` type | `{"price": PositivePrice}` | Replaces the annotation, preserving its validators  |
 
-A bare callable is **not** accepted — wrap it in `Annotated[...]` so the timing is explicit
+A bare callable is **not** accepted: wrap it in `Annotated[...]` so the timing is explicit
 (`Annotated[str, BeforeValidator(fn)]` for raw input, `Annotated[str, AfterValidator(fn)]` for the
 coerced value).
 
@@ -274,7 +283,7 @@ def normalize_phone(value: str) -> str:
     digits = "".join(character for character in value if character.isdigit())
 
     if len(digits) != 10:
-        msg = "Phone number must contain 10 digits"
+        msg: str = "Phone number must contain 10 digits"
         raise ValueError(msg)
 
     return f"({digits[:3]}) {digits[3:6]}-{digits[6:]}"
@@ -304,7 +313,7 @@ Raise `ValueError` with a clear message when a value is invalid:
 ```python title="error_handling.py"
 def validate_age(value: int) -> int:
     if value < 0:
-        msg = "Age cannot be negative"
+        msg: str = "Age cannot be negative"
         raise ValueError(msg)
 
     if value > 150:

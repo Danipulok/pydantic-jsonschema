@@ -2,6 +2,8 @@
 
 from pydantic_jsonschema import Schema, to_model
 
+__all__: list[str] = []
+
 blog_schema = Schema.model_validate(
     {
         "type": "object",
@@ -50,7 +52,7 @@ post = BlogPost(
     tags=["python", "pydantic", "json-schema"],
 )
 
-# NOTE: `ruff format` rewrites `#>` to `# >`, breaking `pytest-examples` output markers.
+# `ruff format` rewrites `#>` to `# >`, breaking `pytest-examples` output markers.
 # fmt: off
 print(post.title)  # type: ignore[attr-defined]
 #> Getting Started with Pydantic JSON Schema

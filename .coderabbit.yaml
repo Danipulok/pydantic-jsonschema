@@ -2,7 +2,7 @@
 language: en-US
 
 reviews:
-  # `assertive` is the verbose profile — we start with maximum feedback to evaluate the tool;
+  # `assertive` is the verbose profile: we start with maximum feedback to evaluate the tool;
   #  downgrade to `chill` if the noise outweighs the signal.
   profile: assertive
   high_level_summary: true

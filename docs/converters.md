@@ -22,7 +22,10 @@ schema = Schema.model_validate(
 
 User = to_model(schema, model_name="User")
 
-user = User(username="alice", email="alice@example.com")
+user = User(
+    username="alice",
+    email="alice@example.com",
+)
 print(user.username)
 #> alice
 ```
@@ -133,17 +136,17 @@ but do not affect the generated model.
 
 ## Known Limitations
 
-- `$defs` is only allowed in the root schema — nested `$defs` raises `SchemaConversionError`.
-- Only local references (`#/$defs/...`) and pre-built `refs` models are resolved — external
+- `$defs` is only allowed in the root schema; nested `$defs` raises `SchemaConversionError`.
+- Only local references (`#/$defs/...`) and pre-built `refs` models are resolved; external
   `$ref` URLs are not fetched.
 - `pattern` is compiled by Pydantic's default Rust regex engine, which does not support
-  ECMA-262 lookarounds — such patterns fail at model build time.
+  ECMA-262 lookarounds, so such patterns fail at model build time.
 - In a multi-type union (`{"type": ["object", "string"], "properties": {...}}`) the `object`
-  branch is validated as a plain `dict[str, Any]` — sibling `properties` are not applied.
+  branch is validated as a plain `dict[str, Any]`; sibling `properties` are not applied.
 - On objects that declare both `properties` and a schema-valued `additionalProperties`,
   extra fields are accepted (`extra="allow"`) but their values are not validated against the `additionalProperties` schema.
 - `format` is metadata unless a matching entry is passed in `formats`. Built-in aliases cover all
-  19 spec-defined formats, some with minor differences from the spec — see [Formats](formats.md).
+  19 spec-defined formats, some with minor differences from the spec; see [Formats](formats.md).
 - In an `allOf` that is not over object models, the first branch produces the value and the other
   branches only check the input, so their coercion (`"5"` to `5`) does not shape the value.
 - A `$ref` beside a validating keyword converts as that `allOf`, so the field is no longer the
@@ -215,7 +218,10 @@ schema = Schema.model_validate(
 
 Post = to_model(schema, model_name="Post")
 
-post = Post(title="Hello World", views=100)
+post = Post(
+    title="Hello World",
+    views=100,
+)
 print(post.title)
 #> Hello World
 ```
@@ -383,9 +389,9 @@ print(Model.model_json_schema()["properties"]["value"]["oneOf"])
 
 ### Discriminated `oneOf`
 
-When every `oneOf` branch is an object schema tagged by a shared property — a required field
+When every `oneOf` branch is an object schema tagged by a shared property (a required field
 whose value is a single constant (`const` or single-value `enum`) with a distinct value per
-branch — the union maps to a native Pydantic
+branch), the union maps to a native Pydantic
 [discriminated union](https://docs.pydantic.dev/latest/concepts/unions/#discriminated-unions)
 via `Field(discriminator=...)`.
 
@@ -549,7 +555,11 @@ Person = to_model(schema, refs={"#/$defs/Address": Address})
 
 person = Person(
     name="Alice",
-    address=Address(street="123 Main St", city="NYC", country="USA"),
+    address=Address(
+        street="123 Main St",
+        city="NYC",
+        country="USA",
+    ),
 )
 print(type(person.address) is Address)
 #> True
@@ -588,7 +598,11 @@ schema = Schema.model_validate(
 
 User = to_model(schema, model_name="User")
 
-user = User(username="alice", age=25, score=4.5)
+user = User(
+    username="alice",
+    age=25,
+    score=4.5,
+)
 print(user.score)
 #> 4.5
 
@@ -621,7 +635,10 @@ strict_schema = Schema.model_validate(
 Strict = to_model(strict_schema)
 
 try:
-    Strict(name="Alice", age=30)
+    Strict(
+        name="Alice",
+        age=30,
+    )
 except ValidationError as er:
     print(type(er).__name__)
     #> ValidationError
@@ -637,7 +654,10 @@ flexible_schema = Schema.model_validate(
 )
 
 Flexible = to_model(flexible_schema)
-data = Flexible(name="Alice", age=30)
+data = Flexible(
+    name="Alice",
+    age=30,
+)
 print(data.age)
 #> 30
 ```

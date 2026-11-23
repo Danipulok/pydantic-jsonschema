@@ -10,10 +10,10 @@ https://github.com/ypcrts/fqdn/blob/e893170fb465f928e41605946b2258646ba70d04/tes
 IDN test data derived from the JSON Schema Test Suite (MIT):
 https://github.com/json-schema-org/JSON-Schema-Test-Suite/blob/fe8c2f0de2041943975932b6bf4bd882625b6cfb/tests/draft2020-12/optional/format/idn-hostname.json
 
-NOTE: Suite cases that exercise IDNA 2008 contextual rules (CONTEXTO middle dot /
-      keraia / geresh, ZWJ-virama checks, leading combining marks, punycode
-      well-formedness) are excluded: `validate_idn_hostname` uses the stdlib
-      IDNA 2003 codec, which accepts them (documented difference from the spec).
+Suite cases that exercise IDNA 2008 contextual rules (CONTEXTO middle dot /
+keraia / geresh, ZWJ-virama checks, leading combining marks, punycode
+well-formedness) are excluded: `validate_idn_hostname` uses the stdlib
+IDNA 2003 codec, which accepts them (documented difference from the spec).
 """
 
 import pytest
@@ -55,7 +55,7 @@ class TestValidHostnames:
         ],
     )
     def test_labels_starting_with_digits(self, value: str) -> None:
-        """RFC 1035 §2.3.1 — labels may start with a digit."""
+        """RFC 1035 §2.3.1: labels may start with a digit."""
         assert validate_hostname(value) == value
 
     @pytest.mark.parametrize(
@@ -69,7 +69,7 @@ class TestValidHostnames:
         ],
     )
     def test_labels_with_medial_and_terminal_digits(self, value: str) -> None:
-        """RFC 1123 — digits allowed anywhere in a label."""
+        """RFC 1123: digits allowed anywhere in a label."""
         assert validate_hostname(value) == value
 
     def test_hyphens_in_labels(self) -> None:
@@ -83,7 +83,7 @@ class TestValidHostnames:
         assert validate_hostname("trainwreck.com.") == "trainwreck.com."
 
     def test_max_label_length_63(self) -> None:
-        """RFC 1035 §2.3.4 — each label may be up to 63 octets."""
+        """RFC 1035 §2.3.4: each label may be up to 63 octets."""
         label: str = "a" * 63
         assert validate_hostname(label) == label
         assert validate_hostname(f"{label}.com") == f"{label}.com"
@@ -94,7 +94,7 @@ class TestValidHostnames:
         assert validate_hostname(value) == value
 
     def test_max_total_length_253(self) -> None:
-        """RFC 1035 §2.3.4 — total name ≤ 253 octets (excluding trailing dot)."""
+        """RFC 1035 §2.3.4: total name ≤ 253 octets (excluding trailing dot)."""
         value: str = "a" * 61 + "." + "b" * 63 + "." + "c" * 63 + "." + "d" * 63
         assert validate_hostname(value) == value
 
@@ -128,12 +128,12 @@ class TestInvalidHostnames:
         ],
     )
     def test_leading_or_trailing_hyphen(self, value: str) -> None:
-        """RFC 3696 §2 — labels must not start or end with a hyphen."""
+        """RFC 3696 §2: labels must not start or end with a hyphen."""
         with pytest.raises(ValueError, match="Invalid hostname format"):
             validate_hostname(value)
 
     def test_label_too_long_64(self) -> None:
-        """RFC 1035 §2.3.4 — label > 63 octets is invalid."""
+        """RFC 1035 §2.3.4: label > 63 octets is invalid."""
         with pytest.raises(ValueError, match="Invalid hostname format"):
             validate_hostname("a" * 64)
 
@@ -148,7 +148,7 @@ class TestInvalidHostnames:
             validate_hostname("b" * 63 + "." + "a" * 64 + ".com")
 
     def test_total_length_254_without_trailing_dot(self) -> None:
-        """RFC 1035 §2.3.4 — total > 253 octets is invalid."""
+        """RFC 1035 §2.3.4: total > 253 octets is invalid."""
         value: str = "a" * 62 + "." + "b" * 63 + "." + "c" * 63 + "." + "d" * 63
         with pytest.raises(ValueError, match="Invalid hostname format"):
             validate_hostname(value)
@@ -177,7 +177,7 @@ class TestInvalidHostnames:
         ],
     )
     def test_non_ascii_rejected(self, value: str) -> None:
-        """RFC 3696 §2 — non-ASCII chars require punycode encoding."""
+        """RFC 3696 §2: non-ASCII chars require punycode encoding."""
         with pytest.raises(ValueError, match="Invalid hostname format"):
             validate_hostname(value)
 

@@ -17,7 +17,7 @@ class TestOneOf:
     A plain Python `Union` accepts a value matching *any* branch, so the converter wraps
     non-discriminated `oneOf` in a validator that counts matching branches and rejects a value
     matching zero or more than one. (Object branches tagged by a shared constant promote to a
-    native discriminated union instead — see `tests/converters/test_discriminator.py`.)
+    native discriminated union instead; see `tests/converters/test_discriminator.py`.)
     """
 
     def test_exactly_one_branch_accepted(self) -> None:

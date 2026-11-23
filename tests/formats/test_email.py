@@ -106,7 +106,7 @@ class TestValidEmails:
         assert validate_email(value) == value
 
     def test_max_local_length_64(self) -> None:
-        """RFC 5321 §4.5.3.1 — local part may be up to 64 characters."""
+        """RFC 5321 §4.5.3.1: local part may be up to 64 characters."""
         local: str = "a" * 64
         value: str = f"{local}@example.com"
         assert validate_email(value) == value
@@ -162,13 +162,13 @@ class TestInvalidEmails:
             validate_email(value)
 
     def test_local_too_long(self) -> None:
-        """RFC 5321 §4.5.3.1 — local part > 64 characters is rejected."""
+        """RFC 5321 §4.5.3.1: local part > 64 characters is rejected."""
         local: str = "a" * 65
         with pytest.raises(ValueError, match="Invalid email format"):
             validate_email(f"{local}@example.com")
 
     def test_total_too_long(self) -> None:
-        """RFC 5321 §4.5.3.1 — total address > 254 characters is rejected."""
+        """RFC 5321 §4.5.3.1: total address > 254 characters is rejected."""
         local: str = "a" * 64
         domain: str = "b" * 63 + "." + "c" * 63 + "." + "d" * 63
         with pytest.raises(ValueError, match="Invalid email format"):

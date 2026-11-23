@@ -166,7 +166,7 @@ plugins:
         view_as_markdown: true
         open_in_chatgpt: true
         open_in_claude: true
-        # Niche — a Markdown link to the page is rarely what readers want.
+        # Niche: a Markdown link to the page is rarely what readers want.
         copy_markdown_link: false
   - mkdocstrings:
       enabled: true

@@ -41,7 +41,10 @@ class TestComposition:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
 
-        instance = model(name="Alice", age=30)
+        instance = model(
+            name="Alice",
+            age=30,
+        )
         assert instance.model_dump() == snapshot(
             {
                 "name": "Alice",
@@ -76,7 +79,10 @@ class TestComposition:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
 
-        instance = model(id=1, name="Test")
+        instance = model(
+            id=1,
+            name="Test",
+        )
         assert instance.model_dump() == snapshot(
             {
                 "id": 1,
@@ -134,7 +140,10 @@ class TestComposition:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
 
-        instance = model(name="Alice", age=30)
+        instance = model(
+            name="Alice",
+            age=30,
+        )
         assert instance.model_dump() == snapshot(
             {
                 "name": "Alice",
@@ -173,7 +182,11 @@ class TestComposition:
         schema = Schema.model_validate(schema_raw)
         model = to_model(schema)
 
-        instance = model(name="Alice", age=30, email="alice@example.com")
+        instance = model(
+            name="Alice",
+            age=30,
+            email="alice@example.com",
+        )
         assert instance.model_dump() == snapshot(
             {
                 "name": "Alice",

@@ -106,7 +106,7 @@ class TestValidUri:
         ],
     )
     def test_ipv6_with_zone_id(self, value: str) -> None:
-        """RFC 4007 — IPv6 Zone IDs."""
+        """RFC 4007: IPv6 Zone IDs."""
         assert validate_uri(value) == value
 
     @pytest.mark.parametrize(
@@ -189,7 +189,7 @@ class TestInvalidUri:
         ],
     )
     def test_invalid_scheme(self, value: str) -> None:
-        """RFC 3986 §3.1 — scheme must start with a letter."""
+        """RFC 3986 §3.1: scheme must start with a letter."""
         with pytest.raises(ValueError, match=r"scheme was found to be invalid"):
             validate_uri(value)
 
@@ -247,7 +247,7 @@ class TestInvalidUri:
         started_at = time.perf_counter()
         with pytest.raises(ValueError, match=r"Invalid URI"):
             validate_uri("//" + "a" * 16_000 + "#\nx")
-        elapsed = time.perf_counter() - started_at
+        elapsed: float = time.perf_counter() - started_at
 
         # The possessive regex finishes in ~0.1ms even on slow runners; the quadratic
         #  regression takes ~8.6s on this payload, so 1s separates them by orders of magnitude.

@@ -5,7 +5,10 @@ from typing import Any
 from pydantic import ValidationError
 from pydantic_core import ErrorDetails
 
-__all__ = ["SchemaRaw", "dump_errors"]
+__all__ = [
+    "SchemaRaw",
+    "dump_errors",
+]
 
 type SchemaRaw = dict[str, Any]
 
@@ -15,7 +18,7 @@ def dump_errors(exc: ValidationError) -> list[ErrorDetails]:
 
     `include_url=False` drops the version-pinned URL; `include_context=False` drops `ctx`
     (e.g. the non-roundtrippable `ValueError` from our own validators), leaving
-    `type` / `loc` / `msg` / `input` — stable across Pydantic versions and safe for `snapshot()`.
+    `type` / `loc` / `msg` / `input`, stable across Pydantic versions and safe for `snapshot()`.
 
     :param exc: The raised `ValidationError`.
     :returns: The error list with only the snapshot-stable fields.

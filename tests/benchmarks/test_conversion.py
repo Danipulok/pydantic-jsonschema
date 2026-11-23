@@ -46,7 +46,7 @@ _WIDE_SCHEMA: Final[dict[str, Any]] = {
     "required": ["id", "name", "email", "status"],
 }
 
-# A deep, recursive shape: `$defs` + `$ref`, `allOf` composition, and arrays of nested objects —
+# A deep, recursive shape: `$defs` + `$ref`, `allOf` composition, and arrays of nested objects:
 #  the paths most likely to regress when the reference resolver or composition logic changes.
 _NESTED_SCHEMA: Final[dict[str, Any]] = {
     "$defs": {

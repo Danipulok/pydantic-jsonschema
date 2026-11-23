@@ -1,7 +1,7 @@
 # Rules
 
-Rules attach custom loading and dumping behavior to the model `to_model` generates — matched **by
-type, by path, or by an arbitrary predicate** — without hand-writing the model. Each rule has three
+Rules attach custom loading and dumping behavior to the model `to_model` generates, matched **by
+type, by path, or by an arbitrary predicate**, without hand-writing the model. Each rule has three
 parts, one object each:
 
 1. **when**: a matcher (`ByType`, `ByPath`, `ByFunc`);
@@ -15,7 +15,7 @@ whole-object `model_validator` to the model built for the matched object node, t
 One rule performs exactly one action. A load-and-dump round-trip is two rules sharing a matcher.
 
 Pass rules to `to_model(schema, rules=[...])`, or to `SchemaConverter(rules=[...])` when you drive
-conversion yourself — the two take the same list.
+conversion yourself; the two take the same list.
 
 ## Basic Usage
 
@@ -106,7 +106,7 @@ from pydantic_jsonschema.rules import ByPath, ModelAfter, Rule
 def require_end_after_start(model: BaseModel) -> BaseModel:
     values = model.model_dump()
     if values["end"] < values["start"]:
-        msg = "end must not precede start"
+        msg: str = "end must not precede start"
         raise ValueError(msg)
     return model
 
@@ -121,12 +121,19 @@ schema = Schema.model_validate(
 
 Span = to_model(schema, rules=[Rule(ByPath("/"), ModelAfter(require_end_after_start))])
 
-print(Span(start=1, end=5).model_dump())
+span = Span(
+    start=1,
+    end=5,
+)
+print(span.model_dump())
 #> {'start': 1, 'end': 5}
 
 # `pydantic.ValidationError` subclasses `ValueError`, so it is caught here.
 try:
-    Span(start=5, end=1)
+    Span(
+        start=5,
+        end=1,
+    )
 except ValueError as er:
     print(type(er).__name__)
     #> ValidationError
@@ -136,7 +143,7 @@ except ValueError as er:
 
 ### `ByType`
 
-Matches on the resolved annotation. A parameterized generic matches exactly — `list[str]` does not
+Matches on the resolved annotation. A parameterized generic matches exactly: `list[str]` does not
 match `list[int]`.
 
 An **unparameterized** generic matches every parameterization of itself, because the converter never
@@ -147,7 +154,7 @@ becomes `dict[str, T]`. Comparing a bare `list` by equality would therefore matc
 |-------------|------------------------------------------|
 | `list`      | `list[str]`, `list[int]`, `list[Any]`, … |
 | `list[str]` | `list[str]`                              |
-| `list[Any]` | `list[Any]` — an array without `items`   |
+| `list[Any]` | `list[Any]`, an array without `items`    |
 | `dict`      | `dict[str, str]`, `dict[str, Any]`, …    |
 
 A PEP 695 alias resolves to whatever it names, so `type Tags = list[str]` and `ByType(Tags)` are
@@ -189,7 +196,10 @@ User = to_model(
     ],
 )
 
-user = User(contact="User@Example.COM", note="Kept")
+user = User(
+    contact="User@Example.COM",
+    note="Kept",
+)
 print(user.contact)
 #> user@example.com
 print(user.note)
@@ -199,7 +209,7 @@ print(user.note)
 ### `ByPath`
 
 Matches a single node by its [JSON Pointer](https://www.rfc-editor.org/rfc/rfc6901). The pointer
-starts with `/` and carries no `#` prefix, which is exactly how `MatchContext.path` reports it — so
+starts with `/` and carries no `#` prefix, which is exactly how `MatchContext.path` reports it, so
 a `ByPath` rule and a `ByFunc` predicate comparing `context.path` always agree on the same string.
 
 There is only this one accepted spelling. A `$ref` in the schema looks like `#/$defs/User`, and
@@ -262,7 +272,7 @@ print(repr(Product(code="  ab-1  ").code))
 
 A definition is addressed where it is *declared* (`/$defs/User/...`), not through the `$ref`s that
 point at it, so one rule covers every use of that definition. Property names keep their literal
-characters and are escaped per RFC 6901 — `~` becomes `~0` and `/` becomes `~1`, so a property
+characters and are escaped per RFC 6901: `~` becomes `~0` and `/` becomes `~1`, so a property
 named `a/b` is `/properties/a~1b`.
 
 ```python title="rules_by_path.py"
@@ -333,7 +343,7 @@ print(Product(code=" ab ").code)
 
 ## Load and Dump Round-Trip
 
-`Before` and `Dump` are separate actions, so a round-trip is two rules that share a matcher —
+`Before` and `Dump` are separate actions, so a round-trip is two rules that share a matcher;
 matcher duplication is intentional.
 
 ```python title="rules_round_trip.py"
@@ -378,7 +388,7 @@ subclass, change its base from `Action` to `AnnotationAction`; its `metadata()` 
 ## Rules Are Data
 
 Matchers, actions, and `Rule` are frozen dataclasses, so they compare, hash, and `repr` as plain
-data — convenient for building rule sets programmatically and asserting on them in tests. The only
+data, convenient for building rule sets programmatically and asserting on them in tests. The only
 non-data field is the held callable (and `ByFunc`'s predicate).
 
 ## Rules vs. Formats

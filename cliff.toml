@@ -1,4 +1,4 @@
-# NOTE: The body/footer templates use careful `-%` whitespace control and
+# The body/footer templates use careful `-%` whitespace control and
 #  `trim = false` because `trim = true` strips trailing newlines from each
 #  rendered body, collapsing the blank line between release sections.
 #  The `postprocessors` regex collapses 3+ consecutive newlines into exactly 2
@@ -17,7 +17,7 @@ body = """{%- macro remote_url() -%}
   https://github.com/Danipulok/pydantic-jsonschema
 {%- endmacro -%}
 
-## [{% if version %}{{ version | trim_start_matches(pat="v") }}] — {{ timestamp | date(format="%Y-%m-%d") }}{% else %}Unreleased]{% endif %}
+## [{% if version %}{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}{% else %}Unreleased]{% endif %}
 {% for group, commits in commits | group_by(attribute="group") %}
 ### {{ group | striptags | trim | upper_first }}
 
@@ -51,6 +51,10 @@ postprocessors = [
 [git]
 conventional_commits = true
 filter_unconventional = true
+# A spaced long dash in a subject becomes a colon: the docs use no dash as punctuation.
+commit_preprocessors = [
+  { pattern = "[ \\t]+[\u2014\u2013][ \\t]+", replace = ": " },
+]
 split_commits = false
 commit_parsers = [
   { message = "^feat", group = "Added" },

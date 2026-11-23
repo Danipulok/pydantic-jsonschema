@@ -7,14 +7,16 @@ from pydantic import AfterValidator
 
 from pydantic_jsonschema import Schema, to_model
 
+__all__: list[str] = []
+
 
 def validate_sku(value: str) -> str:
     """Validate product SKU format: ABC-1234-XYZ."""
     value = value.upper()
-    pattern = r"^[A-Z]{3}-\d{4}-[A-Z]{3}$"
+    pattern: str = r"^[A-Z]{3}-\d{4}-[A-Z]{3}$"
 
     if not re.match(pattern, value):
-        msg = "SKU must be in format ABC-1234-XYZ"
+        msg: str = "SKU must be in format ABC-1234-XYZ"
         raise ValueError(msg)
 
     return value
@@ -23,7 +25,7 @@ def validate_sku(value: str) -> str:
 def validate_price(value: float) -> float:
     """Validate price is positive with max 2 decimals."""
     if value <= 0:
-        msg = "Price must be positive"
+        msg: str = "Price must be positive"
         raise ValueError(msg)
 
     if round(value, 2) != value:
@@ -66,7 +68,7 @@ product = Product(
     price=19.99,
 )
 
-# NOTE: `ruff format` rewrites `#>` to `# >`, breaking `pytest-examples` output markers.
+# `ruff format` rewrites `#>` to `# >`, breaking `pytest-examples` output markers.
 # fmt: off
 print(product.sku)  # type: ignore[attr-defined]
 #> WDG-1234-PRO

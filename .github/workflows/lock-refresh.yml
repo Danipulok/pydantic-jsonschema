@@ -51,7 +51,7 @@ jobs:
         with:
           app-id: ${{ secrets.AUTOMATION_APP_ID }}
           private-key: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
-          # Narrowed to what the step below needs — an unscoped token carries every permission the
+          # Narrowed to what the step below needs: an unscoped token carries every permission the
           #  App is installed with. https://docs.zizmor.sh/audits/#github-app
           permission-contents: write
           permission-pull-requests: write
@@ -72,7 +72,7 @@ jobs:
           title: "chore(deps): refresh transitive dependency lock"
           labels: dependencies
           body: |
-            Automated monthly `uv lock --upgrade` — refreshes the transitive dependency tree.
+            Automated monthly `uv lock --upgrade`, which refreshes the transitive dependency tree.
 
             `tool.uv.exclude-newer` ("7 days") still applies, so no release younger than the
             supply-chain quarantine window is included. Auto-merge is on, so this lands on its own
@@ -82,9 +82,10 @@ jobs:
       #  an open PR instead of landing. Only the PR this job just opened is reachable through the
       #  step output, so no author guard is needed. Merged with the App token rather than
       #  `GITHUB_TOKEN`, whose pushes cannot start workflows.
+      #
       #  Gated on the PR number, not on `pull-request-operation`: the action sets the number whenever
       #  an open PR differs from the base, but leaves the operation at `none` when the branch itself
-      #  needed no update — which is every re-run over an already-open lock PR.
+      #  needed no update, which is every re-run over an already-open lock PR.
       #  https://github.com/peter-evans/create-pull-request/blob/5f6978faf089d4d20b00c7766989d076bb2fc7f1/src/create-pull-request.ts#L255
       - name: Enable auto-merge
         if: steps.pull_request.outputs.pull-request-number != ''
