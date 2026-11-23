@@ -28,7 +28,7 @@ class _FieldKwargs(TypedDict, total=False):
     """Subset of Pydantic `FieldInfo` kwargs produced from JSON Schema constraints.
 
     Field names and types mirror `pydantic.fields._FromFieldInfoInputs`.
-    See: https://github.com/pydantic/pydantic/blob/v2.13.4/pydantic/fields.py#L50
+    See: https://github.com/pydantic/pydantic/blob/cf67d4b3193c3fe43ede18612ed62785eee11382/pydantic/fields.py#L50
     """
 
     examples: list[Any] | None

@@ -2,15 +2,15 @@
 
 Every applicator validates values against one or more subschemas via a `TypeAdapter`. A subschema
 may be a `ForwardRef` (a keyword pointing at a `$ref`) that only becomes resolvable after the whole
-schema — including `$defs` — is converted. Applicators therefore build their adapters lazily, and
+schema (including `$defs`) is converted. Applicators therefore build their adapters lazily, and
 the converter binds a forward-ref namespace via `bind_namespace` once conversion finishes.
 
 `Applicator` holds that shared plumbing; two abstract roles extend it and declare the hooks each
 kind must implement:
 
-- `AnnotationApplicator` — applied as `Annotated[type, self]` metadata, overriding Pydantic's
+- `AnnotationApplicator`: applied as `Annotated[type, self]` metadata, overriding Pydantic's
   `__get_pydantic_core_schema__` / `__get_pydantic_json_schema__`;
-- `ObjectApplicator` — applied to an object model via the converter's model-wrapper, exposing
+- `ObjectApplicator`: applied to an object model via the converter's model-wrapper, exposing
   `validate` / `json_schema_keyword`.
 
 `Not` and `IfThenElse` fill both roles (used on a field annotation and on a root object).
@@ -101,8 +101,8 @@ class Applicator:
         :param handler: The handler of the in-progress generation.
         :returns: The branch schema, with the definitions it needs registered at the document root.
         """
-        # `adapter.json_schema()` builds a *separate* document. A branch Pydantic cannot inline — a
-        #  recursive model — comes back as `{"$ref": "#/$defs/Model"}` carrying its own `$defs`,
+        # `adapter.json_schema()` builds a *separate* document. A branch Pydantic cannot inline (a
+        #  recursive model) comes back as `{"$ref": "#/$defs/Model"}` carrying its own `$defs`,
         #  and embedding only that fragment leaves the reference pointing at nothing:
         #  `KeyError: '#/$defs/Model'` out of `GenerateJsonSchema.get_json_ref_counts`. The active
         #  handler registers the definitions in the root document instead.

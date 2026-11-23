@@ -24,7 +24,7 @@ def _ensure_unique_items(value: list[Any], /) -> list[Any]:
     common scalar / object / array cases. The check is O(n^2) pairwise rather than `set`-based
     because JSON values can be unhashable (`dict` / `list`).
 
-    NOTE: Python equates `True == 1` and `1 == 1.0`, so e.g. `[true, 1]` is treated as a
+    Python equates `True == 1` and `1 == 1.0`, so e.g. `[true, 1]` is treated as a
     duplicate even though JSON Schema considers the two values distinct. Acceptable edge.
 
     Reproduce:

@@ -127,7 +127,7 @@ class Schema(BaseModel):
     one_of: Annotated[list[SchemaOrRefType], Field(min_length=1)] | MISSING = MISSING
     """The `oneOf` keyword: must match exactly one subschema. [Core §10.2.1.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.1.3)."""
 
-    # NOTE: `not` / `if` / `else` are Python reserved words, so the fields use a trailing
+    # `not` / `if` / `else` are Python reserved words, so the fields use a trailing
     #  underscore with an explicit alias. `populate_by_name=True` keeps both forms loadable
     #  (e.g. `Schema(if_=...)` and `Schema.model_validate({"if": ...})`); dumps use the alias.
     not_: SchemaOrRefType | MISSING = Field(default=MISSING, alias="not")

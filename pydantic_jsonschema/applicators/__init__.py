@@ -3,7 +3,7 @@
 JSON Schema calls a keyword whose value is itself a schema (or schemas) an *applicator*: it
 applies those subschemas to the instance, or to its array items / object property values, and
 the instance is valid only if the subschemas are satisfied. The term and the grouping come
-straight from the spec — [core §10, "A Vocabulary for Applying Subschemas"][spec].
+straight from the spec: [core §10, "A Vocabulary for Applying Subschemas"][spec].
 
 The classes here cover the applicators that have no native Pydantic equivalent and must be
 validated by hand, each against a `TypeAdapter`-wrapped subschema:
