@@ -50,7 +50,10 @@ schema = Schema.model_validate(
 
 User = to_model(schema, model_name="User")
 
-user = User(name="Alice", age=30)
+user = User(
+    name="Alice",
+    age=30,
+)
 print(user.model_dump())
 #> {'name': 'Alice', 'age': 30}
 ```

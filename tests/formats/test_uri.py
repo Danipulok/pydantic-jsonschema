@@ -247,7 +247,7 @@ class TestInvalidUri:
         started_at = time.perf_counter()
         with pytest.raises(ValueError, match=r"Invalid URI"):
             validate_uri("//" + "a" * 16_000 + "#\nx")
-        elapsed = time.perf_counter() - started_at
+        elapsed: float = time.perf_counter() - started_at
 
         # The possessive regex finishes in ~0.1ms even on slow runners; the quadratic
         #  regression takes ~8.6s on this payload, so 1s separates them by orders of magnitude.

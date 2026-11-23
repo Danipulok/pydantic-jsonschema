@@ -2,6 +2,8 @@
 
 from pydantic_jsonschema import Schema, to_model
 
+__all__: list[str] = []
+
 blog_schema = Schema.model_validate(
     {
         "type": "object",

@@ -106,7 +106,7 @@ from pydantic_jsonschema.rules import ByPath, ModelAfter, Rule
 def require_end_after_start(model: BaseModel) -> BaseModel:
     values = model.model_dump()
     if values["end"] < values["start"]:
-        msg = "end must not precede start"
+        msg: str = "end must not precede start"
         raise ValueError(msg)
     return model
 
@@ -121,12 +121,19 @@ schema = Schema.model_validate(
 
 Span = to_model(schema, rules=[Rule(ByPath("/"), ModelAfter(require_end_after_start))])
 
-print(Span(start=1, end=5).model_dump())
+span = Span(
+    start=1,
+    end=5,
+)
+print(span.model_dump())
 #> {'start': 1, 'end': 5}
 
 # `pydantic.ValidationError` subclasses `ValueError`, so it is caught here.
 try:
-    Span(start=5, end=1)
+    Span(
+        start=5,
+        end=1,
+    )
 except ValueError as er:
     print(type(er).__name__)
     #> ValidationError
@@ -189,7 +196,10 @@ User = to_model(
     ],
 )
 
-user = User(contact="User@Example.COM", note="Kept")
+user = User(
+    contact="User@Example.COM",
+    note="Kept",
+)
 print(user.contact)
 #> user@example.com
 print(user.note)

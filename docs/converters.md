@@ -22,7 +22,10 @@ schema = Schema.model_validate(
 
 User = to_model(schema, model_name="User")
 
-user = User(username="alice", email="alice@example.com")
+user = User(
+    username="alice",
+    email="alice@example.com",
+)
 print(user.username)
 #> alice
 ```
@@ -215,7 +218,10 @@ schema = Schema.model_validate(
 
 Post = to_model(schema, model_name="Post")
 
-post = Post(title="Hello World", views=100)
+post = Post(
+    title="Hello World",
+    views=100,
+)
 print(post.title)
 #> Hello World
 ```
@@ -549,7 +555,11 @@ Person = to_model(schema, refs={"#/$defs/Address": Address})
 
 person = Person(
     name="Alice",
-    address=Address(street="123 Main St", city="NYC", country="USA"),
+    address=Address(
+        street="123 Main St",
+        city="NYC",
+        country="USA",
+    ),
 )
 print(type(person.address) is Address)
 #> True
@@ -588,7 +598,11 @@ schema = Schema.model_validate(
 
 User = to_model(schema, model_name="User")
 
-user = User(username="alice", age=25, score=4.5)
+user = User(
+    username="alice",
+    age=25,
+    score=4.5,
+)
 print(user.score)
 #> 4.5
 
@@ -621,7 +635,10 @@ strict_schema = Schema.model_validate(
 Strict = to_model(strict_schema)
 
 try:
-    Strict(name="Alice", age=30)
+    Strict(
+        name="Alice",
+        age=30,
+    )
 except ValidationError as er:
     print(type(er).__name__)
     #> ValidationError
@@ -637,7 +654,10 @@ flexible_schema = Schema.model_validate(
 )
 
 Flexible = to_model(flexible_schema)
-data = Flexible(name="Alice", age=30)
+data = Flexible(
+    name="Alice",
+    age=30,
+)
 print(data.age)
 #> 30
 ```

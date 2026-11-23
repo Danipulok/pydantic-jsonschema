@@ -3,6 +3,8 @@
 from pydantic_jsonschema import Schema, to_model
 from pydantic_jsonschema.rules import After, Before, ByPath, ByType, Dump, Rule
 
+__all__: list[str] = []
+
 
 def csv_to_list(value: str | list[str]) -> list[str]:
     """Accept a comma-separated string wherever a list of strings is expected."""

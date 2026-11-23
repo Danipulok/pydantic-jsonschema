@@ -28,7 +28,10 @@ class TestExceptions:
 
     def test_schema_reference_error(self) -> None:
         """Test `SchemaReferenceError` stores message and path."""
-        error = SchemaReferenceError(message="Reference not found", path=["definitions", "User"])
+        error = SchemaReferenceError(
+            message="Reference not found",
+            path=["definitions", "User"],
+        )
         assert repr(error) == snapshot(
             "SchemaReferenceError(message='Reference not found', path=['definitions', 'User'])"
         )
@@ -47,13 +50,19 @@ class TestExceptions:
     def test_exception_args_with_path(self) -> None:
         """Test that `args` contains message and path."""
         path = ["definitions", "User", "properties", "name"]
-        error = SchemaReferenceError(message="Reference not found", path=path)
+        error = SchemaReferenceError(
+            message="Reference not found",
+            path=path,
+        )
         assert error.args == ("Reference not found", path)
 
     def test_exception_args_with_value(self) -> None:
         """Test that `args` contains message and value."""
         test_value = {"invalid": "data"}
-        error = FormatValidationError(message="Invalid format", value=test_value)
+        error = FormatValidationError(
+            message="Invalid format",
+            value=test_value,
+        )
         assert error.args == ("Invalid format", test_value)
 
     def test_exception_args_with_default_value(self) -> None:

@@ -357,7 +357,10 @@ class TestSchemaMetadata:
 
     def test_format_field(self) -> None:
         """Test `format` field."""
-        schema = Schema(type=DataType.STRING, format="email")
+        schema = Schema(
+            type=DataType.STRING,
+            format="email",
+        )
         dumped: dict[str, Any] = schema.model_dump()
         assert dumped == snapshot({"type": "string", "format": "email"})
 
@@ -379,7 +382,10 @@ class TestSchemaSerialization:
 
     def test_populate_by_name(self) -> None:
         """Test that fields can be set using Python names."""
-        schema = Schema(min_length=5, max_length=10)
+        schema = Schema(
+            min_length=5,
+            max_length=10,
+        )
         dumped: dict[str, Any] = schema.model_dump()
         assert dumped == snapshot({"minLength": 5, "maxLength": 10})
 
@@ -403,7 +409,10 @@ class TestSchemaSerialization:
             type=DataType.OBJECT,
             properties={
                 "name": Schema(type=DataType.STRING),
-                "age": Schema(type=DataType.INTEGER, minimum=0),
+                "age": Schema(
+                    type=DataType.INTEGER,
+                    minimum=0,
+                ),
             },
         )
         dumped: dict[str, Any] = schema.model_dump()
@@ -449,6 +458,7 @@ class TestSchemaArrayKeywords:
                 "prefixItems": [{"type": "string"}, {"type": "integer"}],
             }
         )
+
         assert schema.prefix_items is not MISSING
         assert all(isinstance(item, Schema) for item in schema.prefix_items)
         assert schema.model_dump() == snapshot(
@@ -505,6 +515,7 @@ class TestSchemaObjectKeywords:
                 "patternProperties": {"^x-": {"type": "string"}},
             }
         )
+
         assert schema.pattern_properties is not MISSING
         assert isinstance(schema.pattern_properties["^x-"], Schema)
         assert schema.model_dump() == snapshot(
@@ -565,6 +576,7 @@ class TestSchemaObjectKeywords:
                 "dependentSchemas": {"credit_card": {"required": ["billing_address"]}},
             }
         )
+
         assert schema.dependent_schemas is not MISSING
         assert isinstance(schema.dependent_schemas["credit_card"], Schema)
         assert schema.model_dump() == snapshot(

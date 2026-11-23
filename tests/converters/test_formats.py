@@ -26,6 +26,34 @@ if TYPE_CHECKING:
 __all__: list[str] = []
 
 
+class _CustomType:
+    def __init__(self, value: str) -> None:
+        if not value.startswith("custom:"):
+            msg: str = "Must start with 'custom:'"
+            raise ValueError(msg)
+
+        self._value = value
+
+    @override
+    def __str__(self) -> str:
+        return self._value
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls,
+        source_type: Any,  # noqa: ANN401
+        handler: GetCoreSchemaHandler,
+    ) -> CoreSchema:
+        return core_schema.no_info_after_validator_function(
+            cls,
+            handler(str),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                str,
+                return_schema=core_schema.str_schema(),
+            ),
+        )
+
+
 class TestFormats:
     """Tests for `formats` support: custom format types and built-in aliases."""
 
@@ -34,7 +62,7 @@ class TestFormats:
 
         def validate_positive(value: int) -> int:
             if value <= 0:
-                msg = "Must be positive"
+                msg: str = "Must be positive"
                 raise ValueError(msg)
             return value
 
@@ -73,7 +101,7 @@ class TestFormats:
 
         def check_even(value: int) -> int:
             if value % 2 != 0:
-                msg = "Must be even"
+                msg: str = "Must be even"
                 raise ValueError(msg)
             return value
 
@@ -98,7 +126,7 @@ class TestFormats:
 
         def validate_email_simple(value: str) -> str:
             if "@" not in value:
-                msg = "Invalid email"
+                msg: str = "Invalid email"
                 raise ValueError(msg)
             return value
 
@@ -134,13 +162,13 @@ class TestFormats:
 
         def validate_positive(value: int) -> int:
             if value <= 0:
-                msg = "Must be positive"
+                msg: str = "Must be positive"
                 raise ValueError(msg)
             return value
 
         def validate_uppercase(value: str) -> str:
             if not value.isupper():
-                msg = "Must be uppercase"
+                msg: str = "Must be uppercase"
                 raise ValueError(msg)
             return value
 
@@ -161,11 +189,17 @@ class TestFormats:
             formats={"positive": PositiveInt, "uppercase": Uppercase},
         )
 
-        instance = model(count=5, code="ABC")
+        instance = model(
+            count=5,
+            code="ABC",
+        )
         assert instance.model_dump() == snapshot({"count": 5, "code": "ABC"})
 
         with pytest.raises(ValidationError) as exc_info:
-            model(count=-1, code="ABC")
+            model(
+                count=-1,
+                code="ABC",
+            )
 
         assert dump_errors(exc_info.value) == snapshot(
             [
@@ -179,7 +213,10 @@ class TestFormats:
         )
 
         with pytest.raises(ValidationError) as exc_info:
-            model(count=5, code="abc")
+            model(
+                count=5,
+                code="abc",
+            )
 
         assert dump_errors(exc_info.value) == snapshot(
             [
@@ -194,33 +231,6 @@ class TestFormats:
 
     def test_validator_as_type_class(self) -> None:
         """Test validator as type class."""
-
-        class CustomType:
-            def __init__(self, value: str) -> None:
-                if not value.startswith("custom:"):
-                    msg = "Must start with 'custom:'"
-                    raise ValueError(msg)
-                self.value = value
-
-            @override
-            def __str__(self) -> str:
-                return self.value
-
-            @classmethod
-            def __get_pydantic_core_schema__(
-                cls,
-                source_type: Any,  # noqa: ANN401
-                handler: GetCoreSchemaHandler,
-            ) -> CoreSchema:
-                return core_schema.no_info_after_validator_function(
-                    cls,
-                    handler(str),
-                    serialization=core_schema.plain_serializer_function_ser_schema(
-                        lambda x: x.value,
-                        return_schema=core_schema.str_schema(),
-                    ),
-                )
-
         schema_raw: SchemaRaw = {
             "type": "object",
             "properties": {
@@ -229,7 +239,7 @@ class TestFormats:
             "required": ["field"],
         }
         schema = Schema.model_validate(schema_raw)
-        model = to_model(schema, formats={"custom": CustomType})
+        model = to_model(schema, formats={"custom": _CustomType})
 
         instance = model(field="custom:value")
         assert instance.model_dump() == snapshot(

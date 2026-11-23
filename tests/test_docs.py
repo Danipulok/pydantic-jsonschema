@@ -19,10 +19,10 @@ _PYPROJECT_TOML_DATA: Final[dict[str, Any]] = tomllib.loads(
 _TOOL_DATA: Final[dict[str, Any]] = _PYPROJECT_TOML_DATA["tool"]
 _RUFF_DATA: Final[dict[str, Any]] = _TOOL_DATA["ruff"]
 
-LINE_LENGTH: Final[int | None] = _RUFF_DATA.get("line-length")
-TARGET_VERSION: Final[str | None] = _RUFF_DATA.get("target-version")
-QUOTES: Final[str | None] = _RUFF_DATA.get("format", {}).get("quote-style")
-RUFF_IGNORE: Final[list[str]] = _TOOL_DATA.get("pytest-examples", {}).get("ruff-ignore", [])
+_LINE_LENGTH: Final[int | None] = _RUFF_DATA.get("line-length")
+_TARGET_VERSION: Final[str | None] = _RUFF_DATA.get("target-version")
+_QUOTES: Final[str | None] = _RUFF_DATA.get("format", {}).get("quote-style")
+_RUFF_IGNORE: Final[list[str]] = _TOOL_DATA.get("pytest-examples", {}).get("ruff-ignore", [])
 
 
 def _configure(eval_example: EvalExample, /) -> None:
@@ -30,14 +30,14 @@ def _configure(eval_example: EvalExample, /) -> None:
 
     :param eval_example: Fixture for evaluating examples.
     """
-    config: dict[str, Any] = {"ruff_ignore": RUFF_IGNORE}
+    config: dict[str, Any] = {"ruff_ignore": _RUFF_IGNORE}
 
-    if LINE_LENGTH is not None:
-        config["line_length"] = LINE_LENGTH
-    if TARGET_VERSION is not None:
-        config["target_version"] = TARGET_VERSION
-    if QUOTES is not None:
-        config["quotes"] = QUOTES
+    if _LINE_LENGTH is not None:
+        config["line_length"] = _LINE_LENGTH
+    if _TARGET_VERSION is not None:
+        config["target_version"] = _TARGET_VERSION
+    if _QUOTES is not None:
+        config["quotes"] = _QUOTES
 
     eval_example.set_config(**config)
 
