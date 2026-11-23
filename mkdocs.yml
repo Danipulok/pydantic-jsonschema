@@ -65,6 +65,7 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/danipulok/pydantic-jsonschema
+
     - icon: fontawesome/brands/python
       link: https://pypi.org/project/pydantic-jsonschema/
   generator: false
@@ -73,13 +74,21 @@ copyright: Copyright &copy; 2026 - Present
 
 nav:
   - Home: index.md
+
   - Installation: install.md
+
   - Schema: schema.md
+
   - Converters: converters.md
+
   - Applicators: applicators.md
+
   - Formats: formats.md
+
   - Rules: rules.md
+
   - Examples: examples.md
+
   - API Reference:
     - Schema model: api/schema.md
     - Converters: api/converters.md
@@ -87,6 +96,7 @@ nav:
     - Formats: api/formats.md
     - Rules: api/rules.md
     - Exceptions: api/exceptions.md
+
   - Development:
     - Contributing: contributing.md
     - Changelog: changelog.md
@@ -94,12 +104,19 @@ nav:
 markdown_extensions:
   # Python Markdown
   - abbr
+
   - admonition
+
   - attr_list
+
   - def_list
+
   - footnotes
+
   - md_in_html
+
   - tables
+
   - toc:
       permalink: true
       permalink_title: Anchor link to this section
@@ -108,36 +125,51 @@ markdown_extensions:
   # Python Markdown Extensions
   - pymdownx.arithmatex:
       generic: true
+
   - pymdownx.betterem:
       smart_enable: all
+
   - pymdownx.caret
+
   - pymdownx.details
+
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
       pygments_lang_class: true
+
   - pymdownx.inlinehilite
+
   - pymdownx.keys
+
   - pymdownx.mark
+
   - pymdownx.smartsymbols
+
   - pymdownx.snippets
+
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+
   - pymdownx.tabbed:
       alternate_style: true
+
   - pymdownx.tasklist:
       custom_checkbox: true
+
   - pymdownx.tilde
 
 plugins:
   - search:
       lang: en
+
   - glightbox
   # LLM-friendly export: `/llms.txt`, `/llms-full.txt`, and per-page `.md` files.
   - llmstxt:
@@ -168,6 +200,7 @@ plugins:
         open_in_claude: true
         # Niche: a Markdown link to the page is rarely what readers want.
         copy_markdown_link: false
+
   - mkdocstrings:
       enabled: true
       default_handler: python
