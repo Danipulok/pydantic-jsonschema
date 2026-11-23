@@ -1,8 +1,5 @@
 """Convert a JSON Schema `Schema` into a Pydantic model (`to_model` / `SchemaConverter`)."""
 
-# mypy flags every `is not MISSING` check on a `Schema` field; see `_utils.py`.
-# mypy: disable-error-code="comparison-overlap"
-
 from collections.abc import Generator, Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from decimal import Decimal
@@ -1258,7 +1255,8 @@ class SchemaConverter:
         #  annotation stays clean (`str`, `uuid.UUID`) instead of the alias wrapper.
         format_type = unwrap_type_alias(format_type)
 
-        if get_origin(format_type) is not Annotated and not isinstance(format_type, type):
+        # mypy misreads `get_origin` of an `Any` alias; see `PythonType` in `converters/_utils.py`.
+        if get_origin(format_type) is not Annotated and not isinstance(format_type, type):  # type: ignore[comparison-overlap]
             msg = (
                 f"`formats[{schema.format!r}]` must be a type or `Annotated` type, "
                 f"got `{format_type!r}`"
@@ -1266,7 +1264,8 @@ class SchemaConverter:
             raise SchemaConversionError(msg)
 
         kept: list[Applicator] = []
-        if get_origin(annotation) is Annotated:
+        # mypy misreads `get_origin` of an `Any` alias; see `PythonType` in `converters/_utils.py`.
+        if get_origin(annotation) is Annotated:  # type: ignore[comparison-overlap]
             kept = [
                 item for item in get_args(annotation)[1:] if isinstance(item, _FORMAT_KEPT_METADATA)
             ]

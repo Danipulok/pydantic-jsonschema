@@ -1,10 +1,5 @@
 """Tests for converter utility functions."""
 
-# `MISSING` is a `Sentinel` instance rather than a type, so mypy rejects the
-#  `X | MISSING` union the `Schema` fields themselves use — see the same
-#  suppression in `pydantic_jsonschema/schema/_models.py`.
-# mypy: disable-error-code="valid-type"
-
 from typing import get_args
 
 import pytest

@@ -1,10 +1,5 @@
 """`FieldInfo` kwargs and defaults derived from JSON Schema constraints."""
 
-# NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
-#  recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
-#  and flags every `is not MISSING` check as a non-overlapping identity comparison.
-# mypy: disable-error-code="comparison-overlap"
-
 from types import EllipsisType
 from typing import Any, Final, Literal, TypedDict
 

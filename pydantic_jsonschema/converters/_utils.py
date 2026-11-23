@@ -1,12 +1,5 @@
 """Small shared utilities for the converter package."""
 
-# `Schema` fields use `X | MISSING` unions (see `schema/_models.py`), and so does `unwrap`
-#  below. mypy rejects `MISSING` as a type (`valid-type`), then infers the fields without
-#  the `Sentinel` branch and flags every `is not MISSING` check as a non-overlapping
-#  identity comparison (`comparison-overlap`). This module needs only the first; the
-#  modules that compare fields disable the second.
-# mypy: disable-error-code="valid-type"
-
 from typing import Any, Union, cast
 
 from pydantic_jsonschema._compat import MISSING
@@ -18,6 +11,12 @@ __all__ = [
     "unwrap",
 ]
 
+# mypy resolves `get_origin()` of a PEP 695 alias of `Any` to its first overload, which returns
+#  `ParamSpec`, so `get_origin(value) is Annotated` reads as a non-overlapping identity check;
+#  each such check carries a line ignore that `warn_unused_ignores` reports once mypy is fixed.
+#  Reproduce with mypy 2.4.1 `--strict`: annotate `x` with `type T = Any` and return
+#  `get_origin(x) is Annotated`, which prints `Non-overlapping identity check (left operand type:
+#  "ParamSpec", right operand type: "<typing special form>")`; a plain `x: Any` passes.
 type PythonType = Any
 
 
@@ -37,8 +36,8 @@ def unwrap[ValueT](value: ValueT | MISSING, /, *, default: ValueT) -> ValueT:
 def make_union(args: list[Any], /) -> type:
     """Build a `Union` annotation from a dynamic list of member types.
 
-    The `X | Y` operator form is impossible for a runtime-built tuple, so this is the one place
-    that suppresses the `valid-type` (dynamic subscript) and `UP007` (prefer `X | Y`) diagnostics.
+    The `X | Y` operator form is impossible for a runtime-built tuple, so this call
+    suppresses `UP007` (prefer `X | Y`).
 
     :param args: Member annotations (types or `ForwardRef`s).
     :returns: The `Union[...]` annotation.

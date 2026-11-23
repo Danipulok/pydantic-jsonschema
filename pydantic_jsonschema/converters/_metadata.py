@@ -1,10 +1,5 @@
 """`Annotated` metadata helpers for array / object value annotations."""
 
-# NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
-#  recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
-#  and flags every `is not MISSING` check as a non-overlapping identity comparison.
-# mypy: disable-error-code="comparison-overlap"
-
 from typing import Annotated, Any, cast
 
 import annotated_types

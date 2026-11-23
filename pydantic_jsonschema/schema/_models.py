@@ -4,11 +4,6 @@ Core: https://json-schema.org/draft/2020-12/json-schema-core
 Validation: https://json-schema.org/draft/2020-12/json-schema-validation
 """
 
-# `MISSING` is a `Sentinel` instance, not a type, so mypy rejects `field: X | MISSING`
-#  as invalid. Pydantic itself handles the union correctly at runtime via
-#  `from __future__ import annotations`.
-# mypy: disable-error-code="valid-type"
-
 from __future__ import annotations as _annotations
 
 from enum import StrEnum

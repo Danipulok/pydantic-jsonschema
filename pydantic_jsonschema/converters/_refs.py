@@ -12,11 +12,6 @@ together with the keywords beside it.
 https://json-schema.org/draft/2020-12/json-schema-core#section-8.2.3.1
 """
 
-# NOTE: `Schema` fields use `X | MISSING` unions (see `schema/_models.py`). mypy doesn't
-#  recognize `MISSING` as a type, so it infers fields without the `Sentinel` branch
-#  and flags every `is not MISSING` check as a non-overlapping identity comparison.
-# mypy: disable-error-code="comparison-overlap"
-
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Final

@@ -154,7 +154,7 @@ warn_unused_configs = true
 # NOTE: `warn_unreachable` and the `redundant-expr` code are intentionally NOT enabled — the
 #  `X | MISSING` sentinel fields (see `schema/_models.py`) defeat mypy's flow analysis (it doesn't
 #  model `MISSING` as a type), so both flag dozens of false "unreachable" / "always true|false"
-#  errors. Same root cause as the per-file `comparison-overlap` disables.
+#  errors.
 enable_error_code = [
     "truthy-bool",
     "truthy-iterable",
