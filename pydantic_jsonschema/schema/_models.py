@@ -14,7 +14,7 @@ from __future__ import annotations as _annotations
 from enum import StrEnum
 from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveFloat
 from pydantic.alias_generators import to_camel
 
 from pydantic_jsonschema._compat import MISSING
@@ -116,9 +116,9 @@ class Schema(BaseModel):
 
     required: list[str] | MISSING = MISSING
     """The `required` keyword: names of required properties. [Validation §6.5.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.5.3)."""
-    min_properties: int | MISSING = MISSING
+    min_properties: NonNegativeInt | MISSING = MISSING
     """The `minProperties` keyword: minimum number of properties. [Validation §6.5.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.5.2)."""
-    max_properties: int | MISSING = MISSING
+    max_properties: NonNegativeInt | MISSING = MISSING
     """The `maxProperties` keyword: maximum number of properties. [Validation §6.5.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.5.1)."""
     dependent_required: dict[str, list[str]] | MISSING = MISSING
     """The `dependentRequired` keyword: properties required when another is present. [Validation §6.5.4](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.5.4)."""
@@ -145,7 +145,7 @@ class Schema(BaseModel):
     else_: SchemaOrRefType | MISSING = Field(default=MISSING, alias="else")
     """The `else` keyword: applied when `if` fails. [Core §10.2.2.3](https://json-schema.org/draft/2020-12/json-schema-core#section-10.2.2.3)."""
 
-    multiple_of: float | MISSING = MISSING
+    multiple_of: Annotated[PositiveFloat, Field(allow_inf_nan=False)] | MISSING = MISSING
     """The `multipleOf` keyword: value must be a multiple of this. [Validation §6.2.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.2.1)."""
     maximum: float | MISSING = MISSING
     """The `maximum` keyword: inclusive upper bound. [Validation §6.2.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.2.2)."""
@@ -156,22 +156,22 @@ class Schema(BaseModel):
     exclusive_minimum: float | MISSING = MISSING
     """The `exclusiveMinimum` keyword: exclusive lower bound. [Validation §6.2.5](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.2.5)."""
 
-    min_length: int | MISSING = MISSING
+    min_length: NonNegativeInt | MISSING = MISSING
     """The `minLength` keyword: minimum string length. [Validation §6.3.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.3.2)."""
-    max_length: int | MISSING = MISSING
+    max_length: NonNegativeInt | MISSING = MISSING
     """The `maxLength` keyword: maximum string length. [Validation §6.3.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.3.1)."""
     pattern: str | MISSING = MISSING
     """The `pattern` keyword: regex the string must match. [Validation §6.3.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.3.3)."""
 
-    min_items: int | MISSING = MISSING
+    min_items: NonNegativeInt | MISSING = MISSING
     """The `minItems` keyword: minimum array length. [Validation §6.4.2](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.2)."""
-    max_items: int | MISSING = MISSING
+    max_items: NonNegativeInt | MISSING = MISSING
     """The `maxItems` keyword: maximum array length. [Validation §6.4.1](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.1)."""
     unique_items: bool | MISSING = MISSING
     """The `uniqueItems` keyword: array elements must be unique. [Validation §6.4.3](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.3)."""
-    max_contains: int | MISSING = MISSING
+    max_contains: NonNegativeInt | MISSING = MISSING
     """The `maxContains` keyword: max elements matching `contains`. [Validation §6.4.4](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.4)."""
-    min_contains: int | MISSING = MISSING
+    min_contains: NonNegativeInt | MISSING = MISSING
     """The `minContains` keyword: min elements matching `contains`. [Validation §6.4.5](https://json-schema.org/draft/2020-12/json-schema-validation#section-6.4.5)."""
 
     format: str | MISSING = MISSING

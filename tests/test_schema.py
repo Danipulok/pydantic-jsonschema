@@ -1,5 +1,6 @@
 """Tests for `schema.py` JSON Schema models."""
 
+import math
 from typing import Any
 
 import pytest
@@ -268,6 +269,57 @@ class TestSchemaConstraints:
                 "pattern": "^[a-z]+$",
             }
         )
+
+    @pytest.mark.parametrize(
+        ("keyword", "value", "error_type"),
+        [
+            pytest.param("minLength", -1, "greater_than_equal", id="min-length"),
+            pytest.param("maxLength", -1, "greater_than_equal", id="max-length"),
+            pytest.param("minItems", -1, "greater_than_equal", id="min-items"),
+            pytest.param("maxItems", -1, "greater_than_equal", id="max-items"),
+            pytest.param("minContains", -1, "greater_than_equal", id="min-contains"),
+            pytest.param("maxContains", -1, "greater_than_equal", id="max-contains"),
+            pytest.param("minProperties", -1, "greater_than_equal", id="min-properties"),
+            pytest.param("maxProperties", -1, "greater_than_equal", id="max-properties"),
+            pytest.param("multipleOf", 0, "greater_than", id="zero-multiple-of"),
+            pytest.param("multipleOf", -2, "greater_than", id="negative-multiple-of"),
+            pytest.param("multipleOf", math.inf, "finite_number", id="infinite-multiple-of"),
+            pytest.param("multipleOf", math.nan, "finite_number", id="nan-multiple-of"),
+        ],
+    )
+    def test_out_of_range_bound_is_rejected(
+        self,
+        *,
+        keyword: str,
+        value: float,
+        error_type: str,
+    ) -> None:
+        """The spec requires a non-negative count and a `multipleOf` above zero."""
+        with pytest.raises(ValidationError) as exc_info:
+            Schema.model_validate({keyword: value})
+
+        failures = [(error["loc"][0], error["type"]) for error in exc_info.value.errors()]
+        assert (keyword, error_type) in failures
+
+    @pytest.mark.parametrize(
+        ("keyword", "value"),
+        [
+            pytest.param("minLength", 0, id="zero-min-length"),
+            pytest.param("maxLength", 0, id="zero-max-length"),
+            pytest.param("minItems", 0, id="zero-min-items"),
+            pytest.param("maxItems", 0, id="zero-max-items"),
+            pytest.param("minContains", 0, id="zero-min-contains"),
+            pytest.param("maxContains", 0, id="zero-max-contains"),
+            pytest.param("minProperties", 0, id="zero-min-properties"),
+            pytest.param("maxProperties", 0, id="zero-max-properties"),
+            pytest.param("multipleOf", 0.5, id="fractional-multiple-of"),
+        ],
+    )
+    def test_bound_on_the_edge_loads(self, *, keyword: str, value: float) -> None:
+        """A zero count and a fractional `multipleOf` stay valid."""
+        schema = Schema.model_validate({keyword: value})
+
+        assert schema.model_dump() == {keyword: value}
 
 
 class TestSchemaMetadata:
