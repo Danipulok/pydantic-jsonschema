@@ -20,6 +20,21 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+# The commit types both jobs accept, one per line.
+env:
+  CONVENTIONAL_TYPES: |
+    feat
+    fix
+    docs
+    chore
+    refactor
+    test
+    perf
+    style
+    build
+    ci
+    revert
+
 jobs:
   title:
     name: Validate PR title
@@ -29,24 +44,46 @@ jobs:
     steps:
       # The PR title must follow Conventional Commits: it titles the merge
       #  commit, and a squashed bot PR's title is the commit `git-cliff`
-      #  parses for the changelog. Non-conforming commits are silently dropped.
+      #  parses for the changelog.
       - name: Check Conventional Commits format
         uses: amannn/action-semantic-pull-request@2252a14e810aa9b85c2d560bd7070c802206ecf6 # v6.1.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          types: |
-            feat
-            fix
-            docs
-            chore
-            refactor
-            test
-            perf
-            style
-            build
-            ci
-            revert
+          types: ${{ env.CONVENTIONAL_TYPES }}
           requireScope: true
           subjectPattern: ^.+$
           subjectPatternError: "PR title must have a description after the type."
+
+  commits:
+    name: Validate commit subjects
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      # Every commit of a merged PR is a changelog entry (`cliff.toml` skips only merge
+      #  commits), and `git-cliff` silently drops a non-conforming one. The subjects are read
+      #  through the API, so no PR code is checked out. The pattern matches the title rules above.
+      - name: Check Conventional Commits format
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_COMMITS: ${{ github.event.pull_request.commits }}
+        run: |
+          # The endpoint lists at most 250 commits of a PR.
+          #  https://docs.github.com/en/rest/pulls/pulls#list-commits-on-a-pull-request
+          if (( PR_COMMITS > 250 )); then
+            printf 'The PR has %s commits, and the API lists only 250 of them.\n' "$PR_COMMITS" >&2
+            exit 1
+          fi
+
+          types="$(printf '%s' "$CONVENTIONAL_TYPES" | paste -sd '|')"
+          export SUBJECT_PATTERN="^(${types})\([^)]+\)!?: .+$"
+          failing="$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/commits" \
+            --jq '.[] | select(.parents | length == 1) | .commit.message | split("\n")[0]
+              | select(test(env.SUBJECT_PATTERN) | not) | @json')"
+
+          if [[ -n "$failing" ]]; then
+            printf 'Commit subjects that do not follow "type(scope): description":\n%s\n' "$failing" >&2
+            exit 1
+          fi
