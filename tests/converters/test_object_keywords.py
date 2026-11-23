@@ -340,7 +340,12 @@ class TestObjectWithoutProperties:
             ),
         ],
     )
-    def test_dump_recursive_keyword(self, *, value: SchemaRaw, dumped: SchemaRaw) -> None:
+    def test_dump_recursive_keyword(
+        self,
+        *,
+        value: SchemaRaw,
+        dumped: SchemaRaw,
+    ) -> None:
         """Test a keyword whose value reaches back to the enclosing def dumps a `$ref` to it."""
         schema = Schema.model_validate(
             {

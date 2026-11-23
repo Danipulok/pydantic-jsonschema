@@ -53,7 +53,11 @@ _IPV4_RE: Final[re.Pattern[str]] = re.compile(r"^(\d{1,3})\.(\d{1,3})\.(\d{1,3})
 _MAX_IPV4_OCTET: Final[int] = 255
 
 
-def _validate_uri_reference(value: str, *, require_scheme: bool) -> str | None:
+def _validate_uri_reference(
+    value: str,
+    *,
+    require_scheme: bool,
+) -> str | None:
     """Validate a URI/IRI reference per RFC 3986. Returns error message or `None`."""
     match = _URI_RE.match(value)
     if match is None:

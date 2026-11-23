@@ -45,7 +45,12 @@ _BASE: Final[SchemaRaw] = {
 _INLINE: Final[SchemaRaw] = {"type": "object", "properties": {"inline": {"type": "integer"}}}
 
 
-def _ref_and_inline(inline: SchemaRaw, /, *, beside: SchemaRaw | None = None) -> SchemaRaw:
+def _ref_and_inline(
+    inline: SchemaRaw,
+    /,
+    *,
+    beside: SchemaRaw | None = None,
+) -> SchemaRaw:
     """Return an `allOf` of a `$ref` to `_BASE` and `inline`, with `beside` keywords next to it."""
     return {"allOf": [{"$ref": "#/$defs/Base"}, inline], "$defs": {"Base": _BASE}, **(beside or {})}
 
@@ -621,7 +626,12 @@ class TestAllOfObjects:
             ),
         ],
     )
-    def test_all_of_closed_object_branch(self, *, schema_raw: SchemaRaw, msg: str) -> None:
+    def test_all_of_closed_object_branch(
+        self,
+        *,
+        schema_raw: SchemaRaw,
+        msg: str,
+    ) -> None:
         """Test a branch with `additionalProperties: false` rejects the keys of the rest."""
         model = to_model(Schema.model_validate(schema_raw))
 

@@ -2050,7 +2050,13 @@ def _declares_object_keyword(schema: Schema, /) -> bool:
     return any(getattr(schema, keyword) is not MISSING for keyword in _OBJECT_KEYWORDS)
 
 
-def _field_name(property_name: str, /, *, taken: set[str], renamed: set[str]) -> str:
+def _field_name(
+    property_name: str,
+    /,
+    *,
+    taken: set[str],
+    renamed: set[str],
+) -> str:
     """Name the field of a property: the property name, unless Pydantic refuses or misreads it.
 
     Pydantic refuses a leading underscore and a `model_` member, and reads `model_config` as the

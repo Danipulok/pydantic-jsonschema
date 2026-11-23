@@ -735,7 +735,11 @@ class TestByPathPointerForm:
         ],
         ids=["fragment", "ref-fragment", "bare", "empty"],
     )
-    def test_rejects_other_spellings(self, pointer: str, suggestion: str) -> None:
+    def test_rejects_other_spellings(
+        self,
+        pointer: str,
+        suggestion: str,
+    ) -> None:
         """A pointer that does not start with `/` raises, naming the one to use instead."""
         with pytest.raises(ValueError, match="takes a JSON Pointer starting with") as error_info:
             ByPath(pointer)

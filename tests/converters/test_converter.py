@@ -480,7 +480,11 @@ class TestPropertyNames:
             pytest.param("model_name", "model_name", id="model-prefix-not-a-member"),
         ],
     )
-    def test_field_name_of_a_property(self, property_name: str, field_name: str) -> None:
+    def test_field_name_of_a_property(
+        self,
+        property_name: str,
+        field_name: str,
+    ) -> None:
         """Test which field name a property gets."""
         schema = Schema.model_validate(
             {"type": "object", "properties": {property_name: {"type": "string"}}}
