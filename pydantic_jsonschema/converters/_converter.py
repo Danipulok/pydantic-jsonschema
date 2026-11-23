@@ -95,13 +95,28 @@ _DEFAULT_MODEL_NAME: Final[str] = "Model"
 # Class attribute where `_wrap_object_applicators` records every applicator a model carries.
 _APPLICATORS_ATTRIBUTE: Final[str] = "__pydantic_jsonschema_applicators__"
 # A discriminated union needs at least two members for Pydantic to tag-dispatch.
-_MIN_DISCRIMINATED_UNION_MEMBERS: Final[int] = 2
+_MIN_DISCRIMINATED_MEMBERS: Final[int] = 2
 # Pydantic keeps one validator per name across bases, and a model from another conversion can
 #  reach this one through `refs`, so a validator name is unique per process.
 _VALIDATOR_NUMBERS: Final[Iterator[int]] = count()
 # The keywords `_schema_to_annotation` checks beside the host type, which a format type
 #  replacing that host still has to check.
 _FORMAT_KEPT_METADATA: Final[tuple[type[Applicator], ...]] = (IfType, Not, IfThenElse)
+# The `Schema` field holding the `required` keyword.
+_REQUIRED_FIELD: Final = "required"
+# Object keywords (`Schema` field names). An untyped schema carrying any of them still applies
+#  them to object instances.
+_OBJECT_KEYWORDS: Final[tuple[str, ...]] = (
+    "properties",
+    "additional_properties",
+    "pattern_properties",
+    "property_names",
+    _REQUIRED_FIELD,
+    "min_properties",
+    "max_properties",
+    "dependent_required",
+    "dependent_schemas",
+)
 # Validating `Schema` fields that `_own_keywords_annotation` checks beside `allOf`. `not` and
 #  `if` / `then` / `else` are attached as their own applicators, and anything else (metadata,
 #  `$defs`, extension keywords) validates nothing. An object producing the value keeps only the
@@ -111,15 +126,7 @@ _ALL_OF_OBJECT_HOST_FIELDS: Final[frozenset[str]] = frozenset(
     {
         "enum",
         "const",
-        "properties",
-        "additional_properties",
-        "pattern_properties",
-        "property_names",
-        "required",
-        "min_properties",
-        "max_properties",
-        "dependent_required",
-        "dependent_schemas",
+        *_OBJECT_KEYWORDS,
         "any_of",
         "one_of",
     }
@@ -161,20 +168,6 @@ _DATA_TYPE_ANNOTATION_MAPPING: Final[dict[DataType, type]] = {
     DataType.ARRAY: list[Any],
     DataType.OBJECT: dict[str, Any],
 }
-
-# Object keywords (`Schema` field names). An untyped schema carrying any of them still applies
-#  them to object instances.
-_OBJECT_KEYWORDS: Final[tuple[str, ...]] = (
-    "properties",
-    "additional_properties",
-    "pattern_properties",
-    "property_names",
-    "required",
-    "min_properties",
-    "max_properties",
-    "dependent_required",
-    "dependent_schemas",
-)
 
 
 class SchemaConverter:
@@ -1811,7 +1804,7 @@ class SchemaConverter:
             )
         )
 
-        if tag_field is not None and len(union_args) >= _MIN_DISCRIMINATED_UNION_MEMBERS:
+        if tag_field is not None and len(union_args) >= _MIN_DISCRIMINATED_MEMBERS:
             discriminated = Annotated[make_union(union_args), Field(discriminator=tag_field)]  # type: ignore[valid-type]
             return cast("type", discriminated)
 
@@ -2006,7 +1999,7 @@ class SchemaConverter:
         ]
         applicators = self._build_object_applicators(schema)
         keywords = schema.model_dump(
-            include={"required", "dependent_required"},
+            include={_REQUIRED_FIELD, "dependent_required"},
             exclude_unset=True,
         )
 
@@ -2044,7 +2037,7 @@ def _build_object_keywords(schema: Schema, /) -> ObjectKeywords | None:
     )
     undeclared = [name for name in unwrap(schema.required, default=[]) if name not in declared]
     if undeclared:
-        keywords["required"] = undeclared
+        keywords[_REQUIRED_FIELD] = undeclared
 
     return ObjectKeywords(
         checks=checks,
