@@ -71,7 +71,7 @@ of those code examples. The included `examples/*.py` files are still tested dire
 
 ## Code Style
 
-`just lint` runs `ruff`, `mypy`, `pyright`, `codespell` and `markdownlint`, and it is the gate — if
+`just lint` runs `ruff`, `mypy`, `pyright`, `codespell` and `markdownlint`, and it is the gate: if
 it passes, the mechanical half of the style is satisfied and no reviewer will argue about it.
 
 - Use `ruff` for formatting and linting.
@@ -96,10 +96,10 @@ what it does from the signature.
 - **Separate logical blocks with blank lines.** A wall of statements at one indent is the single
   most common thing sent back: eight or more sibling statements with no blank line between them
   is a wall, five to seven is worth a look. A run of plain declarations or a table of one-line
-  `if` assignments writing into one container is a table, not a paragraph — leave those unbroken.
+  `if` assignments writing into one container is a table, not a paragraph, so leave those unbroken.
 - **Guard clauses over nesting.** Each condition returns or raises early; `try` holds only what can
   actually raise, and the success path goes in `else`.
-- **A comment on why a branch exists goes above its keyword** — above `except` / `else` / `elif` /
+- **A comment on why a branch exists goes above its keyword**: above `except` / `else` / `elif` /
   `finally`, at the same indent, not inside the block.
 - **Full names everywhere.** No abbreviations and no single letters, in any scope. The exceptions
   are `_`, `er` for exception variables, `i`/`j`/`k` for matrix indices, `x`/`y`/`z` for geometric
@@ -115,12 +115,12 @@ what it does from the signature.
   constructor or a comprehension already says it, and the second copy drifts. A constant keeps its
   `Final[type]` either way, and `__all__` follows its own rule below.
 - **`object` is never a type, and `Any` is a last resort** behind a concrete type, a `Protocol` and
-  a union — with a comment saying why. Callbacks use a `Protocol` with `__call__`, not `Callable`,
+  a union, with a comment saying why. Callbacks use a `Protocol` with `__call__`, not `Callable`,
   which loses the parameter names.
 - **Structures have field names.** No anonymous tuples in signatures, and a `dict` in a signature
   is a missing `dataclass`, model or `TypedDict`. Raw dicts belong at the boundary.
-- **Type aliases use the `type` statement and carry a `Type` suffix** — `type IdType = UUID`.
-- **`import datetime as dt`**, never `from datetime import datetime` — the module and the class
+- **Type aliases use the `type` statement and carry a `Type` suffix**: `type IdType = UUID`.
+- **`import datetime as dt`**, never `from datetime import datetime`: the module and the class
   share a name, and the alias keeps every reference unambiguous.
 - **Every module defines `__all__`**, and imports live at the top of it. Entry points,
   `conftest.py` and test modules are exempt from `__all__`. An import inside a function carries a
@@ -135,8 +135,8 @@ what it does from the signature.
   first line takes. `# TODO:` is the only tag we use: no `NOTE:`, `FIXME:`, `HACK:` or `XXX:`. A
   non-obvious workaround or guard says why it exists, names what failed without it and links a
   permalink pinned to a commit SHA.
-- **Backtick every code entity in prose** — identifiers, paths, commands, flags, env var names,
-  versions, config keys — in comments, docstrings, documentation, commit messages and pull
+- **Backtick every code entity in prose** (identifiers, paths, commands, flags, env var names,
+  versions, config keys) in comments, docstrings, documentation, commit messages and pull
   request descriptions alike.
 
 Tests are held to all of the above, except where a rule exempts them by name; see
@@ -147,14 +147,14 @@ Tests are held to all of the above, except where a rule exempts them by name; se
 - Add tests for every new feature or behavior change.
 - Maintain 100% coverage.
 - Prefer direct behavior assertions over implementation-detail assertions.
-- Prefer one parametrized test with explicit `pytest.param` ids over near-duplicate tests — the id
+- Prefer one parametrized test with explicit `pytest.param` ids over near-duplicate tests: the id
   is what a failing CI log names.
 - Include validation failure cases when schema constraints should reject input.
 - Add documentation examples when a behavior needs user-facing explanation.
 - Annotate every test `-> None`, and every fixture, factory and helper in full, parameters
   included. A fixture returning a callable is typed with a `Protocol` in `conftest.py`.
 - Mirror the source tree: one source module, one test module, same path under `tests/`.
-- Keep the environment out of tests — no `os.environ`, no `os.getenv`, no `dotenv`. A fixture
+- Keep the environment out of tests: no `os.environ`, no `os.getenv`, no `dotenv`. A fixture
   builds the prepared object once and each test takes it as a parameter.
 - Keep `tests/` to tests, fixtures, `conftest.py` and the shared values in `tests/builders/`. A
   one-off utility belongs in `scripts/`, exposing a function the test imports.

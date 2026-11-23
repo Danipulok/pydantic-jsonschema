@@ -69,17 +69,17 @@ benchmark = [
     {include-group = "test"},
     "pytest-codspeed>=5.0.0",
 ]
-# `zizmor` audits the workflows. Kept in its own group so CI's `Audit` job — deliberately
-#  independent of `lint`/`test` — installs this one tool instead of the whole lint env. Locked
+# `zizmor` audits the workflows. Kept in its own group so CI's `Audit` job (deliberately
+#  independent of `lint`/`test`) installs this one tool instead of the whole lint env. Locked
 #  rather than run through `uvx`: a floating `uvx zizmor` gets none of the supply-chain guards the
-#  rest of the tree has — no `exclude-newer` cooldown, no lockfile hash, no `Dependabot` bump.
+#  rest of the tree has: no `exclude-newer` cooldown, no lockfile hash, no `Dependabot` bump.
 audit = [
     "zizmor>=1.29.0",
 ]
 # `git-cliff` writes the changelog, `twine` checks the built distributions. Locked rather than
 #  run through `uvx` for the same reason as the `audit` group: a floating `uvx twine` gets none of
 #  the supply-chain guards the rest of the tree has, and it runs at the one moment where integrity
-#  matters most — right before the artifact is published.
+#  matters most, right before the artifact is published.
 release = [
     "git-cliff>=2.0.0",
     "twine>=6.1.0",
@@ -96,7 +96,7 @@ test = [
     "pytest-cov>=6.0.0",
     "pytest-examples>=0.0.18",
     # NOTE: Used in `docs/formats.md` examples, which are executed by `tests/test_docs.py`.
-    #       Base package only — examples use `Color` and `PaymentCardNumber`, which need no extras.
+    #       Base package only: examples use `Color` and `PaymentCardNumber`, which need no extras.
     #       `2.0.0`-`2.2.0` work but use deprecated `pydantic-core` APIs; clean from `2.3.0`.
     #
     # Reproduce on `2.2.0`:
@@ -115,12 +115,12 @@ docs = [
     "mkdocs-copy-to-llm>=0.2.10",
 ]
 
-# NOTE: Supply-chain safety net — only resolve packages published at least
+# Supply-chain safety net: only resolve packages published at least
 #  7 days ago so a compromised or typo-squatted release has time to be caught
 #  and yanked before it lands in our lockfile.
 #
 # This is the canonical cutoff. It is mirrored as `cooldown.default-days` in
-#  `.github/dependabot.yml` (Dependabot ignores `exclude-newer`) — keep both in sync.
+#  `.github/dependabot.yml` (Dependabot ignores `exclude-newer`); keep both in sync.
 [tool.uv]
 exclude-newer = "7 days"
 
@@ -151,7 +151,7 @@ strict_bytes = true
 local_partial_types = true
 warn_return_any = true
 warn_unused_configs = true
-# NOTE: `warn_unreachable` and the `redundant-expr` code are intentionally NOT enabled — the
+# `warn_unreachable` and the `redundant-expr` code are intentionally NOT enabled: the
 #  `X | MISSING` sentinel fields (see `schema/_models.py`) defeat mypy's flow analysis (it doesn't
 #  model `MISSING` as a type), so both flag dozens of false "unreachable" / "always true|false"
 #  errors.
@@ -183,7 +183,7 @@ venv = ".venv"
 typeCheckingMode = "standard"
 # Scoped to the library source. `tests` and `examples` *consume* the models that `to_model`
 #  builds at runtime, whose attributes/types are unknowable statically (`post.comments`,
-#  `Reference(ref=...)` wanting the `$ref` alias, raw strings fed to coercing fields) — `pyright`
+#  `Reference(ref=...)` wanting the `$ref` alias, raw strings fed to coercing fields), so `pyright`
 #  can only add `# pyright: ignore` noise there. `mypy` (+ `pydantic.mypy`) already covers both.
 include = ["pydantic_jsonschema"]
 # `# type: ignore` belongs to `mypy`; `pyright` uses `# pyright: ignore`. Without this, `pyright`
@@ -216,7 +216,7 @@ ignore = [
     "TD002",    # Missing author in _TODO
     "TD003",    # Missing issue link on the line following this _TODO
 
-    # Per-file copyright headers are not this project's convention — the root `LICENSE` covers
+    # Per-file copyright headers are not this project's convention: the root `LICENSE` covers
     #  everything. The rule was preview-only (so `ALL` skipped it) until `ruff` `0.16.0` stabilized
     #  it, at which point it flagged every single module.
     #
@@ -296,7 +296,7 @@ markers = [
     "benchmark: performance benchmark executed under `CodSpeed`; excluded from the normal suite",
 ]
 xfail_strict = true         # An `xfail` test that unexpectedly passes is a failure
-filterwarnings = ["error"]  # Any warning is an error — catches deprecations early (e.g. in the
+filterwarnings = ["error"]  # Any warning is an error; catches deprecations early (e.g. in the
                             # dependency-ceiling run); add targeted `ignore::...` entries if a
                             #  third-party warning is genuinely out of our control
 
@@ -311,7 +311,7 @@ parallel = true     # Allow parallel coverage runs for multi-version testing
 relative_files = true
 # `source_pkgs`, not `source`: with a source *directory* the report is rooted there and every
 #  `filename` loses the `pydantic_jsonschema/` prefix. A consumer then has to match by suffix, and
-#  every path the mirrored test tree also owns is ambiguous — `applicators/__init__.py` fits both
+#  every path the mirrored test tree also owns is ambiguous: `applicators/__init__.py` fits both
 #  `pydantic_jsonschema/` and `tests/`. `Codecov` dropped 5 of the 31 files that way.
 #  https://coverage.readthedocs.io/en/7.14.1/config.html#run-source-pkgs
 source_pkgs = ["pydantic_jsonschema"]

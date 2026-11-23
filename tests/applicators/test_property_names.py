@@ -95,7 +95,7 @@ class TestPropertyNamesJsonSchema:
         """A branch carrying only a constraint keeps that constraint on dump.
 
         A typeless branch converts to `Annotated[Any, ...]`, whose keyword lives in the core
-        schema's own `pydantic_js_updates` metadata rather than in a nested schema — the one
+        schema's own `pydantic_js_updates` metadata rather than in a nested schema, the one
         place a branch renderer can drop it while every typed branch still round-trips.
         """
         model = to_model(

@@ -9,7 +9,7 @@ Closes #<!-- issue number, or remove this line -->
 
 ## What changed
 
-<!-- The notable bits — key changes, design decisions, anything a reviewer should look at first. -->
+<!-- The notable bits: key changes, design decisions, anything a reviewer should look at first. -->
 
 ## How it was tested
 
@@ -22,6 +22,6 @@ Closes #<!-- issue number, or remove this line -->
 ---
 
 - [ ] I followed the [contribution guide](https://danipulok.github.io/pydantic-jsonschema/contributing/)
-- [ ] The PR title follows [Conventional Commits](https://www.conventionalcommits.org/) (`type(scope): description`) — it becomes the squash commit and the changelog entry
+- [ ] The PR title follows [Conventional Commits](https://www.conventionalcommits.org/) (`type(scope): description`), it becomes the squash commit and the changelog entry
 - [ ] Documentation reflects the changes where applicable
 - [ ] Any AI-generated code has been reviewed line-by-line by the human PR author, who stands by it

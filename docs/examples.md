@@ -73,8 +73,8 @@ WDG-1234-PRO
 
 ## Loading Rules
 
-Use this example when the input arrives in a shape the schema does not describe — a packed cell,
-a value that needs normalizing — or when the output has to go back in that shape.
+Use this example when the input arrives in a shape the schema does not describe (a packed cell,
+a value that needs normalizing), or when the output has to go back in that shape.
 
 It demonstrates:
 

@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.0.13] — 2026-06-25
+## [0.0.13] - 2026-06-25
 
 ### Added
 
@@ -25,7 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - test dependency floor and ceiling (`lowest-direct` / `--upgrade`) (#66)
 - pin PEP 740 build attestations explicitly on `PyPI` publish (#65)
 - add `alls-green` gate job (single required status check) (#64)
-- supply-chain security — audit (`uv audit` + `zizmor`) and install-time malware check (#63)
+- supply-chain security: audit (`uv audit` + `zizmor`) and install-time malware check (#63)
 - bump the github-actions group with 2 updates (#59)
 - retry transient source-build install on `3.15` (#54)
 
@@ -46,6 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Other
 
+- update to `0.0.13`
 - add on-demand `just sbom` recipe (`CycloneDX` via `cyclonedx-py`) (#83)
 - add `.editorconfig` (#72)
 - add `SECURITY.md` and `codecov.yml` (#69)
@@ -58,7 +59,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - enable `xfail_strict` + warnings-as-errors (fix `parametrize` deprecation) (#67)
 - add `test_metadata` / `test_utils` to complete the mirror (#61)
 
-## [0.0.12] — 2026-06-23
+## [0.0.12] - 2026-06-23
 
 ### Added
 
@@ -85,11 +86,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - rename `format_validators` parameter to `formats` (#49)
 - `AnnotationApplicator` / `ObjectApplicator` ABC roles (#47)
-- one format — unified model-wrapper + JSON Schema round-trip (#46)
+- one format: unified model-wrapper + JSON Schema round-trip (#46)
 - mirror source package structure in `tests/` (#39)
 - drop root `OneOf` re-export (#37)
 - rename `_markers` package to `_applicators` (#34)
-- readability cleanup — helpers + `$defs` alias extraction (#32)
+- readability cleanup: helpers + `$defs` alias extraction (#32)
 - split `converters.py` into a package (#29)
 - unify `not`/`if`-`then`-`else` whole-value hooks (#28)
 - unify object-keyword validators into one aggregator (#27)
@@ -127,7 +128,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - full `ValidationError` snapshots + required schema fields (#8)
 
-## [0.0.11] — 2026-06-18
+## [0.0.11] - 2026-06-18
 
 ### Added
 
@@ -149,7 +150,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - make `$ref` cache identity check version-stable
 
-## [0.0.10] — 2026-06-17
+## [0.0.10] - 2026-06-17
 
 ### Added
 
@@ -164,7 +165,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - add `0.0.10` release section
 
-## [0.0.9] — 2026-06-12
+## [0.0.9] - 2026-06-12
 
 ### Changed
 
@@ -183,7 +184,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - build docs on every commit
 
-## [0.0.8] — 2026-06-12
+## [0.0.8] - 2026-06-12
 
 ### Added
 
@@ -222,7 +223,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - add explicit `id` to multi-argument parameter sets
 
-## [0.0.7] — 2026-06-12
+## [0.0.7] - 2026-06-12
 
 ### Added
 
@@ -248,7 +249,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - replace partial assertions with full `snapshot` comparisons
 - wrap literal assertions with `inline_snapshot`
 
-## [0.0.6] — 2026-06-12
+## [0.0.6] - 2026-06-12
 
 ### Changed
 
@@ -263,7 +264,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - remove `Ref` from public `__all__`
 
-## [0.0.5] — 2026-06-12
+## [0.0.5] - 2026-06-12
 
 ### Changed
 
@@ -277,7 +278,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - forbid `pragma: no cover
 
-## [0.0.4] — 2026-06-12
+## [0.0.4] - 2026-06-12
 
 ### Build
 
@@ -291,7 +292,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - add `0.0.4` release section
 
-## [0.0.3] — 2026-06-12
+## [0.0.3] - 2026-06-12
 
 ### Changed
 
@@ -309,7 +310,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - fix `cliff.toml` template for valid markdown output
 - update `setup-just` SHA to v4
 
-## [0.0.2] — 2026-06-11
+## [0.0.2] - 2026-06-11
 
 ### Added
 
@@ -346,7 +347,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - add tests for invalid URI/IRI reference validation
 
-## [0.0.1] — 2026-06-11
+## [0.0.1] - 2026-06-11
 
 ### Added
 

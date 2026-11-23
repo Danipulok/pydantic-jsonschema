@@ -106,7 +106,7 @@ class TestValidUri:
         ],
     )
     def test_ipv6_with_zone_id(self, value: str) -> None:
-        """RFC 4007 — IPv6 Zone IDs."""
+        """RFC 4007: IPv6 Zone IDs."""
         assert validate_uri(value) == value
 
     @pytest.mark.parametrize(
@@ -189,7 +189,7 @@ class TestInvalidUri:
         ],
     )
     def test_invalid_scheme(self, value: str) -> None:
-        """RFC 3986 §3.1 — scheme must start with a letter."""
+        """RFC 3986 §3.1: scheme must start with a letter."""
         with pytest.raises(ValueError, match=r"scheme was found to be invalid"):
             validate_uri(value)
 

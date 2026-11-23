@@ -1,10 +1,10 @@
 # Automated dependency update PRs.
 #
-# NOTE: Dependabot does NOT respect `uv`'s `tool.uv.exclude-newer` — it always targets the latest
+# Dependabot does NOT respect `uv`'s `tool.uv.exclude-newer`: it always targets the latest
 #  release. The two are separate systems that only collide at lock time: Dependabot runs `uv` to
 #  update `uv.lock`, and `uv` then refuses any version inside the `exclude-newer` window, producing a
 #  broken (unlockable) PR. `uv`'s own docs therefore recommend mirroring the cutoff as a `cooldown`.
-#  `cooldown.default-days` is duplicated from `tool.uv.exclude-newer` ("7 days") in `pyproject.toml` —
+#  `cooldown.default-days` is duplicated from `tool.uv.exclude-newer` ("7 days") in `pyproject.toml`;
 #  keep the two values in sync. See: https://docs.astral.sh/uv/guides/integration/dependabot/
 version: 2
 

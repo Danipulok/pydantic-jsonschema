@@ -151,7 +151,7 @@ jobs:
       contents: write
 
     steps:
-      # NOTE: `persist-credentials` stays on — `ci-docs-deploy` force-pushes the built site to the
+      # `persist-credentials` stays on: `ci-docs-deploy` force-pushes the built site to the
       #       `gh-pages` branch, which needs the checkout's token. Hence the `artipacked` ignore.
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0  # zizmor: ignore[artipacked]

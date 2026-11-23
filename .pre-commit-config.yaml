@@ -6,7 +6,7 @@ repos:
         args: [ --maxkb=500 ]
       - id: check-ast
       - id: check-case-conflict
-      # NOTE: `check-docstring-first` is intentionally omitted — it misreads PEP 224
+      # `check-docstring-first` is intentionally omitted: it misreads PEP 224
       #  attribute docstrings (strings after assignments in `schema/_models.py` / `formats/_types.py`)
       #  as a second module docstring and aborts the commit.
       - id: check-executables-have-shebangs
@@ -52,7 +52,7 @@ repos:
       - id: actionlint
 
   # `pre-commit`'s own meta hook: flag `exclude` patterns that no longer match any file.
-  #  NOTE: `check-hooks-apply` is intentionally omitted — it would force removing the standard
+  #  `check-hooks-apply` is intentionally omitted: it would force removing the standard
   #  safety hooks (`check-json` / `check-xml` / ...) that currently match no files but are kept
   #  as cheap insurance for when such files appear.
   - repo: meta

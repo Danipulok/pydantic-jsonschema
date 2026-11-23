@@ -92,13 +92,13 @@ print(schema.model_dump_json(indent=4))
 """
 ```
 
-Fields that were not set are excluded automatically — no `None` values leak into the output.
+Fields that were not set are excluded automatically: no `None` values leak into the output.
 
 ## References and Definitions
 
 JSON Schema uses `$ref` and `$defs` to define reusable schemas.
 
-### `$defs` — shared definitions
+### `$defs`: shared definitions
 
 Place shared schemas in `$defs` at the root level:
 
@@ -129,7 +129,7 @@ print(schema.defs["Address"].type)
 #> object
 ```
 
-### `$ref` — reference to a definition
+### `$ref`: reference to a definition
 
 A `$ref` in a property becomes a `Reference` instance:
 

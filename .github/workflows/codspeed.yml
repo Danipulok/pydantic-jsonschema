@@ -2,7 +2,7 @@ name: CodSpeed
 
 # Continuous benchmarking: runs the `tests/benchmarks/` suite under `CodSpeed`'s simulation
 #  instrument and reports performance deltas on each PR (vs the `main` baseline). Not part of the
-#  `CI` required-check gate — perf is informational and must never block a merge.
+#  `CI` required-check gate: perf is informational and must never block a merge.
 on:
   push:
     branches: [main]

@@ -7,7 +7,7 @@ matching entry in `formats`.
 Without a matching validator, `format` is treated as metadata and the normal JSON Schema type still
 applies.
 
-An entry applies wherever its `format` appears — on a property, on an array element (`items`), or
+An entry applies wherever its `format` appears: on a property, on an array element (`items`), or
 on a typed map value (`additionalProperties`).
 
 ## Third-Party Validator Libraries
@@ -174,7 +174,7 @@ list.
 
 ## Custom Formats
 
-A custom format is a Pydantic type you map to a `format` value — exactly how the built-in
+A custom format is a Pydantic type you map to a `format` value, exactly how the built-in
 aliases are defined (`Email = Annotated[str, AfterValidator(...)]`). Wrap your own validation or
 normalization in an `Annotated` type; the wrapper you choose (`AfterValidator`, `BeforeValidator`,
 `Field(...)`) controls how and when it runs, so you keep full control.
@@ -242,7 +242,7 @@ except ValidationError as er:
 | Type class       | `{"url": HttpUrl}`         | Replaces the generated annotation                   |
 | `Annotated` type | `{"price": PositivePrice}` | Replaces the annotation, preserving its validators  |
 
-A bare callable is **not** accepted — wrap it in `Annotated[...]` so the timing is explicit
+A bare callable is **not** accepted: wrap it in `Annotated[...]` so the timing is explicit
 (`Annotated[str, BeforeValidator(fn)]` for raw input, `Annotated[str, AfterValidator(fn)]` for the
 coerced value).
 

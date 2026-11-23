@@ -133,17 +133,17 @@ but do not affect the generated model.
 
 ## Known Limitations
 
-- `$defs` is only allowed in the root schema — nested `$defs` raises `SchemaConversionError`.
-- Only local references (`#/$defs/...`) and pre-built `refs` models are resolved — external
+- `$defs` is only allowed in the root schema; nested `$defs` raises `SchemaConversionError`.
+- Only local references (`#/$defs/...`) and pre-built `refs` models are resolved; external
   `$ref` URLs are not fetched.
 - `pattern` is compiled by Pydantic's default Rust regex engine, which does not support
-  ECMA-262 lookarounds — such patterns fail at model build time.
+  ECMA-262 lookarounds, so such patterns fail at model build time.
 - In a multi-type union (`{"type": ["object", "string"], "properties": {...}}`) the `object`
-  branch is validated as a plain `dict[str, Any]` — sibling `properties` are not applied.
+  branch is validated as a plain `dict[str, Any]`; sibling `properties` are not applied.
 - On objects that declare both `properties` and a schema-valued `additionalProperties`,
   extra fields are accepted (`extra="allow"`) but their values are not validated against the `additionalProperties` schema.
 - `format` is metadata unless a matching entry is passed in `formats`. Built-in aliases cover all
-  19 spec-defined formats, some with minor differences from the spec — see [Formats](formats.md).
+  19 spec-defined formats, some with minor differences from the spec; see [Formats](formats.md).
 - In an `allOf` that is not over object models, the first branch produces the value and the other
   branches only check the input, so their coercion (`"5"` to `5`) does not shape the value.
 - A `$ref` beside a validating keyword converts as that `allOf`, so the field is no longer the
@@ -383,9 +383,9 @@ print(Model.model_json_schema()["properties"]["value"]["oneOf"])
 
 ### Discriminated `oneOf`
 
-When every `oneOf` branch is an object schema tagged by a shared property — a required field
+When every `oneOf` branch is an object schema tagged by a shared property (a required field
 whose value is a single constant (`const` or single-value `enum`) with a distinct value per
-branch — the union maps to a native Pydantic
+branch), the union maps to a native Pydantic
 [discriminated union](https://docs.pydantic.dev/latest/concepts/unions/#discriminated-unions)
 via `Field(discriminator=...)`.
 
