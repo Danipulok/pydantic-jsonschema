@@ -120,12 +120,12 @@ def exclaim(value: str) -> str:
     return f"{value}!"
 
 
-def reverse_items[ItemType](value: list[ItemType]) -> list[ItemType]:
+def reverse_items[ItemT](value: list[ItemT]) -> list[ItemT]:
     """Reverse a list, marking which arrays a `ByType` target reached."""
     return list(reversed(value))
 
 
-def sorted_keys[ValueType](value: dict[str, ValueType]) -> dict[str, ValueType]:
+def sorted_keys[ValueT](value: dict[str, ValueT]) -> dict[str, ValueT]:
     """Sort a map by key, marking that a `ByType` target reached the map itself."""
     return dict(sorted(value.items()))
 
@@ -141,7 +141,7 @@ def reject_value(value: str) -> str:
     raise ValueError(msg)
 
 
-def mark_seen[ValueType](value: dict[str, ValueType]) -> dict[str, ValueType | bool]:
+def mark_seen[ValueT](value: dict[str, ValueT]) -> dict[str, ValueT | bool]:
     """Add a `seen` key, marking that a `ByType` target reached the map itself."""
     return {**value, "seen": True}
 
@@ -1428,7 +1428,7 @@ class TestModelAfter:
         """An object root built as a map `RootModel` or an `allOf` model is reached too."""
         fired: list[str] = []
 
-        def record[ModelType](model: ModelType) -> ModelType:
+        def record[ModelT](model: ModelT) -> ModelT:
             fired.append(type(model).__name__)
             return model
 
@@ -1442,7 +1442,7 @@ class TestModelAfter:
         """An inline `allOf` branch built into one model with its `$ref` bases keeps its rule."""
         fired: list[str] = []
 
-        def record[ModelType](model: ModelType) -> ModelType:
+        def record[ModelT](model: ModelT) -> ModelT:
             fired.append("branch")
             return model
 
@@ -1465,11 +1465,11 @@ class TestModelAfter:
         """Two model rules on one model both run in rule order; neither replaces the other."""
         fired: list[str] = []
 
-        def first[ModelType](model: ModelType) -> ModelType:
+        def first[ModelT](model: ModelT) -> ModelT:
             fired.append("first")
             return model
 
-        def second[ModelType](model: ModelType) -> ModelType:
+        def second[ModelT](model: ModelT) -> ModelT:
             fired.append("second")
             return model
 
@@ -1492,7 +1492,7 @@ class TestModelAfter:
         """A rule matching an `allOf` base, its branch and the root runs once per instance."""
         fired: list[str] = []
 
-        def record[ModelType](model: ModelType) -> ModelType:
+        def record[ModelT](model: ModelT) -> ModelT:
             fired.append("rule")
             return model
 
@@ -1518,7 +1518,7 @@ class TestModelAfter:
         """A rule matching a base built by an earlier call of one converter runs once."""
         fired: list[str] = []
 
-        def record[ModelType](model: ModelType) -> ModelType:
+        def record[ModelT](model: ModelT) -> ModelT:
             fired.append("rule")
             return model
 
@@ -1549,11 +1549,11 @@ class TestModelAfter:
         """A `refs` base keeps its own model rule when a derived model adds one of its own."""
         fired: list[str] = []
 
-        def base_rule[ModelType](model: ModelType) -> ModelType:
+        def base_rule[ModelT](model: ModelT) -> ModelT:
             fired.append("base")
             return model
 
-        def derived_rule[ModelType](model: ModelType) -> ModelType:
+        def derived_rule[ModelT](model: ModelT) -> ModelT:
             fired.append("derived")
             return model
 
@@ -1644,7 +1644,7 @@ class TestModelMatching:
             seen.append(context.path)
             return False
 
-        def record[ModelType](model: ModelType) -> ModelType:
+        def record[ModelT](model: ModelT) -> ModelT:
             fired.append(type(model).__name__)
             return model
 
