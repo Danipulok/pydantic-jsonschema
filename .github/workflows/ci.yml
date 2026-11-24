@@ -3,14 +3,17 @@ name: CI
 on:
   push:
     branches: [main]
+
   pull_request:
     branches: [main]
+
   # Weekly re-run on `main`. The per-PR jobs only ever exercise our own changes, so an upstream
   #  release that breaks us stays invisible until somebody opens a PR; `test-ceil` resolves with
   #  `--upgrade` and is what catches it.
   schedule:
     # Mondays 06:00 UTC, an hour after `cve-rescan.yml`, same weekly cadence.
     - cron: "0 6 * * 1"
+
   workflow_dispatch:
 
 permissions:
@@ -49,18 +52,22 @@ jobs:
     name: Test Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+
     # `UV_PYTHON` pins `uv` to the matrix interpreter, otherwise `uv` skips prereleases
     #  (like the `3.15` beta) and silently picks a stable one. (No `UV_NO_SYNC` here: the
     #  `justfile`'s top-level `UV_NO_SYNC`/`UV_FROZEN` exports auto-enable in CI, so `just test`
     #  runs on the `install-test` env without re-syncing.)
     env:
       UV_PYTHON: ${{ matrix.python-version }}
+
       # `pydantic-core` ships no `cp315` wheel yet, so on 3.15 `uv` builds it from source via
       #  `cargo`, whose `crates.io` downloads intermittently fail (transient TLS / unexpected EOF).
       #  Make `cargo` retry each download before the step-level retry kicks in.
       CARGO_NET_RETRY: "10"
+
     strategy:
       fail-fast: false
+
       # Canonical Python matrix. Mirrored by `python_versions` in the `justfile` and (minus the
       #  `3.15` prerelease) `os-matrix.yml`. Keep them in sync.
       matrix:
@@ -151,6 +158,7 @@ jobs:
 
   audit:
     name: Audit
+
     # No `needs`: the security audit is independent of lint/test, so it starts immediately and in
     #  parallel instead of waiting for them. A CVE surfaces as its own signal even when a test fails,
     #  rather than being masked behind an unrelated failure. It is still gated by the `check` job.

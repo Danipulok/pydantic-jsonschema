@@ -15,6 +15,7 @@ theme:
       toggle:
         icon: material/brightness-auto
         name: Switch to light mode
+
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -23,6 +24,7 @@ theme:
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
+
     # Palette toggle for dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
@@ -31,6 +33,7 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to system preference
+
   features:
     - announce.dismiss
     - content.action.edit
@@ -50,6 +53,7 @@ theme:
     - search.share
     - search.suggest
     - toc.follow
+
   icon:
     repo: fontawesome/brands/github
     edit: material/pencil
@@ -62,31 +66,26 @@ extra:
   version:
     provider: mike
     default: latest
+
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/danipulok/pydantic-jsonschema
 
     - icon: fontawesome/brands/python
       link: https://pypi.org/project/pydantic-jsonschema/
+
   generator: false
 
 copyright: Copyright &copy; 2026 - Present
 
 nav:
   - Home: index.md
-
   - Installation: install.md
-
   - Schema: schema.md
-
   - Converters: converters.md
-
   - Applicators: applicators.md
-
   - Formats: formats.md
-
   - Rules: rules.md
-
   - Examples: examples.md
 
   - API Reference:
@@ -104,17 +103,11 @@ nav:
 markdown_extensions:
   # Python Markdown
   - abbr
-
   - admonition
-
   - attr_list
-
   - def_list
-
   - footnotes
-
   - md_in_html
-
   - tables
 
   - toc:
@@ -130,7 +123,6 @@ markdown_extensions:
       smart_enable: all
 
   - pymdownx.caret
-
   - pymdownx.details
 
   - pymdownx.emoji:
@@ -143,13 +135,9 @@ markdown_extensions:
       pygments_lang_class: true
 
   - pymdownx.inlinehilite
-
   - pymdownx.keys
-
   - pymdownx.mark
-
   - pymdownx.smartsymbols
-
   - pymdownx.snippets
 
   - pymdownx.superfences:
@@ -171,10 +159,12 @@ plugins:
       lang: en
 
   - glightbox
+
   # LLM-friendly export: `/llms.txt`, `/llms-full.txt`, and per-page `.md` files.
   - llmstxt:
       markdown_description: >-
         Convert JSON Schema definitions into Pydantic models with runtime validation.
+
       full_output: llms-full.txt
       sections:
         Usage documentation:
@@ -185,11 +175,14 @@ plugins:
           - formats.md
           - rules.md
           - examples.md
+
         API reference:
           - api/*.md
+
         Development:
           - contributing.md
           - changelog.md
+
   # "Copy page as Markdown" split button (copy / view / open in ChatGPT / open in Claude).
   - copy-to-llm:
       button_hover_color: "var(--md-primary-fg-color)"
@@ -198,6 +191,7 @@ plugins:
         view_as_markdown: true
         open_in_chatgpt: true
         open_in_claude: true
+
         # Niche: a Markdown link to the page is rarely what readers want.
         copy_markdown_link: false
 
@@ -219,6 +213,7 @@ plugins:
             show_source: false
             members_order: source
             show_bases: true
+
             # Hide implementation noise: raw attribute values, `type` alias values
             #  (`Email = Annotated[...]`), and the `module-attribute` / `class-attribute` badges.
             show_attribute_values: false
@@ -232,6 +227,7 @@ plugins:
             inherited_members: false
             group_by_category: true
             summary: false
+
             # `model_config` has no docstring, but the `types` page turns on
             #  `show_if_no_docstring` to list `Schema` fields, so filter it out there.
             filters:

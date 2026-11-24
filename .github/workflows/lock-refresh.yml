@@ -7,6 +7,7 @@ on:
   schedule:
     # 05:00 UTC on the 1st of each month (mirrors the cadence of a Renovate `lockFileMaintenance`).
     - cron: "0 5 1 * *"
+
   workflow_dispatch:
 
 # The branch push and the PR both go through the App token minted below, so the workflow's own
@@ -51,6 +52,7 @@ jobs:
         with:
           app-id: ${{ secrets.AUTOMATION_APP_ID }}
           private-key: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
+
           # Narrowed to what the step below needs: an unscoped token carries every permission the
           #  App is installed with. https://docs.zizmor.sh/audits/#github-app
           permission-contents: write
@@ -64,6 +66,7 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
           add-paths: uv.lock
+
           # Commits through the API so the result carries a verified signature.
           sign-commits: true
           branch: chore/lock-refresh

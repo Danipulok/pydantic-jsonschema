@@ -9,6 +9,7 @@ reviews:
   poem: false
   auto_review:
     enabled: true
+
   path_filters:
     - "!dist/**"
     - "!site/**"

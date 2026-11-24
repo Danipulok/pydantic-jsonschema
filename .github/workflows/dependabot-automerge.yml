@@ -24,6 +24,7 @@ jobs:
     name: Enable auto-merge for low-risk updates
     runs-on: ubuntu-latest
     timeout-minutes: 5
+
     # Guard: only ever act on Dependabot's own PRs.
     if: github.event.pull_request.user.login == 'dependabot[bot]'
 

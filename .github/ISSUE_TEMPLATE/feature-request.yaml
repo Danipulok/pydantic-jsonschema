@@ -42,6 +42,7 @@ body:
         ```bash
         uv run python -c "import sys, importlib.metadata as im; print(f'Python: {sys.version}\nPydantic: {im.version(\"pydantic\")}\nPydantic JSON Schema: {im.version(\"pydantic-jsonschema\")}')"
         ```
+
       placeholder: |
         Python: 3.14.0
         Pydantic: 2.13.0
