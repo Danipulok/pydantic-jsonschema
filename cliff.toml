@@ -57,6 +57,8 @@ commit_preprocessors = [
 ]
 split_commits = false
 commit_parsers = [
+  # A merge commit repeats the PR title, and its branch commits are already listed.
+  { field = "merge_commit", pattern = "true", skip = true },
   { message = "^feat", group = "Added" },
   { message = "^fix", group = "Fixed" },
   { message = "^refactor", group = "Changed" },

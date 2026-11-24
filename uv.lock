@@ -1811,7 +1811,7 @@ benchmark = [
 ]
 dev = [
     { name = "codespell", specifier = ">=2.4.0" },
-    { name = "git-cliff", specifier = ">=2.0.0" },
+    { name = "git-cliff", specifier = ">=2.5.0" },
     { name = "inline-snapshot", specifier = ">=0.34.0" },
     { name = "mike", specifier = ">=2.1.0" },
     { name = "mkdocs", specifier = ">=1.6.1" },
@@ -1849,7 +1849,7 @@ lint = [
     { name = "ruff", specifier = ">=0.16.0" },
 ]
 release = [
-    { name = "git-cliff", specifier = ">=2.0.0" },
+    { name = "git-cliff", specifier = ">=2.5.0" },
     { name = "twine", specifier = ">=6.1.0" },
 ]
 test = [

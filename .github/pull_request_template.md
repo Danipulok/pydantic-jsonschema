@@ -22,6 +22,6 @@ Closes #<!-- issue number, or remove this line -->
 ---
 
 - [ ] I followed the [contribution guide](https://danipulok.github.io/pydantic-jsonschema/contributing/)
-- [ ] The PR title follows [Conventional Commits](https://www.conventionalcommits.org/) (`type(scope): description`), it becomes the squash commit and the changelog entry
+- [ ] The PR title follows [Conventional Commits](https://www.conventionalcommits.org/) (`type(scope): description`), it becomes the merge commit title, and every non-merge commit of the branch follows it too, as each one becomes a changelog entry
 - [ ] Documentation reflects the changes where applicable
 - [ ] Any AI-generated code has been reviewed line-by-line by the human PR author, who stands by it

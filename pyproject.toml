@@ -81,7 +81,7 @@ audit = [
 #  the supply-chain guards the rest of the tree has, and it runs at the one moment where integrity
 #  matters most, right before the artifact is published.
 release = [
-    "git-cliff>=2.0.0",
+    "git-cliff>=2.5.0",
     "twine>=6.1.0",
 ]
 lint = [

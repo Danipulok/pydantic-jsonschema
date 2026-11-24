@@ -34,7 +34,8 @@ jobs:
 
       # Only patch/minor auto-merge; `major` (and `lockFileMaintenance`-style) updates always need a
       #  human. `--auto` flips the PR's auto-merge flag, so the merge still waits for the required
-      #  `CI ok` status. `--squash` matches the repo's squash-with-PR-title merge policy.
+      #  `CI ok` status. `--squash` lands the bump as one commit titled by the PR title, as every
+      #  auto-merged bot PR does.
       - name: Enable auto-merge
         if: >-
           steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
