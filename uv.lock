@@ -1735,12 +1735,16 @@ audit = [
     { name = "zizmor" },
 ]
 benchmark = [
+    { name = "git-cliff" },
     { name = "inline-snapshot" },
     { name = "pydantic-extra-types" },
     { name = "pytest" },
     { name = "pytest-codspeed" },
     { name = "pytest-cov" },
     { name = "pytest-examples" },
+]
+changelog = [
+    { name = "git-cliff" },
 ]
 dev = [
     { name = "codespell" },
@@ -1786,6 +1790,7 @@ release = [
     { name = "twine" },
 ]
 test = [
+    { name = "git-cliff" },
     { name = "inline-snapshot" },
     { name = "pydantic-extra-types" },
     { name = "pytest" },
@@ -1802,6 +1807,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 audit = [{ name = "zizmor", specifier = ">=1.29.0" }]
 benchmark = [
+    { name = "git-cliff", specifier = ">=2.5.0" },
     { name = "inline-snapshot", specifier = ">=0.34.0" },
     { name = "pydantic-extra-types", specifier = ">=2.3.0" },
     { name = "pytest", specifier = ">=8.0.0" },
@@ -1809,6 +1815,7 @@ benchmark = [
     { name = "pytest-cov", specifier = ">=6.0.0" },
     { name = "pytest-examples", specifier = ">=0.0.18" },
 ]
+changelog = [{ name = "git-cliff", specifier = ">=2.5.0" }]
 dev = [
     { name = "codespell", specifier = ">=2.4.0" },
     { name = "git-cliff", specifier = ">=2.5.0" },
@@ -1853,6 +1860,7 @@ release = [
     { name = "twine", specifier = ">=6.1.0" },
 ]
 test = [
+    { name = "git-cliff", specifier = ">=2.5.0" },
     { name = "inline-snapshot", specifier = ">=0.34.0" },
     { name = "pydantic-extra-types", specifier = ">=2.3.0" },
     { name = "pytest", specifier = ">=8.0.0" },

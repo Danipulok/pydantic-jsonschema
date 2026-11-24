@@ -81,8 +81,13 @@ audit = [
 #  the supply-chain guards the rest of the tree has, and it runs at the one moment where integrity
 #  matters most, right before the artifact is published.
 release = [
-    "git-cliff>=2.5.0",
+    {include-group = "changelog"},
     "twine>=6.1.0",
+]
+# Its own group so `test`, whose `tests/test_changelog.py` renders `cliff.toml`, and `release`
+#  list the one specifier.
+changelog = [
+    "git-cliff>=2.5.0",
 ]
 lint = [
     "codespell>=2.4.0",
@@ -92,6 +97,7 @@ lint = [
     "ruff>=0.16.0",  # `PLR0917` is stable from `0.16.0`; earlier, `ALL` skips it
 ]
 test = [
+    {include-group = "changelog"},
     "pytest>=8.0.0",
     "pytest-cov>=6.0.0",
     "pytest-examples>=0.0.18",

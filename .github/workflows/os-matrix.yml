@@ -3,6 +3,8 @@ name: OS matrix
 # Cross-OS sanity sweep, weekly instead of per PR: the library has no OS-specific code (no file
 #  I/O, paths or subprocess), so the PR matrix stays ubuntu-only, but the compiled dependencies
 #  ship a different wheel per platform, and a break there would otherwise wait for a manual run.
+#  The suite itself runs `git` and `git-cliff` as subprocesses in `tests/test_changelog.py`, and
+#  this sweep is the only check that both run and render the same changelog off Linux.
 #
 #  PyPy is omitted: its latest is 3.11, below our `requires-python = ">=3.12"`.
 #  3.15 is omitted: it is a prerelease that builds `pydantic-core` from source (no wheel) on every
