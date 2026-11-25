@@ -6,8 +6,10 @@ name: CodSpeed
 on:
   push:
     branches: [main]
+
   pull_request:
     branches: [main]
+
   workflow_dispatch:
 
 permissions: {}
@@ -24,6 +26,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+
       # Tokenless upload for public repos: `CodSpeed` verifies the run via OIDC, so no
       #  `CODSPEED_TOKEN` secret is needed. See https://docs.codspeed.io/integrations/ci/github-actions
       id-token: write

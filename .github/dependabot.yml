@@ -13,6 +13,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+
     # Canonical cutoff: `tool.uv.exclude-newer` in `pyproject.toml`. Mirrored here so Dependabot
     #  never opens a PR for a version `uv` would refuse to lock.
     cooldown:
@@ -22,6 +23,7 @@ updates:
       python-dependencies:
         patterns:
           - "*"
+
       # A group without `applies-to` covers version updates only, so every security update
       #  opened its own PR.
       #  https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#groups--
@@ -38,6 +40,7 @@ updates:
         update-types:
           - minor
           - patch
+
         patterns:
           - "*"
 
@@ -51,6 +54,7 @@ updates:
       - /.github/actions/setup
     schedule:
       interval: weekly
+
     # `exclude-newer` is a `uv`-only resolver setting and does not cover GitHub Actions, so this is
     #  the *only* supply-chain delay for action bumps. Matched to the Python cutoff for consistency.
     cooldown:
@@ -60,6 +64,7 @@ updates:
       github-actions:
         patterns:
           - "*"
+
       # No security group here: GitHub raises Actions alerts for semver references only, and every
       #  third-party action in this repository is pinned to a SHA.
       #  https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alerts

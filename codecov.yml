@@ -4,6 +4,7 @@ coverage:
     project:
       default:
         target: 100%
+
     patch:
       default:
         target: 100%

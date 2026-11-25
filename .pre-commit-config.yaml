@@ -6,41 +6,31 @@ repos:
         args: [ --maxkb=500 ]
 
       - id: check-ast
-
       - id: check-case-conflict
+
       # `check-docstring-first` is intentionally omitted: it misreads PEP 224
       #  attribute docstrings (strings after assignments in `schema/_models.py` / `formats/_types.py`)
       #  as a second module docstring and aborts the commit.
       - id: check-executables-have-shebangs
-
       - id: check-json
-
       - id: check-shebang-scripts-are-executable
-
       - id: check-merge-conflict
-
       - id: check-symlinks
-
       - id: check-toml
-
       - id: check-vcs-permalinks
-
       - id: check-xml
 
       - id: check-yaml
         exclude: mkdocs.yml
 
       - id: debug-statements
-
       - id: destroyed-symlinks
 
       - id: detect-aws-credentials
         args: [ --allow-missing-credentials ]
 
       - id: detect-private-key
-
       - id: end-of-file-fixer
-
       - id: fix-byte-order-marker
 
       - id: mixed-line-ending
@@ -48,6 +38,7 @@ repos:
 
       - id: name-tests-test
         args: [ --pytest-test-first ]
+
         # `tests/builders/` holds shared values, not tests.
         exclude: ^tests/builders/
 
